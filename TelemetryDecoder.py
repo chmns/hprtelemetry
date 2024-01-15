@@ -2,7 +2,9 @@ import csv
 import os
 from threading import Thread
 from time import sleep
+import sys
 
+TEST_FILE_1 = "test_data\\test_1.txt"
 
 class TestTelemetry(Thread):
 
@@ -36,16 +38,15 @@ class TestTelemetry(Thread):
 
     @staticmethod
     def decodePrelaunch(message) -> (dict | None):
-        print(message)
         try:
             prelaunch_dict = {
                 "RocketName": message[1],
                 "Continuity": int(message[2]),
                 "GPSlock": bool(message[3]),
                 "BaseAlt": float(message[4]),
-                "GPSalt": float(message[5]),
-                "Latitude": float(message[6]),
-                "Longitude": float(message[7]),
+                "gpsAlt": float(message[5]),
+                "gpsLat": float(message[6]),
+                "gpsLon": float(message[7]),
             }
         except:
             return None
@@ -53,8 +54,13 @@ class TestTelemetry(Thread):
 
     def run(self):
         pwd = os.path.dirname(__file__)
-        rel_path = "telemetry/test.txt"
+        rel_path = TEST_FILE_1
         abs_file_path = os.path.join(pwd, rel_path)
+
+        if getattr(sys, 'frozen', False):
+            abs_file_path = os.path.join(sys._MEIPASS, rel_path)
+        else:
+            abs_file_path = os.path.join(pwd, rel_path)
 
         with open(abs_file_path, 'rt') as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',', )
