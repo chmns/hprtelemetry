@@ -65,7 +65,7 @@ for row in range(NUM_ROWS):
     # test = ReadOut(window, " ", " ", " ")
     # test.grid(row=2, column=col+4, padx=PADX, pady=PADY, sticky=(N,E,S,W))    
 
-CELL_WIDTH = 320
+CELL_WIDTH = 280
 
 altitude = ReadOut(window, "Altitude", "m", "ft", ReadOut.metresToFeet, ALTITUDE_COLOR)
 altitude.grid(row=0, column=0, padx=PADX, pady=PADY, sticky=(N,S))
@@ -142,6 +142,9 @@ def prelaunch_callback(prelaunch):
     status.set_name(prelaunch["RocketName"])
     preflight_coords.config(text=f"{PREFLIGHT_COORDS_PREFIX} {map.lat} {map.lon}")
     map.set_marker(prelaunch["gpsLat"], prelaunch["gpsLon"], f"Pre")
+
+def postflight_callback(postflight):
+    pass
 
 def message_callback(message):
     event_type = int(message["event"])

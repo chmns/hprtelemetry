@@ -30,10 +30,13 @@ class ReadOut(Frame):
             self.max_value = new_value
         
         self.value = new_value
-        
-        self.main.config(text=f'{self.value:.{self.decimals}f}{self.units1}')
+        self.main.config(text=f'{self.value:.{self.decimals}f}')
+
         if set_max:
-            self.max.config(text=f'Max:\n{self.max_value:.{self.decimals}f}{self.units1}')
+            self.max.config(text=f'Max:\n{self.max_value:.{self.decimals}f}')
+
+    def set_final_value(self, final_value):
+        self.final.config(text=f"Final:{final_value}")
 
     def __init__(self,
                  master,
@@ -48,6 +51,7 @@ class ReadOut(Frame):
         
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(4, weight=1)
+        self.grid_rowconfigure(6, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
         self.name = name
@@ -59,15 +63,17 @@ class ReadOut(Frame):
         self.color = color
         self.decimals = decimals
 
-        self.main = Label(self, text=f'{self.value} {self.units1}', fg=FG_COLOR, bg=BG_COLOR, font=("Arial", 48))
+        self.main = Label(self, text=f'{self.value}', fg=FG_COLOR, bg=BG_COLOR, font=("Arial", 48))
         self.main.grid(column = 0, row = 1, sticky = (N,S))
         
-        self.name = Label(self, text=self.name, fg=self.color, bg=BG_COLOR, font="Arial 18 bold")
+        self.name = Label(self, text=f'{self.units1} {self.name}', fg=self.color, bg=BG_COLOR, font="Arial 18 bold")
         self.name.grid(column = 0, row = 2, sticky=(N,S))
         
         self.max = Label(self, text=f'Max:\n{self.max_value}{units1}', fg=FG_COLOR, bg=BG_COLOR, font=("Arial", 18))
         self.max.grid(column = 0, row = 4, sticky=(N,S))
 
+        self.final = Label(self, text="", fg=self.color, bg=BG_COLOR, font=("Arial Bold", 18))
+        self.final.grid(column = 0, row = 6, sticky=(N,S))
 
 class TiltAndSpin(Frame):
     SPACING = 30

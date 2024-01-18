@@ -52,6 +52,25 @@ class TestTelemetry(Thread):
             return None
         return prelaunch_dict
 
+    @staticmethod
+    def decodePostflight(message) -> (dict | None):
+        try:
+            postflight_dict = {
+                "rocketName": message[0],
+                "lastEvent": message[1],
+                "maxAlt": message[2],
+                "maxVel": message[3],
+                "maxG": message[4],
+                "maxGPSalt": message[5],
+                "gpsLock": message[6],
+                "gpsALt": message[7],
+                "gpsLatitude": message[8],
+                "gpsLongitude": message[9]
+            }
+        except:
+            return None
+        return postflight_dict
+
     def run(self):
         pwd = os.path.dirname(__file__)
         rel_path = TEST_FILE_1
