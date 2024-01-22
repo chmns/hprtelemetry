@@ -50,6 +50,7 @@ class TestTelemetry(Thread):
             }
         except:
             return None
+        sleep(1)
         return prelaunch_dict
 
     @staticmethod

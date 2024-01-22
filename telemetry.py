@@ -44,7 +44,6 @@ ALTITUDE_COLOR = "#8BD3E6"
 VELOCITY_COLOR = "#FF6D6A"
 ACCELERATION_COLOR = "#EFBE7D"
 
-COORDS_FONT = "Courier 24 bold"
 DEFAULT_COORD = "0.0000000"
 PREFLIGHT_COORDS_PREFIX = "Pre: "
 CURRENT_COORDS_PREFIX = "Curr:"
@@ -103,24 +102,20 @@ map_frame.rowconfigure(0, weight=1)
 map_frame.rowconfigure(1, weight=0)
 
 map = tkintermapview.TkinterMapView(map_frame)
+# map = Frame(map_frame)
 map.grid(row=0, column=0, sticky=(N,E,S,W))
 map.lat = 44.7916443
 map.lon = -0.5995578
 map.set_position(map.lat,map.lon)
-map.set_zoom(14)
+map.set_zoom(14) 
 map.grid_propagate(True)
 
-preflight_coords = Label(map_frame, text=f"{PREFLIGHT_COORDS_PREFIX} {DEFAULT_COORD} {DEFAULT_COORD}", bg="#0F0F0F", fg="#FFFFFF", font=COORDS_FONT)
-preflight_coords.grid(row=1, column=0, sticky=(E,W))
-preflight_coords.grid_propagate(False)
-
-current_coords = Label(map_frame, text=f"{CURRENT_COORDS_PREFIX} {DEFAULT_COORD} {DEFAULT_COORD}", bg="#0F0F0F", fg="#FFFFFF", font=COORDS_FONT)
-current_coords.grid(row=2, column=0, sticky=(E,W))
-current_coords.grid_propagate(False)
- 
-postflight_coords = Label(map_frame, text=f"{POSTFLIGHT_COORDS_PREFIX} {DEFAULT_COORD} {DEFAULT_COORD}", bg="#0F0F0F", fg="#FFFFFF", font=COORDS_FONT)
-postflight_coords.grid(row=3, column=0, sticky=(E,W))
-postflight_coords.grid_propagate(False)
+# location_grid = Label(map_frame)
+# location_grid.config(text="HASHASHAS")
+location_grid = LocationGrid(map_frame)
+location_grid.grid(row=1, column=0, sticky=(N,E,S,W))
+location_grid.grid_propagate(False)
+# location_grid.config(width=400)
 
 
 tilt_spin = TiltAndSpin(window)
@@ -140,7 +135,8 @@ controls.grid_propagate(False)
 
 def prelaunch_callback(prelaunch):
     status.set_name(prelaunch["RocketName"])
-    preflight_coords.config(text=f"{PREFLIGHT_COORDS_PREFIX} {map.lat} {map.lon}")
+
+    location_grid.pre.set_location(prelaunch["gpsLat"],prelaunch["gpsLon"],prelaunch["gpsAlt"])
     map.set_marker(prelaunch["gpsLat"], prelaunch["gpsLon"], f"Pre")
 
 def postflight_callback(postflight):
@@ -174,7 +170,7 @@ def message_callback(message):
         map.lat = new_lat
         map.lon = new_lon
         map.set_position(map.lat, map.lon, marker=True)
-        current_coords.config(text=f"{CURRENT_COORDS_PREFIX} {map.lat} {map.lon}")
+        location_grid.cur.set_location(map.lat, map.lon,message["gpsAlt"])
 
 test_runner.prelaunch_callback = prelaunch_callback
 test_runner.message_callback = message_callback
