@@ -1,2 +1,3 @@
 tkintermapview
 matplotlib
+pyserial

@@ -19,13 +19,53 @@ max G
 max GPS alt
 """
 
+import sys
+import glob
+import serial
 from tkinter import *
 import tkintermapview
 from GraphFrame import GraphFrame
 from TelemetryControls import *
+from tkinter.filedialog import askopenfile
 import TelemetryDecoder
 from matplotlib import style
 style.use('dark_background')
+
+test_runner = TelemetryDecoder.TestTelemetry()
+
+def serial_ports():
+    """ Lists serial port names
+
+        :raises EnvironmentError:
+            On unsupported or unknown platforms
+        :returns:
+            A list of the serial ports available on the system
+    """
+    if sys.platform.startswith('win'):
+        ports = ['COM%s' % (i + 1) for i in range(256)]
+    elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+        # this excludes your current terminal "/dev/tty"
+        ports = glob.glob('/dev/tty[A-Za-z]*')
+    elif sys.platform.startswith('darwin'):
+        ports = glob.glob('/dev/tty.*')
+    else:
+        raise EnvironmentError('Unsupported platform')
+
+    result = []
+    for port in ports:
+        try:
+            s = serial.Serial(port)
+            s.close()
+            result.append(port)
+        except (OSError, serial.SerialException):
+            pass
+    return result
+
+def open_telemetry_file():
+    file = askopenfile(mode ='r', filetypes =[('Telemetry Text Files', '*.txt'), ('Other Telemetry Files', '*.*')])
+    if file is not None:
+        test_runner.file = file
+        test_runner.start()
 
 window = Tk()
 window.title("Telemetry Viewer")
@@ -33,7 +73,51 @@ window.config(background="#222222")
 w, h = window.winfo_screenwidth(), window.winfo_screenheight()
 window.geometry("%dx%d+0+0" % (w, h))
 
-test_runner = TelemetryDecoder.TestTelemetry()
+current_serial = StringVar(window, name="current_serial", value=None)
+
+
+
+# create a menubar
+menubar = Menu(window)
+window.config(menu=menubar)
+
+file_menu = Menu(menubar)
+
+file_menu.add_command(
+    label="Open",
+    command=open_telemetry_file
+)
+
+file_menu.add_command(
+    label='Exit',
+    command=window.destroy
+)
+
+serial_menu = Menu(menubar)
+
+menubar.add_cascade(
+    label="File",
+    menu=file_menu
+)
+
+
+def update_serial_menu():
+    serial_menu.delete(0,END)
+
+    ports = serial_ports()
+
+    if len(ports) == 0:
+        serial_menu.add_command("No serial ports", state=DISABLED)
+    else:
+        for port in ports:
+            serial_menu.add_command(label=port, command=print)
+    
+    serial_menu.add_separator()
+    serial_menu.add_command(label="Re-scan", command=update_serial_menu)
+
+update_serial_menu()
+
+menubar.add_cascade(label="Serial Port", menu=serial_menu)
 
 NUM_COLS = 7
 NUM_ROWS = 3
@@ -152,11 +236,11 @@ def message_callback(message):
 
     velocity_value = message["velocity"]
     velocity.update_value(velocity_value)
-    velocity_graph.append(velocity_value)
+    # velocity_graph.append(velocity_value)
 
     altitude_value = message["altitude"]
     altitude.update_value(altitude_value)
-    altitude_graph.append(altitude_value)
+    # altitude_graph.append(altitude_value)
 
     tilt_spin.update_value(message["tilt"], message["spin"])
 
@@ -177,6 +261,7 @@ test_runner.message_callback = message_callback
 
 window.bind('t', lambda e: test_runner.start())
 window.bind('q', lambda e: window.quit())
+window.bind('s', lambda e: print(serial_ports()))
 window.focus()
 
 def on_closing():
