@@ -1,4 +1,3 @@
-import csv
 import os
 from threading import Thread
 from time import sleep
@@ -6,7 +5,7 @@ import sys
 from inflection import underscore
 from enum import Enum
 
-# TEST_FILE_1 = "test_data\\test_1.txt"
+TEST_MESSAGE_INTERVAL = 0.05
 
 """
 Telemetry Decoding:
@@ -63,8 +62,10 @@ class FlightTelemetryDecoder(object):
     """
     takes line of flight data and decodes it into a dictionary:
     """
-    def __init__(self, name_callback: callable = None):
+    def __init__(self, name_callback: callable = None, message_callback: callable = None):
         self.name_callback = name_callback
+        self.message_callback = message_callback
+
         self.state = DecoderState.FLIGHT
         self.telemetry_keys = None
         self.unique_keys = { DecoderState.FLIGHT: "fltEvents",
@@ -78,7 +79,7 @@ class FlightTelemetryDecoder(object):
         # change all keys to be consistently formatted
         return underscore(key.strip()).replace(" ","_")
 
-    def decode_line(self, line: str):
+    def decode_line(self, line: str) -> None:
         """
         decodes a line of flight telemetry
 
@@ -99,7 +100,8 @@ class FlightTelemetryDecoder(object):
         # that the data is good, but that can come at a later time
 
         items = line.split(",")
-        # print(items)
+        if len(items) < 2:
+            return
 
         # vast majority of lines will be raw telemetry so check for this first:
         if self.state == DecoderState.FLIGHT and items[0].isnumeric():
@@ -126,17 +128,18 @@ class FlightTelemetryDecoder(object):
 
         # if it's not flight telemetry, and it's not a key-row, then we can assume it's another
         # row of telemetry (like launch/land/flight-summary)
-        return self.decode_telemetry_values(items)
+        self.message_callback(self.decode_telemetry_values(items))
 
-    def decode_telemetry_values(self, values):
+    def decode_telemetry_values(self, values) -> dict | None:
+        dict = {key: value for (key, value) in zip(self.telemetry_keys, values) if value.strip()}
         # return a dict of all the key-value pairs in the received telemetry, ignoring all empties
-        return {key: value for (key, value) in zip(self.telemetry_keys, values) if value.strip()}
+        return dict
 
 class TelemetryTester(object):
     def __init__(self, filepath) -> None:
         assert filepath is not None
         self.rel_path = filepath
-        self.decoder = FlightTelemetryDecoder(print)
+        self.decoder = FlightTelemetryDecoder(print, print)
 
     def test(self):
         pwd = os.path.dirname(__file__)
@@ -149,9 +152,8 @@ class TelemetryTester(object):
 
         with open(abs_file_path, 'rt') as test_telemetry:
             for line in test_telemetry:
-                print("---")
-                print(self.decoder.decode_line(line))
-                print("---")
+                self.decoder.decode_line(line)
+                sleep(TEST_MESSAGE_INTERVAL)
 
 if __name__ == "__main__":
     test = TelemetryTester("test_data\\FLIGHT10-short.csv")
