@@ -27,11 +27,11 @@ import tkintermapview
 from GraphFrame import GraphFrame
 from TelemetryControls import *
 from tkinter.filedialog import askopenfile
-import TelemetryDecoder
+from TelemetryDecoder import TelemetryTester
 from matplotlib import style
 style.use('dark_background')
 
-test_runner = TelemetryDecoder.TestTelemetry()
+test_runner = TelemetryTester("test_data\\FLIGHT10-short.csv")
 
 def serial_ports():
     """ Lists serial port names
@@ -115,7 +115,7 @@ def update_serial_menu():
     serial_menu.add_separator()
     serial_menu.add_command(label="Re-scan", command=update_serial_menu)
 
-update_serial_menu()
+# update_serial_menu()
 
 menubar.add_cascade(label="Serial Port", menu=serial_menu)
 
@@ -227,37 +227,39 @@ def postflight_callback(postflight):
     pass
 
 def message_callback(message):
-    event_type = int(message["event"])
-    controls.update_value(event_type)
 
-    acceleration_value = message["acceleration"]
-    acceleration.update_value(acceleration_value, event_type < 4)
-    acceleration_graph.append(acceleration_value)
+    
+    # event_type = int(message["event"])
+    # controls.update_value(event_type)
 
-    velocity_value = message["velocity"]
+    # acceleration_value = message["acceleration"]
+    # acceleration.update_value(acceleration_value, event_type < 4)
+    # acceleration_graph.append(acceleration_value)
+
+    velocity_value = message["fusionVel"]
     velocity.update_value(velocity_value)
     # velocity_graph.append(velocity_value)
 
-    altitude_value = message["altitude"]
+    altitude_value = message["fusionAlt"]
     altitude.update_value(altitude_value)
     # altitude_graph.append(altitude_value)
 
-    tilt_spin.update_value(message["tilt"], message["spin"])
+    # tilt_spin.update_value(message["tilt"], message["spin"])
 
-    status.update_value(message["packetNum"],
-                        message["time"],
-                        message["signalStrength"])
+    # status.update_value(message["packetNum"],
+    #                     message["time"],
+    #                     message["signalStrength"])
 
-    new_lat = message["gpsLat"]
-    new_lon = message["gpsLon"]
-    if new_lat != map.lat or new_lon != map.lon:
-        map.lat = new_lat
-        map.lon = new_lon
-        map.set_position(map.lat, map.lon, marker=True)
-        location_grid.cur.set_location(map.lat, map.lon,message["gpsAlt"])
+    # new_lat = message["gpsLat"]
+    # new_lon = message["gpsLon"]
+    # if new_lat != map.lat or new_lon != map.lon:
+    #     map.lat = new_lat
+    #     map.lon = new_lon
+    #     map.set_position(map.lat, map.lon, marker=True)
+    #     location_grid.cur.set_location(map.lat, map.lon,message["gpsAlt"])
 
-test_runner.prelaunch_callback = prelaunch_callback
-test_runner.message_callback = message_callback
+# test_runner.prelaunch_ = prelaunch_callback
+test_runner.decoder.message_callback = message_callback
 
 window.bind('t', lambda e: test_runner.start())
 window.bind('q', lambda e: window.quit())
