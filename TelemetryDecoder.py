@@ -77,7 +77,8 @@ class FlightTelemetryDecoder(object):
     @staticmethod
     def format_key(key):
         # change all keys to be consistently formatted
-        return underscore(key.strip()).replace(" ","_")
+        # return underscore(key.strip()).replace(" ","_")
+        return key.strip().replace(" ","_")
 
     def decode_line(self, line: str) -> None:
         """
@@ -139,9 +140,13 @@ class TelemetryTester(object):
     def __init__(self, filepath) -> None:
         assert filepath is not None
         self.rel_path = filepath
-        self.decoder = FlightTelemetryDecoder(print, print)
+        self.decoder = FlightTelemetryDecoder()
 
-    def test(self):
+    def start(self):
+        test_thread = Thread(target=self.read_file)
+        test_thread.start()
+    
+    def read_file(self):
         pwd = os.path.dirname(__file__)
         # abs_file_path = os.path.join(pwd, self.rel_path)
 
@@ -157,4 +162,4 @@ class TelemetryTester(object):
 
 if __name__ == "__main__":
     test = TelemetryTester("test_data\\FLIGHT10-short.csv")
-    test.test()
+    test.start()
