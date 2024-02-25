@@ -13,5 +13,3 @@ landing date, UTC time, landing altitude, landing latitude, landing longitude,,,
 26/1/2024,11:20:07,471.6,37.005787,41.967484,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Rocket Name, callsign, HWid, flightProfile, units, inflightRecover, pyro4func, pyro3func, pyro2func, pyro1func, apogeeDelay, mainDeployAlt, setupTime, rcdTime, fireTime, TXenable, TXpwr, TXfreq, FHSS, seaLevelPressure ,,,,,,,,,,,,,,,,,,,,
 Mach Shock,KK4ELF,3.3.1,S,M,1,A,N,N,N,0,300,10,900,0.5,1,13,433.25,0,1056.26,,,,,,,,,,,,,,,,,,,,
- 
- ]
