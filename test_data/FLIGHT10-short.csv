@@ -1,0 +1,17 @@
+Mach Shock Code V4.70,accelX,accelY,accelZ,gyroX,gyroY,gyroZ,highGx,highGy,highGz,smoothHighGz,rollZ,yawY,pitchX,offVert,intVel,intAlt,fusionVel,fusionAlt,fltEvents,radioCode,pyroCont,pyroFire,pyroPin,baroAlt,altMoveAvg,baroVel,baroPress,baroTemp,battVolt,magX,magY,magZ,gnssLat,gnssLon,gnssSpeed,gnssAlt,gnssAngle,gnssSatellites,radioPacketNum
+0,-729,-846,5170,739,1211,1256,3,-11,13,13,0,-3,2,3,0,0,0,0,10000000,1,C0000,F0000,0,,,,,22.04,,-189,421,-34,39.005813,75.967479,1.25,0.18,44.54,7,0
+3855,-756,-740,5840,849,1287,1274,1,-10,15,14,0,-3,2,3,0.06,0,0.06,0,10000000,1,C0000,F0000,0,0,-0.15,-1.15,998.79,,,,,,,,,,,,
+4761,-802,-753,5983,855,1322,1270,4,-9,15,14,0,-3,2,3,0.08,0,0.08,0,10000000,1,C0000,F0000,0,,,,,,,,,,,,,,,,
+48036000,103,2061,-390,-23,-46,4,1,1,-11,-10,-333,-109,1012,788,-54.47,-324.08,0,-0.81,11011100,6,C0000,F0000,4,,,,,,,,,,,,,,,,
+48037001,111,2061,-381,-26,-50,7,1,1,-12,-10,-333,-109,1012,788,-54.47,-324.08,0,-0.81,11011100,6,C0000,F0000,4,,,,,,,,,,,,,,,,
+48037983,111,2061,-381,-26,-50,7,1,1,-12,-10,-333,-109,1012,788,-54.47,-324.08,-0.15,-0.79,11011110,27,C0000,F0000,4,-0.59,-0.79,-0.15,998.86,,,,,,,,,,,,
+Max Baro Alt,Max GPS Alt,Max Speed,Max Gs,baseAlt,padTime,initial Y ang,initial X ang,accelX0,accelY0,accelZ0,highGz0,magX0,magY0,magZ0,gyroBiasX,gyroBiasY,gyroBiasZ,accelBiasX,accelBiasY,accelBiasZ,highGbiasX,highGbiasY,highGbiasZ,magBiasX,magBiasY,magBiasZ,baroPressureOffset,baroTempOffset,,,,,,,,,,,
+332,3,0,2.28,469.47,79.04,-0.3,0.25,9,-11,2033,7,-72,340,-54,-37,10,-21,-30,17,20,-385,-393,-387,314,-292,117,-41.34,-4.5,,,,,,,,,,,
+launch date, UTC time, launch altitude, launch latitude, launch longitude,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+26/1/2024,11:19:19,469.62,37.005814,41.96748,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+landing date, UTC time, landing altitude, landing latitude, landing longitude,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+26/1/2024,11:20:07,471.6,37.005787,41.967484,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Rocket Name, callsign, HWid, flightProfile, units, inflightRecover, pyro4func, pyro3func, pyro2func, pyro1func, apogeeDelay, mainDeployAlt, setupTime, rcdTime, fireTime, TXenable, TXpwr, TXfreq, FHSS, seaLevelPressure ,,,,,,,,,,,,,,,,,,,,
+Mach Shock,KK4ELF,3.3.1,S,M,1,A,N,N,N,0,300,10,900,0.5,1,13,433.25,0,1056.26,,,,,,,,,,,,,,,,,,,,
+ 
+ ]
