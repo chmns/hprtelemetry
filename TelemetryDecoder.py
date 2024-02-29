@@ -106,7 +106,8 @@ class FlightTelemetryDecoder(object):
 
         # vast majority of lines will be raw telemetry so check for this first:
         if self.state == DecoderState.FLIGHT and items[0].isnumeric():
-            self.decode_telemetry_values(items)
+            self.message_callback(self.decode_telemetry_values(items))
+            return
         
         # but if not raw telemetry, we check to see if there's a row of keys instead
         # the only way to know what a line means is based on unique items that we can
@@ -119,8 +120,8 @@ class FlightTelemetryDecoder(object):
                 # as its column actually refers to time, not name. So we replace the key name
                 # and fire a separate callback
                 if state == DecoderState.FLIGHT:
-                    items[0] = "time"
                     self.name_callback(items[0])
+                    items[0] = "time"
                     
                 # reformat keys and remove empty keys, then store for decoding:
                 self.telemetry_keys =  \
@@ -162,4 +163,6 @@ class TelemetryTester(object):
 
 if __name__ == "__main__":
     test = TelemetryTester("test_data\\FLIGHT10-short.csv")
+    test.decoder.name_callback = print
+    test.decoder.message_callback = print
     test.start()
