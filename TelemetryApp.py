@@ -12,11 +12,11 @@ import sys
 import glob
 import serial
 from tkinter import *
-import tkintermapview
 from GraphFrame import GraphFrame
 from TelemetryControls import *
+from MapFrame import *
 from tkinter.filedialog import askopenfile
-from TelemetryDecoder import TelemetryTester
+from TelemetryDecoder import TelemetryTester, DecoderState
 from matplotlib import style
 style.use('dark_background')
 
@@ -37,7 +37,7 @@ POSTFLIGHT_COORDS_PREFIX = "Post:"
 CELL_WIDTH = 280
 
 class TelemetryApp(Tk):
-            
+
     def __init__(self,
                  screenName: str | None = None,
                  baseName: str | None = None,
@@ -45,42 +45,23 @@ class TelemetryApp(Tk):
                  useTk: bool = True,
                  sync: bool = False,
                  use: str | None = None) -> None:
-    
+
         super().__init__(screenName, baseName, className, useTk, sync, use)
 
-        self.telemetry_vars = {
-            "time":     IntVar(), # miliseconds (?)
-            "accelX":   IntVar(), # raw accelerometer values that need multiplier applied depending on model
-            "accelY":   IntVar(), #
-            "accelZ":   IntVar(), #
-            "highGx":   DoubleVar(), # max recorded G
-            "highGy":   DoubleVar(), #
-            "highGz":   DoubleVar(), #
-            "smoothHighGz": DoubleVar(), # presumably filtered from high Gz
-            "offVert":  DoubleVar(), # pitch angle deviation from vertical
-            "intVel":   DoubleVar(), # integrated velocity (from accel)?
-            "intAlt":   DoubleVar(), # integrated altitude (from vel)?        
-            "fusionVel": DoubleVar(), # velocity from fusion algo?
-            "fusionAlt": DoubleVar(), # altitude from fusion algo?       
-            "fltEvents": StringVar(), # bitfield of flight status
-            "radioCode": IntVar(),    # like 'event'
-            "baroAlt":      DoubleVar(),
-            "altMoveAvg":   DoubleVar(),
-            "gnssLat":  DoubleVar(),
-            "gnssLon":  DoubleVar(),
-            "gnssSpeed":    DoubleVar(),
-            "gnssAlt":      DoubleVar(),
-            "gnssAngle":    DoubleVar(),
-            "gnssSatellites": IntVar(),    # raw GPS data
-            "radioPacketNum": IntVar(),    # which packet this data came from (multiple messages can share a packet)
-        }
+        self.telemetry_vars = ["time", "accelX", "accelY", "accelZ", "gyroZ" "highGx", "highGy", "highGz",
+                               "smoothHighGz", "offVert", "intVel", "intAlt", "fusionVel", "fusionAlt",
+                               "fltEvents", "radioCode", "baroAlt", "altMoveAvg", "gnssLat", "gnssLon",
+                               "gnssSpeed", "gnssAlt", "gnssAngle", "gnssSatellites", "radioPacketNum"]
+
+        for var in self.telemetry_vars:
+            self.setvar(var)
 
         self.test_runner = TelemetryTester("test_data\\FLIGHT10-short.csv")
         self.test_runner.decoder.message_callback = self.message_callback
 
         self.title("HPR Telemetry Viewer")
         self.config(background="#222222")
-        
+
         w, h = self.winfo_screenwidth(), self.winfo_screenheight()
         self.geometry("%dx%d+0+0" % (w, h))
 
@@ -108,17 +89,17 @@ class TelemetryApp(Tk):
         for row in range(NUM_ROWS):
             self.rowconfigure(row, weight=1)
 
-        self.altitude = ReadOut(self, "Altitude", self.telemetry_vars["fusionAlt"], "m", "ft", ReadOut.metresToFeet, ALTITUDE_COLOR)
+        self.altitude = ReadOut(self, "Altitude", "fusionAlt", "m", "ft", ReadOut.metresToFeet, ALTITUDE_COLOR)
         self.altitude.grid(row=0, column=0, padx=PADX, pady=PADY, sticky=(N,S))
         self.altitude.config(width = CELL_WIDTH)
         self.altitude.grid_propagate(False)
 
-        self.velocity = ReadOut(self, "Velocity", self.telemetry_vars["fusionVel"], "m/s", "mi/h", ReadOut.msToMph, VELOCITY_COLOR)
+        self.velocity = ReadOut(self, "Velocity", "fusionVel", "m/s", "mi/h", ReadOut.msToMph, VELOCITY_COLOR)
         self.velocity.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,S))
         self.velocity.config(width = CELL_WIDTH)
         self.velocity.grid_propagate(False)
 
-        self.acceleration = ReadOut(self, "Acceleration", self.telemetry_vars["accelZ"], "m/s/s", "G", ReadOut.mssToG, ACCELERATION_COLOR)
+        self.acceleration = ReadOut(self, "Acceleration", "accelZ", "m/s/s", "G", ReadOut.mssToG, ACCELERATION_COLOR)
         self.acceleration.grid(row=2, column=0, padx=PADX, pady=PADY, sticky=(N,S))
         self.acceleration.config(width = CELL_WIDTH)
         self.acceleration.grid_propagate(False)
@@ -135,31 +116,11 @@ class TelemetryApp(Tk):
         self.acceleration_graph.grid(row=2, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.acceleration_graph.grid_propagate(True)
 
-
-        self.map_frame = Frame(self, bg="blue")
+        self.map_frame = MapFrame(self)
         self.map_frame.grid(row=0, column=4, rowspan=2, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.map_frame.grid_propagate(False)
-        self.map_frame.columnconfigure(0, weight=1)
-        self.map_frame.rowconfigure(0, weight=1)
-        self.map_frame.rowconfigure(1, weight=0)
 
-        self.map = tkintermapview.TkinterMapView(self.map_frame)
-        # map = Frame(map_frame)
-        self.map.grid(row=0, column=0, sticky=(N,E,S,W))
-        self.map.lat = 44.7916443
-        self.map.lon = -0.5995578
-        self.map.set_position(self.map.lat,self.map.lon)
-        self.map.set_zoom(14) 
-        self.map.grid_propagate(True)
-
-        # location_grid = Label(map_frame)
-        # self.location_grid.config(text="HASHASHAS")
-        self.location_grid = LocationGrid(self.map_frame)
-        self.location_grid.grid(row=1, column=0, sticky=(N,E,S,W))
-        self.location_grid.grid_propagate(False)
-        # self.location_grid.config(width=400)
-
-        self.tilt_spin = TiltAndSpin(self)
+        self.tilt_spin = TiltAndSpin(self, "offVert", "gyroZ")
         self.tilt_spin.grid(row=2, column=4, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.tilt_spin.config(width = CELL_WIDTH)
         self.tilt_spin.grid_propagate(False)
@@ -168,7 +129,6 @@ class TelemetryApp(Tk):
         self.status.grid(row=2, column=5, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.status.config(width = CELL_WIDTH)
         self.status.grid_propagate(False)
-        
         self.test_runner.decoder.name_callback = self.status.set_name
 
         self.controls = TelemetryControls(self)
@@ -186,15 +146,23 @@ class TelemetryApp(Tk):
             self.destroy()
             self.quit()
 
-        self.protocol("WM_DELETE_WINDOW", on_closing)       
+        self.protocol("WM_DELETE_WINDOW", on_closing)
 
     def message_callback(self, message):
         if isinstance(message, dict):
             for (key, value) in message.items():
-                var = self.telemetry_vars.get(key)
-                if var is not None:
-                    var.set(value)
-            
+                self.setvar(key, value)
+
+                # var = self.telemetry_vars.get(key)
+                # if var is not None:
+                    # var.set(value)
+
+        # if self.test_runner.decoder.state == DecoderState.FLIGHT:
+            # self.altitude_graph.append(self.altitude.variable.get())
+
+
+
+
     def update_serial_menu(self):
         self.serial_menu.delete(0, END)
 
@@ -205,12 +173,12 @@ class TelemetryApp(Tk):
         else:
             for port in ports:
                 self.serial_menu.add_command(label=port, command=print)
-        
+
         self.serial_menu.add_separator()
         self.serial_menu.add_command(label="Re-scan", command=self.update_serial_menu)
 
         self.menubar.add_cascade(label="Serial Port", menu=self.serial_menu)
-    
+
 
     def serial_ports(self):
         """ Lists serial port names

@@ -133,9 +133,9 @@ class FlightTelemetryDecoder(object):
         self.message_callback(self.decode_telemetry_values(items))
 
     def decode_telemetry_values(self, values) -> dict | None:
-        dict = {key: value for (key, value) in zip(self.telemetry_keys, values) if value.strip()}
+        telemetry_dict = {key: value for (key, value) in zip(self.telemetry_keys, values) if value.strip()}
         # return a dict of all the key-value pairs in the received telemetry, ignoring all empties
-        return dict
+        return telemetry_dict
 
 class TelemetryTester(object):
     def __init__(self, filepath) -> None:
