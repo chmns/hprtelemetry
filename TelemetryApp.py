@@ -37,6 +37,25 @@ POSTFLIGHT_COORDS_PREFIX = "Post:"
 CELL_WIDTH = 280
 
 class TelemetryApp(Tk):
+
+    telemetry_keys = [
+        "accelX", "accelY", "accelZ",   # raw accelerometer values that need multiplier applied depending on model
+        "gyroX", "gyroY", "gyroZ",      # raw gyro values as above
+        "highGx", "highG", "highGz",    # not sure
+        "smoothHighGz",                 # presumably filtered from high Gz
+        "offVert",                      # pitch angle deviation from vertical
+        "intVel", "intAlt",             # integrated velocity and altitude?
+        "fusionVel", "fusionAlt",       # velocity and altitude from fusion algo?
+        "fltEvents",                    # bitfield of flight status
+        "radioCode",                    # like 'event'
+        "pyroCont", "pyroFire", "pyroPin",  # pyro status
+        "baroAlt", "altMoveAvg", "baroVel", "baroPress", "baroTemp",    #  barometer data
+        "battVolt",                     # battery voltage
+        "magX", "magY", "magZ",         # magnetometer values (presumably need multiplier)
+        "gnssLat", "gnssLon", "gnssSpeed", "gnssAlt", "gnssAngle", "gnssSatellites",    # raw GPS data
+        "radioPacketNum"    # which packet this data came from (multiple messages can share a packet)
+        ]
+            
     def __init__(self,
                  screenName: str | None = None,
                  baseName: str | None = None,
@@ -47,8 +66,12 @@ class TelemetryApp(Tk):
     
         super().__init__(screenName, baseName, className, useTk, sync, use)
 
+        self.telemetry_vars = dict()
+        for key in self.telemetry_keys:
+            self.telemetry_vars[key] = StringVar(self, name = key)
+
         self.test_runner = TelemetryTester("test_data\\FLIGHT10-short.csv")
-        self.test_runner.decoder.message_callback = print #self.message_callback
+        self.test_runner.decoder.message_callback = self.message_callback
 
         self.title("HPR Telemetry Viewer")
         self.config(background="#222222")
@@ -79,7 +102,6 @@ class TelemetryApp(Tk):
         # fixed row heights
         for row in range(NUM_ROWS):
             self.rowconfigure(row, weight=1)
-        
 
         self.altitude = ReadOut(self, "Altitude", "m", "ft", ReadOut.metresToFeet, ALTITUDE_COLOR)
         self.altitude.grid(row=0, column=0, padx=PADX, pady=PADY, sticky=(N,S))
@@ -152,6 +174,7 @@ class TelemetryApp(Tk):
         self.bind('t', lambda _: self.test_runner.start())
         self.bind('q', lambda _: self.quit())
         self.bind('s', lambda _: print(self.serial_ports()))
+        self.bind('d', lambda _: print(self.__dict__))
         self.focus()
 
         def on_closing():
@@ -161,18 +184,11 @@ class TelemetryApp(Tk):
         self.protocol("WM_DELETE_WINDOW", on_closing)       
 
     def message_callback(self, message):
-        """
-        list of desired keys
-
-        keys = ["fusionVel", "fusionAlt", "numSats"]
-
-        variables = {key: StringVar("-") for key in keys}
-
-        on_message_received(dict):
-            variables[""]
-
-        """
-        pass
+        if isinstance(message, dict):
+            for (key, value) in message.items():
+                var = self.telemetry_vars.get(key)
+                if var is not None:
+                    var.set(value)
             
     def update_serial_menu(self):
         self.serial_menu.delete(0, END)
@@ -224,9 +240,6 @@ class TelemetryApp(Tk):
         if file is not None:
             self.test_runner.file = file
             self.test_runner.start()
-
-
-
 
 
 if __name__ == "__main__":
