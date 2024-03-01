@@ -37,25 +37,6 @@ POSTFLIGHT_COORDS_PREFIX = "Post:"
 CELL_WIDTH = 280
 
 class TelemetryApp(Tk):
-
-    telemetry_keys = [
-        "time"
-        "accelX", "accelY", "accelZ",   # raw accelerometer values that need multiplier applied depending on model
-        "gyroX", "gyroY", "gyroZ",      # raw gyro values as above
-        "highGx", "highG", "highGz",    # not sure
-        "smoothHighGz",                 # presumably filtered from high Gz
-        "offVert",                      # pitch angle deviation from vertical
-        "intVel", "intAlt",             # integrated velocity and altitude?
-        "fusionVel", "fusionAlt",       # velocity and altitude from fusion algo?
-        "fltEvents",                    # bitfield of flight status
-        "radioCode",                    # like 'event'
-        "pyroCont", "pyroFire", "pyroPin",  # pyro status
-        "baroAlt", "altMoveAvg", "baroVel", "baroPress", "baroTemp",    #  barometer data
-        "battVolt",                     # battery voltage
-        "magX", "magY", "magZ",         # magnetometer values (presumably need multiplier)
-        "gnssLat", "gnssLon", "gnssSpeed", "gnssAlt", "gnssAngle", "gnssSatellites",    # raw GPS data
-        "radioPacketNum"    # which packet this data came from (multiple messages can share a packet)
-        ]
             
     def __init__(self,
                  screenName: str | None = None,
@@ -67,9 +48,32 @@ class TelemetryApp(Tk):
     
         super().__init__(screenName, baseName, className, useTk, sync, use)
 
-        self.telemetry_vars = dict()
-        for key in self.telemetry_keys:
-            self.telemetry_vars[key] = StringVar(self, name = key)
+        self.telemetry_vars = {
+            "time":     IntVar(), # miliseconds (?)
+            "accelX":   IntVar(), # raw accelerometer values that need multiplier applied depending on model
+            "accelY":   IntVar(), #
+            "accelZ":   IntVar(), #
+            "highGx":   DoubleVar(), # max recorded G
+            "highGy":   DoubleVar(), #
+            "highGz":   DoubleVar(), #
+            "smoothHighGz": DoubleVar(), # presumably filtered from high Gz
+            "offVert":  DoubleVar(), # pitch angle deviation from vertical
+            "intVel":   DoubleVar(), # integrated velocity (from accel)?
+            "intAlt":   DoubleVar(), # integrated altitude (from vel)?        
+            "fusionVel": DoubleVar(), # velocity from fusion algo?
+            "fusionAlt": DoubleVar(), # altitude from fusion algo?       
+            "fltEvents": StringVar(), # bitfield of flight status
+            "radioCode": IntVar(),    # like 'event'
+            "baroAlt":      DoubleVar(),
+            "altMoveAvg":   DoubleVar(),
+            "gnssLat":  DoubleVar(),
+            "gnssLon":  DoubleVar(),
+            "gnssSpeed":    DoubleVar(),
+            "gnssAlt":      DoubleVar(),
+            "gnssAngle":    DoubleVar(),
+            "gnssSatellites": IntVar(),    # raw GPS data
+            "radioPacketNum": IntVar(),    # which packet this data came from (multiple messages can share a packet)
+        }
 
         self.test_runner = TelemetryTester("test_data\\FLIGHT10-short.csv")
         self.test_runner.decoder.message_callback = self.message_callback
@@ -175,7 +179,7 @@ class TelemetryApp(Tk):
         self.bind('t', lambda _: self.test_runner.start())
         self.bind('q', lambda _: self.quit())
         self.bind('s', lambda _: print(self.serial_ports()))
-        self.bind('d', lambda _: print(self.__dict__))
+        self.bind('d', lambda _: print(self.telemetry_vars.items()))
         self.focus()
 
         def on_closing():
