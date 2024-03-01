@@ -41,6 +41,7 @@ class ReadOut(Frame):
     def __init__(self,
                  master,
                  name: str,
+                 variable: StringVar,
                  units1: str,
                  units2: str,
                  conversion: callable = default,
@@ -48,6 +49,8 @@ class ReadOut(Frame):
                  decimals: int = 0):
         
         Frame.__init__(self, master, bg=BG_COLOR)
+        
+        self.variable = variable
         
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(4, weight=1)
@@ -63,7 +66,8 @@ class ReadOut(Frame):
         self.color = color
         self.decimals = decimals
 
-        self.main = Label(self, text=f'{self.value}', fg=FG_COLOR, bg=BG_COLOR, font=("Arial", 48))
+        self.main = Label(self, textvariable=self.variable, fg=FG_COLOR, bg=BG_COLOR, font=("Arial", 48))
+        # self.main = Label(self, text=f'{self.value}', fg=FG_COLOR, bg=BG_COLOR, font=("Arial", 48))
         self.main.grid(column = 0, row = 1, sticky = (N,S))
         
         self.name = Label(self, text=f'{self.units1} {self.name}', fg=self.color, bg=BG_COLOR, font="Arial 18 bold")

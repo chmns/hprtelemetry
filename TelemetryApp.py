@@ -39,6 +39,7 @@ CELL_WIDTH = 280
 class TelemetryApp(Tk):
 
     telemetry_keys = [
+        "time"
         "accelX", "accelY", "accelZ",   # raw accelerometer values that need multiplier applied depending on model
         "gyroX", "gyroY", "gyroZ",      # raw gyro values as above
         "highGx", "highG", "highGz",    # not sure
@@ -103,17 +104,17 @@ class TelemetryApp(Tk):
         for row in range(NUM_ROWS):
             self.rowconfigure(row, weight=1)
 
-        self.altitude = ReadOut(self, "Altitude", "m", "ft", ReadOut.metresToFeet, ALTITUDE_COLOR)
+        self.altitude = ReadOut(self, "Altitude", self.telemetry_vars["fusionAlt"], "m", "ft", ReadOut.metresToFeet, ALTITUDE_COLOR)
         self.altitude.grid(row=0, column=0, padx=PADX, pady=PADY, sticky=(N,S))
         self.altitude.config(width = CELL_WIDTH)
         self.altitude.grid_propagate(False)
 
-        self.velocity = ReadOut(self, "Velocity", "m/s", "mi/h", ReadOut.msToMph, VELOCITY_COLOR)
+        self.velocity = ReadOut(self, "Velocity", self.telemetry_vars["fusionVel"], "m/s", "mi/h", ReadOut.msToMph, VELOCITY_COLOR)
         self.velocity.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,S))
         self.velocity.config(width = CELL_WIDTH)
         self.velocity.grid_propagate(False)
 
-        self.acceleration = ReadOut(self, "Acceleration", "m/s/s", "G", ReadOut.mssToG, ACCELERATION_COLOR)
+        self.acceleration = ReadOut(self, "Acceleration", self.telemetry_vars["accelZ"], "m/s/s", "G", ReadOut.mssToG, ACCELERATION_COLOR)
         self.acceleration.grid(row=2, column=0, padx=PADX, pady=PADY, sticky=(N,S))
         self.acceleration.config(width = CELL_WIDTH)
         self.acceleration.grid_propagate(False)
