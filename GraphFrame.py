@@ -13,6 +13,10 @@ FG_COLOR = "#eeeeee"
 
 class GraphFrame(Frame):
 
+    def reset(self):
+        self.__zero_data__()
+        self.canvas.draw()
+
     def append(self, value):
         if value > self.max:
             self.max = value
@@ -30,13 +34,17 @@ class GraphFrame(Frame):
         self.draw()
         self.appended += 1
 
+    def __zero_data__(self):
+        self.ys = NUM_POINTS*[0]
+        self.xs = [x * TIMEBASE for x in (range(0-NUM_POINTS,0))]
+
     def __init__(self,
                  master,
                  units: str,
                  color: str = "black",
                  y_range: tuple = None,
                  time_var_name: str = "time",
-                 y_axis_var_names: list = None) -> None:
+                 *y_axis_var_names: str) -> None:
 
         Frame.__init__(self, master, bg=BG_COLOR)
 
@@ -60,13 +68,9 @@ class GraphFrame(Frame):
         self.figure = Figure(figsize=(4,4), dpi=200)
         self.subplot = self.figure.add_subplot()
         self.subplot.set_autoscaley_on(True)
-
-        self.ys = NUM_POINTS*[0]
-        self.xs = [x * TIMEBASE for x in (range(0-NUM_POINTS,0))]
-
-        self.subplot.set_ylabel(units)
         self.subplot.grid("True")
 
+        self.__zero_data__()
         self.line, = self.subplot.plot(self.xs, self.ys, self.color, linewidth=LINEWIDTH)
 
         if self.y_range is not None:
@@ -75,6 +79,7 @@ class GraphFrame(Frame):
         self.canvas = FigureCanvasTkAgg(self.figure, self)
         self.canvas.get_tk_widget().pack(side=BOTTOM, fill=BOTH, expand=True)
         self.canvas.draw()
+
 
     def draw(self):
         self.line.set_xdata(self.xs)
