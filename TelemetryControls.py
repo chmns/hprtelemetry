@@ -113,46 +113,39 @@ class TiltAndSpin(Frame):
 class TelemetryStatus(Frame):
     SPACING = 30
 
-    def set_name(self,
-                 name: str):
-        self.name.config(text = name)
+    def __init__(self,
+                 master,
+                 name_var: str,
+                 packet_num_var_name: str,
+                 time_var_name: str,
+                 num_sats_var_name: str):
 
-    def update_value(self,
-                     last_packet: int,
-                     last_timestamp: float,
-                     rssi: int) -> None:
-
-        self.last_packet.config(text=f'#{last_packet}')
-        self.last_timestamp.config(text=f'{last_timestamp:.2f}')
-        self.rssi.config(text=f'{rssi:.0f} dB')
-
-    def __init__(self, master):
         Frame.__init__(self, master, background=BG_COLOR)
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(7, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        self.name = Label(self, text="", fg=FG_COLOR, bg=BG_COLOR, font="Arial 24")
+        self.name = Label(self, textvariable=StringVar(master, "", name_var), fg=FG_COLOR, bg=BG_COLOR, font="Arial 24")
         self.name.grid(column = 0, row = 0, sticky = (N,E,S,W), pady=(TelemetryStatus.SPACING,0))
 
-        self.last_packet = Label(self, text="0", fg=FG_COLOR, bg=BG_COLOR, font="Arial 18")
+        self.last_packet = Label(self, textvariable=IntVar(master, 0, packet_num_var_name), fg=FG_COLOR, bg=BG_COLOR, font="Arial 18")
         self.last_packet.grid(column = 0, row = 1, sticky = (N,E,S,W), pady=(TelemetryStatus.SPACING,0))
 
         self.last_packet_label = Label(self, text="Last Packet #", fg=FG_COLOR, bg=BG_COLOR, font="Arial 14 bold")
         self.last_packet_label.grid(column = 0, row = 2, sticky = (N,E,S,W))
 
-        self.last_timestamp = Label(self, text="0", fg=FG_COLOR, bg=BG_COLOR, font="Arial 18")
+        self.last_timestamp = Label(self, textvariable=IntVar(master, 0, time_var_name), fg=FG_COLOR, bg=BG_COLOR, font="Arial 18")
         self.last_timestamp.grid(column = 0, row = 3, sticky = (N,E,S,W), pady=(TelemetryStatus.SPACING,0))
 
         self.last_timestamp_label = Label(self, text="Last Timestamp", fg=FG_COLOR, bg=BG_COLOR, font="Arial 14 bold")
         self.last_timestamp_label.grid(column = 0, row = 4, sticky = (N,E,S,W))
 
-        self.rssi = Label(self, text="-inf dB", fg=FG_COLOR, bg=BG_COLOR, font="Arial 18")
-        self.rssi.grid(column = 0, row = 5, sticky=(N,E,S,W), pady=(TelemetryStatus.SPACING,0))
+        self.num_sats = Label(self, textvariable=IntVar(master, 0, num_sats_var_name), fg=FG_COLOR, bg=BG_COLOR, font="Arial 18")
+        self.num_sats.grid(column = 0, row = 5, sticky=(N,E,S,W), pady=(TelemetryStatus.SPACING,0))
 
-        self.rssi_label = Label(self, text="RSSI", fg=FG_COLOR, bg=BG_COLOR, font="Arial 14 bold")
-        self.rssi_label.grid(column = 0, row = 6, sticky=(N,E,S,W))
+        self.num_sats_label = Label(self, text="# satellites", fg=FG_COLOR, bg=BG_COLOR, font="Arial 14 bold")
+        self.num_sats_label.grid(column = 0, row = 6, sticky=(N,E,S,W))
 
 class TelemetryControls(Frame):
     SPACING = 30
