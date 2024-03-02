@@ -125,11 +125,11 @@ class TelemetryApp(Tk):
         self.tilt_spin.config(width = CELL_WIDTH)
         self.tilt_spin.grid_propagate(False)
 
-        self.status = TelemetryStatus(self)
+        self.status = TelemetryStatus(self, "name", "radioPacketNum", "time", "gnssSatellites")
         self.status.grid(row=2, column=5, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.status.config(width = CELL_WIDTH)
         self.status.grid_propagate(False)
-        self.test_runner.decoder.name_callback = self.status.set_name
+        self.test_runner.decoder.name_callback = lambda name: self.setvar("name", name)
 
         self.controls = TelemetryControls(self)
         self.controls.grid(row=2, column=6, padx=PADX, pady=PADY, sticky=(N,E,S,W))
