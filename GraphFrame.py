@@ -20,21 +20,20 @@ class GraphFrame(Frame):
         self.canvas.draw()
 
     def update(self):
-        new_values = [var for var in self.variables]
+        self.xs.append(self.appended)
 
-        for value in new_values:
+        new_values = [var.get() for var in self.variables]
+        for (value, y) in zip(new_values, self.ys):
             if value > self.max:
                 self.max = value
             if value < self.min:
                 self.min = value
+            y.append(value)
 
-        self.ys.append(new_values)
-        self.xs.append(self.appended)
 
     def __zero_data__(self):
-        self.ys = [len(self.variables) * [0] for _ in range(NUM_POINTS)]
-        self.ys = deque([], maxlen=NUM_POINTS)
         self.xs = [x * TIMEBASE for x in (range(0 - NUM_POINTS,0))]
+        self.ys = len(self.variables) * deque([], maxlen=NUM_POINTS)
 
     def __init__(self,
                  master,
@@ -73,7 +72,11 @@ class GraphFrame(Frame):
                                            repeat=False)
 
         self.__zero_data__()
-        self.lines, = self.subplot.plot(self.xs, self.ys, self.color, linewidth=LINEWIDTH)
+
+        self.lines = list()
+        for y in self.ys:
+            line, = self.subplot.plot(self.xs, y, self.color, linewidth=LINEWIDTH)
+            self.lines.append(line)
 
         if self.y_range is not None:
             self.subplot.set_ylim(*self.y_range)
