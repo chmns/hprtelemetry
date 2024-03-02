@@ -44,7 +44,6 @@ todo:
 
 - connect:
 -- pre and post GNSS locations
--- alt, vel, acc xyz to graphs
 -- map add markers to make trace
 -- multipliers (raw accel -> m/s)
 -- secondary units (m/s -> kmh etc)
@@ -195,7 +194,7 @@ class TelemetryApp(Tk):
             # self.altitude_graph.append(self.altitude.variable.get())
 
 
-    def reset(self):
+    def reset(self) -> None:
         """
         resets the app back to zero
         for when loading new file or connecting to new serial port
@@ -215,7 +214,10 @@ class TelemetryApp(Tk):
         self.acceleration_graph.reset()
 
 
-    def update_serial_menu(self):
+    def update_serial_menu(self) -> None:
+        """
+        scans for serial ports and updates menu to show detected ports
+        """
         self.serial_menu.delete(0, END)
 
         ports = self.serial_ports()
@@ -232,13 +234,14 @@ class TelemetryApp(Tk):
         self.menubar.add_cascade(label="Serial Port", menu=self.serial_menu)
 
 
-    def serial_ports(self):
-        """ Lists serial port names
+    def serial_ports(self) -> list:
+        """
+        Lists serial port names
 
-            :raises EnvironmentError:
-                On unsupported or unknown platforms
-            :returns:
-                A list of the serial ports available on the system
+        :raises EnvironmentError:
+            On unsupported or unknown platforms
+        :returns:
+            A list of the serial ports available on the system
         """
         if sys.platform.startswith('win'):
             ports = ['COM%s' % (i + 1) for i in range(256)]
