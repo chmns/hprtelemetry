@@ -49,7 +49,7 @@ todo:
 -- multipliers (raw accel -> m/s)
 -- secondary units (m/s -> kmh etc)
 
-- change matplotlib graphs to pyqt graphs
+- change matplotlib graphs to use animators
 
 - open file dialog and run
 -- run at speed of file (use timestamp for message parsing)

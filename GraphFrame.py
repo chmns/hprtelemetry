@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+import matplotlib.animation as animation
+from collections import deque
 
 NUM_POINTS = 200
 LINEWIDTH = 1.5
@@ -17,33 +19,29 @@ class GraphFrame(Frame):
         self.__zero_data__()
         self.canvas.draw()
 
-    def append(self, value):
-        if value > self.max:
-            self.max = value
+    def update(self):
+        new_values = [var for var in self.variables]
 
-        if value < self.min:
-            self.min = value
+        for value in new_values:
+            if value > self.max:
+                self.max = value
+            if value < self.min:
+                self.min = value
 
-        if self.appended < NUM_POINTS:
-            self.ys.pop(0)
-            self.xs.pop(0)
-
-        self.ys.append(value)
-        self.xs.append(self.appended * TIMEBASE)
-
-        self.draw()
-        self.appended += 1
+        self.ys.append(new_values)
+        self.xs.append(self.appended)
 
     def __zero_data__(self):
-        self.ys = NUM_POINTS*[0]
-        self.xs = [x * TIMEBASE for x in (range(0-NUM_POINTS,0))]
+        self.ys = [len(self.variables) * [0] for _ in range(NUM_POINTS)]
+        self.ys = deque([], maxlen=NUM_POINTS)
+        self.xs = [x * TIMEBASE for x in (range(0 - NUM_POINTS,0))]
 
     def __init__(self,
                  master,
                  units: str,
                  color: str = "black",
                  y_range: tuple = None,
-                 time_var_name: str = "time",
+                 elapsed_var_name: str = "elapsed",
                  *y_axis_var_names: str) -> None:
 
         Frame.__init__(self, master, bg=BG_COLOR)
@@ -53,11 +51,10 @@ class GraphFrame(Frame):
         self.color = color
         self.max = 0
         self.min = 0
-        self.appended = 0
         self.y_range = y_range
 
         self.last_time = 0
-        self.time = IntVar(master, 0, time_var_name)
+        self.time = IntVar(master, 0, elapsed_var_name)
 
         self.variables = [DoubleVar(master, 0.0, var_name) for var_name in y_axis_var_names]
 
@@ -70,8 +67,13 @@ class GraphFrame(Frame):
         self.subplot.set_autoscaley_on(True)
         self.subplot.grid("True")
 
+        self.ani = animation.FuncAnimation(self.fig,
+                                           self.update_graph,
+                                           interval=int(self.interval.get()),
+                                           repeat=False)
+
         self.__zero_data__()
-        self.line, = self.subplot.plot(self.xs, self.ys, self.color, linewidth=LINEWIDTH)
+        self.lines, = self.subplot.plot(self.xs, self.ys, self.color, linewidth=LINEWIDTH)
 
         if self.y_range is not None:
             self.subplot.set_ylim(*self.y_range)
