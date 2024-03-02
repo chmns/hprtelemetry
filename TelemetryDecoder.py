@@ -71,9 +71,9 @@ class FlightTelemetryDecoder(object):
         self.unique_keys = { DecoderState.FLIGHT: "fltEvents",
                              DecoderState.MAXES: "Max Baro Alt",
                              DecoderState.LAUNCH: "launch date",
-                             DecoderState.LAND: "landing date",  
+                             DecoderState.LAND: "landing date",
                              DecoderState.END: "Rocket Name" }
-        
+
     @staticmethod
     def format_key(key):
         # change all keys to be consistently formatted
@@ -92,11 +92,11 @@ class FlightTelemetryDecoder(object):
         so we attempt to detect these key rows and based on unique items that they contain
         (there is no built-in signifier of the type, such as a row ID)
         and then we store this as the current DecoderState.
-        
+
         we store the keys when we find a new key row as a list, which is then used to construct
         a message to send to the UI which can decode the dict into values to update the screen
         """
-        
+
         # ideally we will have CRC32 check for each line before this, so we can guarantee
         # that the data is good, but that can come at a later time
 
@@ -108,7 +108,7 @@ class FlightTelemetryDecoder(object):
         if self.state == DecoderState.FLIGHT and items[0].isnumeric():
             self.message_callback(self.decode_telemetry_values(items))
             return
-        
+
         # but if not raw telemetry, we check to see if there's a row of keys instead
         # the only way to know what a line means is based on unique items that we can
         # find in key-rows
@@ -122,7 +122,7 @@ class FlightTelemetryDecoder(object):
                 if state == DecoderState.FLIGHT:
                     self.name_callback(items[0])
                     items[0] = "time"
-                    
+
                 # reformat keys and remove empty keys, then store for decoding:
                 self.telemetry_keys =  \
                     [FlightTelemetryDecoder.format_key(key) for key in items if key.strip()]
@@ -146,7 +146,7 @@ class TelemetryTester(object):
     def start(self):
         test_thread = Thread(target=self.read_file)
         test_thread.start()
-    
+
     def read_file(self):
         pwd = os.path.dirname(__file__)
         # abs_file_path = os.path.join(pwd, self.rel_path)
@@ -162,7 +162,7 @@ class TelemetryTester(object):
                 sleep(TEST_MESSAGE_INTERVAL)
 
 if __name__ == "__main__":
-    test = TelemetryTester("test_data\\FLIGHT10-short.csv")
+    test = TelemetryTester("test_data\\FLIGHT10.csv")
     test.decoder.name_callback = print
     test.decoder.message_callback = print
     test.start()
