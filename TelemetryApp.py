@@ -116,7 +116,7 @@ class TelemetryApp(Tk):
         self.acceleration_graph.grid(row=2, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.acceleration_graph.grid_propagate(True)
 
-        self.map_frame = MapFrame(self)
+        self.map_frame = MapFrame(self, "gnssLat", "gnssLon", "gnssAlt")
         self.map_frame.grid(row=0, column=4, rowspan=2, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.map_frame.grid_propagate(False)
 
@@ -157,7 +157,8 @@ class TelemetryApp(Tk):
                 # if var is not None:
                     # var.set(value)
 
-        # if self.test_runner.decoder.state == DecoderState.FLIGHT:
+        if self.test_runner.decoder.state == DecoderState.FLIGHT:
+            self.map_frame.update()
             # self.altitude_graph.append(self.altitude.variable.get())
 
 
