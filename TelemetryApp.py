@@ -20,6 +20,8 @@ from TelemetryDecoder import TelemetryTester, DecoderState
 from matplotlib import style
 style.use('dark_background')
 
+TEST_DATA_FILENAME = "FLIGHT10-short.csv"
+
 NUM_COLS = 7
 NUM_ROWS = 3
 PADX = 4
@@ -38,7 +40,7 @@ CELL_WIDTH = 280
 
 """
 todo:
-- reset all
+- quit threads correctly on close window
 
 - connect:
 -- pre and post GNSS locations
@@ -55,6 +57,11 @@ todo:
 - listen to serial port
 -- select serial port
 -- decode CRC32
+
+- menus and buttons:
+-- reset
+-- load file
+-- connect to serial port
 
 """
 
@@ -78,7 +85,7 @@ class TelemetryApp(Tk):
         for var in self.telemetry_vars:
             self.setvar(var)
 
-        self.test_runner = TelemetryTester("test_data\\FLIGHT10.csv")
+        self.test_runner = TelemetryTester(f"test_data\\{TEST_DATA_FILENAME}")
         self.test_runner.decoder.message_callback = self.message_callback
 
         self.title("HPR Telemetry Viewer")
@@ -126,15 +133,15 @@ class TelemetryApp(Tk):
         self.acceleration.config(width = CELL_WIDTH)
         self.acceleration.grid_propagate(False)
 
-        self.altitude_graph = GraphFrame(self, "m", ALTITUDE_COLOR, None, "time", ["accelX", "accelY", "accelZ"])
+        self.altitude_graph = GraphFrame(self, "m", ALTITUDE_COLOR, None, "time", "accelX", "accelY", "accelZ")
         self.altitude_graph.grid(row=0, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.altitude_graph.grid_propagate(True)
 
-        self.velocity_graph = GraphFrame(self, "m/s", VELOCITY_COLOR, None, "time", ["intVel", "fusionVel", "gnssSpeed"])
+        self.velocity_graph = GraphFrame(self, "m/s", VELOCITY_COLOR, None, "time", "intVel", "fusionVel", "gnssSpeed")
         self.velocity_graph.grid(row=1, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.velocity_graph.grid_propagate(True)
 
-        self.acceleration_graph = GraphFrame(self, "m/s/s", ACCELERATION_COLOR, (-20.0, 80.0), "time", ["highGx", "highGy", "highGz", "smoothHighGz"])
+        self.acceleration_graph = GraphFrame(self, "m/s/s", ACCELERATION_COLOR, (-20.0, 80.0), "time", "highGx", "highGy", "highGz", "smoothHighGz")
         self.acceleration_graph.grid(row=2, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.acceleration_graph.grid_propagate(True)
 
@@ -162,6 +169,7 @@ class TelemetryApp(Tk):
         self.bind('q', lambda _: self.quit())
         self.bind('s', lambda _: print(self.serial_ports()))
         self.bind('d', lambda _: print(self.telemetry_vars.items()))
+        self.bind('r', lambda _: self.reset())
         self.focus()
 
         def on_closing():
@@ -171,6 +179,9 @@ class TelemetryApp(Tk):
         self.protocol("WM_DELETE_WINDOW", on_closing)
 
     def message_callback(self, message):
+        """
+        decodes FC-style message into app variables and triggers graphs + map to update
+        """
         if isinstance(message, dict):
             for (key, value) in message.items():
                 self.setvar(key, value)
@@ -184,6 +195,24 @@ class TelemetryApp(Tk):
             # self.altitude_graph.append(self.altitude.variable.get())
 
 
+    def reset(self):
+        """
+        resets the app back to zero
+        for when loading new file or connecting to new serial port
+        """
+        # stop file decoder if it's running
+        # stop serial decoder if it's running
+
+        # clear all telemetry variables:
+        for var in self.telemetry_vars:
+            self.setvar(var, "0")
+
+        # clear app variables and graphs:
+        self.setvar("name", "")
+        self.map_frame.reset()
+        self.altitude_graph.reset()
+        self.velocity_graph.reset()
+        self.acceleration_graph.reset()
 
 
     def update_serial_menu(self):
