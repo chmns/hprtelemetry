@@ -36,6 +36,28 @@ POSTFLIGHT_COORDS_PREFIX = "Post:"
 
 CELL_WIDTH = 280
 
+"""
+todo:
+- reset all
+
+- connect:
+-- pre and post GNSS locations
+-- alt, vel, acc xyz to graphs
+-- map add markers to make trace
+-- multipliers (raw accel -> m/s)
+-- secondary units (m/s -> kmh etc)
+
+- change matplotlib graphs to pyqt graphs
+
+- open file dialog and run
+-- run at speed of file (use timestamp for message parsing)
+
+- listen to serial port
+-- select serial port
+-- decode CRC32
+
+"""
+
 class TelemetryApp(Tk):
 
     def __init__(self,
@@ -56,7 +78,7 @@ class TelemetryApp(Tk):
         for var in self.telemetry_vars:
             self.setvar(var)
 
-        self.test_runner = TelemetryTester("test_data\\FLIGHT10-short.csv")
+        self.test_runner = TelemetryTester("test_data\\FLIGHT10.csv")
         self.test_runner.decoder.message_callback = self.message_callback
 
         self.title("HPR Telemetry Viewer")
@@ -104,15 +126,15 @@ class TelemetryApp(Tk):
         self.acceleration.config(width = CELL_WIDTH)
         self.acceleration.grid_propagate(False)
 
-        self.altitude_graph = GraphFrame(self, "m", ALTITUDE_COLOR)
+        self.altitude_graph = GraphFrame(self, "m", ALTITUDE_COLOR, None, "time", ["accelX", "accelY", "accelZ"])
         self.altitude_graph.grid(row=0, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.altitude_graph.grid_propagate(True)
 
-        self.velocity_graph = GraphFrame(self, "m/s", VELOCITY_COLOR)
+        self.velocity_graph = GraphFrame(self, "m/s", VELOCITY_COLOR, None, "time", ["intVel", "fusionVel", "gnssSpeed"])
         self.velocity_graph.grid(row=1, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.velocity_graph.grid_propagate(True)
 
-        self.acceleration_graph = GraphFrame(self, "m/s/s", ACCELERATION_COLOR, (-20.0, 80.0))
+        self.acceleration_graph = GraphFrame(self, "m/s/s", ACCELERATION_COLOR, (-20.0, 80.0), "time", ["highGx", "highGy", "highGz", "smoothHighGz"])
         self.acceleration_graph.grid(row=2, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.acceleration_graph.grid_propagate(True)
 
