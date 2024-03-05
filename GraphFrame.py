@@ -7,9 +7,9 @@ from matplotlib.figure import Figure
 import matplotlib.animation as animation
 from collections import deque
 
-NUM_POINTS = 200
-LINEWIDTH = 1.5
-TIMEBASE = 0.05
+NUM_POINTS = 400 # @ 10ms accuracy this is about 4seconds
+LINEWIDTH = 1
+INTERVAL = 0.01 # message resolution is approx. 10ms
 BG_COLOR = "#0f0f0f"
 FG_COLOR = "#eeeeee"
 
@@ -19,7 +19,26 @@ class GraphFrame(Frame):
         self.__zero_data__()
         self.canvas.draw()
 
+    def start(self):
+        """
+        called to start the animated re-drawing of graph
+        when telemetry data begins to arrive
+        """
+        pass
+
+    def stop(self):
+        """
+        called at the end of a sequence of messages to end
+        graph animation
+        """
+        pass
+
     def update(self):
+        """
+        called by the main app when new message data arrives
+        new points are added to local cache
+        actual drawing is called asynchronously by animator
+        """
         self.xs.append(self.appended)
 
         new_values = [var.get() for var in self.variables]
@@ -30,9 +49,18 @@ class GraphFrame(Frame):
                 self.min = value
             y.append(value)
 
+    def update_graph(self, frame):
+        print(frame)
+        """
+        asynchronously called by the FuncAnimation to draw
+        any new graph data that has come in
+        """
+        pass
+
 
     def __zero_data__(self):
-        self.xs = [x * TIMEBASE for x in (range(0 - NUM_POINTS,0))]
+        # self.xs = [x * INTERVAL for x in (range(0 - NUM_POINTS,0))]
+        self.xs = deque(range(0-NUM_POINTS, 0), maxlen=NUM_POINTS)
         self.ys = len(self.variables) * deque([], maxlen=NUM_POINTS)
 
     def __init__(self,
@@ -66,10 +94,10 @@ class GraphFrame(Frame):
         self.subplot.set_autoscaley_on(True)
         self.subplot.grid("True")
 
-        self.ani = animation.FuncAnimation(self.fig,
-                                           self.update_graph,
-                                           interval=int(self.interval.get()),
-                                           repeat=False)
+        self.animation = animation.FuncAnimation(self.figure,
+                                                 self.update_graph,
+                                                 interval=INTERVAL,
+                                                 repeat=False)
 
         self.__zero_data__()
 
