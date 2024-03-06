@@ -2,7 +2,6 @@ import os
 from threading import Thread
 from time import sleep
 import sys
-from inflection import underscore
 from enum import Enum
 
 TEST_MESSAGE_INTERVAL = 0.05
@@ -77,7 +76,6 @@ class FlightTelemetryDecoder(object):
     @staticmethod
     def format_key(key):
         # change all keys to be consistently formatted
-        # return underscore(key.strip()).replace(" ","_")
         return key.strip().replace(" ","_")
 
     def decode_line(self, line: str) -> None:
@@ -136,6 +134,42 @@ class FlightTelemetryDecoder(object):
         telemetry_dict = {key: value for (key, value) in zip(self.telemetry_keys, values) if value.strip()}
         # return a dict of all the key-value pairs in the received telemetry, ignoring all empties
         return telemetry_dict
+
+class TelemetryFileReader(object):
+    def __init__(self,
+                 line_callback: callable = None) -> None:
+        self.filepath = None
+        self.stopped = True
+        pass
+
+    def start(self):
+        test_thread = Thread(target=self.read_file)
+        self.stopped = False
+        test_thread.start()
+
+    def stop(self):
+        self.stopped = True
+
+    def read_file(self):
+        assert self.filepath is not None
+        pwd = os.path.dirname(__file__)
+
+        if getattr(sys, 'frozen', False):
+            abs_file_path = os.path.join(sys._MEIPASS, self.rel_path)
+        else:
+            abs_file_path = os.path.join(pwd, self.rel_path)
+
+        try:
+            with open(abs_file_path, 'rt') as telemetry:
+                for line in telemetry:
+                    if(self.stopped):
+                        return
+                    self.decoder.decode_line(line)
+                    sleep(TEST_MESSAGE_INTERVAL)
+        except IOError:
+            print(f"Cannot read file: {self.filepath}")
+
+
 
 class TelemetryTester(object):
     def __init__(self, filepath) -> None:
