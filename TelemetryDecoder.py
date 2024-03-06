@@ -4,6 +4,8 @@ from time import sleep
 import sys
 from enum import Enum
 
+TIMESTAMP_RESOLUTION = 10000 # timestamp least significant figure is 10e-5 seconds
+
 TEST_MESSAGE_INTERVAL = 0.05
 
 """
@@ -78,7 +80,7 @@ class FlightTelemetryDecoder(object):
         # change all keys to be consistently formatted
         return key.strip().replace(" ","_")
 
-    def decode_line(self, line: str) -> None:
+    def decode_line(self, line: str) -> dict | None:
         """
         decodes a line of flight telemetry
 
@@ -100,12 +102,11 @@ class FlightTelemetryDecoder(object):
 
         items = line.split(",")
         if len(items) < 2:
-            return
+            return None
 
         # vast majority of lines will be raw telemetry so check for this first:
         if self.state == DecoderState.FLIGHT and items[0].isnumeric():
-            self.message_callback(self.decode_telemetry_values(items))
-            return
+            return self.decode_telemetry_values(items)
 
         # but if not raw telemetry, we check to see if there's a row of keys instead
         # the only way to know what a line means is based on unique items that we can
@@ -114,61 +115,83 @@ class FlightTelemetryDecoder(object):
             if unique_key in items:
                 self.state = state
 
-                # item 0 of FLIGHT key-row is actually name of rocket which complicates things
-                # as its column actually refers to time, not name. So we replace the key name
-                # and fire a separate callback
-                if state == DecoderState.FLIGHT:
-                    self.name_callback(items[0])
-                    items[0] = "time"
-
                 # reformat keys and remove empty keys, then store for decoding:
                 self.telemetry_keys =  \
                     [FlightTelemetryDecoder.format_key(key) for key in items if key.strip()]
-                return # return and await next line to decode it
+
+                # item 0 of FLIGHT key-row is actually name of rocket which complicates things
+                # as its column actually refers to time, not name. So we return name only.
+                if state == DecoderState.FLIGHT:
+                    name = items[0]
+                    items[0] = "time"
+                    return {"name": name}
+                else:
+                    return None # return and await next line to decode it
 
         # if it's not flight telemetry, and it's not a key-row, then we can assume it's another
         # row of telemetry (like launch/land/flight-summary)
-        self.message_callback(self.decode_telemetry_values(items))
+        return self.decode_telemetry_values(items)
 
     def decode_telemetry_values(self, values) -> dict | None:
-        telemetry_dict = {key: value for (key, value) in zip(self.telemetry_keys, values) if value.strip()}
+        try:
+            telemetry_dict = {key: value for (key, value) in zip(self.telemetry_keys, values) if value.strip()}
+        except Exception:
+            return None
+
         # return a dict of all the key-value pairs in the received telemetry, ignoring all empties
         return telemetry_dict
 
-class TelemetryFileReader(object):
-    def __init__(self,
-                 line_callback: callable = None) -> None:
-        self.filepath = None
+class TelemetryReader(object):
+    def __init__(self, callback: callable = None) -> None:
+        self.callback = None
         self.stopped = True
+
+    def start(self) -> None:
+        thread = Thread(target=self.__run__())
+        self.stopped = False
+        thread.start()
+
+    def stop(self) -> None:
+        self.stopped = True
+
+    def __run__(self):
         pass
 
-    def start(self):
-        test_thread = Thread(target=self.read_file)
-        self.stopped = False
-        test_thread.start()
 
-    def stop(self):
-        self.stopped = True
+class TelemetrySerialReader(TelemetryReader):
+    def __init__(self, callback: callable = None) -> None:
+        self.serialport = None
+        super.__init__(self, callback)
 
-    def read_file(self):
+    def run(self):
+        pass
+
+
+class TelemetryFileReader(TelemetryReader):
+    def __init__(self, callback: callable = None) -> None:
+        self.filepath = None
+        super.__init__(self, callback)
+
+    def run(self):
         assert self.filepath is not None
-        pwd = os.path.dirname(__file__)
 
-        if getattr(sys, 'frozen', False):
-            abs_file_path = os.path.join(sys._MEIPASS, self.rel_path)
-        else:
-            abs_file_path = os.path.join(pwd, self.rel_path)
+        last_timestamp = 0
 
         try:
-            with open(abs_file_path, 'rt') as telemetry:
-                for line in telemetry:
+            with open(self.filepath, 'rt') as telemetry_file:
+                for line in telemetry_file:
                     if(self.stopped):
                         return
-                    self.decoder.decode_line(line)
+                    telemetry_dict = self.decoder.decode_line(line)
+
+                    if "time" in telemetry_dict:
+                        delta = telemetry_dict["time"] - last_timestamp
+                        self.m
+                        sleep(delta / TIMESTAMP_RESOLUTION)
+
                     sleep(TEST_MESSAGE_INTERVAL)
         except IOError:
             print(f"Cannot read file: {self.filepath}")
-
 
 
 class TelemetryTester(object):
