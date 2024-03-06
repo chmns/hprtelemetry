@@ -9,6 +9,7 @@ from collections import deque
 
 NUM_POINTS = 400 # @ 10ms accuracy this is about 4seconds
 LINEWIDTH = 1
+FPS = 20 # update rate of graph
 INTERVAL = 0.01 # message resolution is approx. 10ms
 BG_COLOR = "#0f0f0f"
 FG_COLOR = "#eeeeee"
@@ -41,13 +42,15 @@ class GraphFrame(Frame):
         """
         self.xs.append(self.appended)
 
-        new_values = [var.get() for var in self.variables]
-        for (value, y) in zip(new_values, self.ys):
-            if value > self.max:
-                self.max = value
-            if value < self.min:
-                self.min = value
-            y.append(value)
+        # new_values = [var.get() for var in self.variables]
+        # for (value, y) in zip(new_values, self.ys):
+        #     if value > self.max:
+        #         self.max = value
+        #     if value < self.min:
+        #         self.min = value
+        #     y.append(value)
+        new_value = self.variables[0].get()
+        self.ys.append(new_value)
 
     def update_graph(self, frame):
         print(frame)
@@ -55,7 +58,10 @@ class GraphFrame(Frame):
         asynchronously called by the FuncAnimation to draw
         any new graph data that has come in
         """
-        pass
+        for (line, y) in zip(self.lines, self.ys):
+            line.set_data(self.xs, y)
+
+        return self.lines
 
 
     def __zero_data__(self):
@@ -90,14 +96,16 @@ class GraphFrame(Frame):
         self.borderwidth = 2
 
         self.figure = Figure(figsize=(4,4), dpi=200)
-        self.subplot = self.figure.add_subplot()
+        self.subplot = self.figure.add_subplot() # 'ax'
         self.subplot.set_autoscaley_on(True)
         self.subplot.grid("True")
 
         self.animation = animation.FuncAnimation(self.figure,
                                                  self.update_graph,
-                                                 interval=INTERVAL,
-                                                 repeat=False)
+                                                 interval=1/FPS,
+                                                 frames=10,
+                                                 blit=False,
+                                                 repeat=True)
 
         self.__zero_data__()
 
@@ -112,7 +120,6 @@ class GraphFrame(Frame):
         self.canvas = FigureCanvasTkAgg(self.figure, self)
         self.canvas.get_tk_widget().pack(side=BOTTOM, fill=BOTH, expand=True)
         self.canvas.draw()
-
 
     def draw(self):
         self.line.set_xdata(self.xs)
