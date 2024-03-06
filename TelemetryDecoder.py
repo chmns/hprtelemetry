@@ -4,6 +4,10 @@ from time import sleep
 import sys
 from enum import Enum
 
+import sys
+import glob
+import serial
+
 TIMESTAMP_RESOLUTION = 10000 # timestamp least significant figure is 10e-5 seconds
 
 TEST_MESSAGE_INTERVAL = 0.05
@@ -75,6 +79,9 @@ class FlightTelemetryDecoder(object):
                              DecoderState.LAND: "landing date",
                              DecoderState.END: "Rocket Name" }
 
+        self.modifiers = { "time": lambda time : time / TIMESTAMP_RESOLUTION }
+
+
     @staticmethod
     def format_key(key):
         # change all keys to be consistently formatted
@@ -145,6 +152,7 @@ class TelemetryReader(object):
     def __init__(self, callback: callable = None) -> None:
         self.callback = None
         self.stopped = True
+        self.decoder = FlightTelemetryDecoder()
 
     def start(self) -> None:
         thread = Thread(target=self.__run__())
@@ -166,6 +174,30 @@ class TelemetrySerialReader(TelemetryReader):
     def run(self):
         pass
 
+    def ports(self) -> list:
+        """
+        returns a list of the serial ports available on the system
+        """
+        if sys.platform.startswith('win'):
+            ports = ['COM%s' % (i + 1) for i in range(256)]
+        elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+            # this excludes your current terminal "/dev/tty"
+            ports = glob.glob('/dev/tty[A-Za-z]*')
+        elif sys.platform.startswith('darwin'):
+            ports = glob.glob('/dev/tty.*')
+        else:
+            raise EnvironmentError('Unsupported platform')
+
+        result = []
+        for port in ports:
+            try:
+                serial_port = serial.Serial(port)
+                serial_port.close()
+                result.append(port)
+            except (OSError, serial.SerialException):
+                pass
+        return result
+
 
 class TelemetryFileReader(TelemetryReader):
     def __init__(self, callback: callable = None) -> None:
@@ -186,7 +218,7 @@ class TelemetryFileReader(TelemetryReader):
 
                     if "time" in telemetry_dict:
                         delta = telemetry_dict["time"] - last_timestamp
-                        self.m
+                        self.callback(telemetry_dict)
                         sleep(delta / TIMESTAMP_RESOLUTION)
 
                     sleep(TEST_MESSAGE_INTERVAL)
