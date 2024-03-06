@@ -8,15 +8,12 @@ Start: 6e Dec 2023
 MFL
 """
 
-import sys
-import glob
-import serial
 from tkinter import *
 from GraphFrame import GraphFrame
 from TelemetryControls import *
 from MapFrame import *
 from tkinter.filedialog import askopenfile
-from TelemetryDecoder import TelemetryTester, DecoderState
+from TelemetryDecoder import *
 from matplotlib import style
 style.use('dark_background')
 
@@ -86,6 +83,9 @@ class TelemetryApp(Tk):
 
         self.test_runner = TelemetryTester(f"test_data\\{TEST_DATA_FILENAME}")
         self.test_runner.decoder.message_callback = self.message_callback
+
+        self.serial_reader = TelemetrySerialReader(self.message_callback)
+        self.file_reader = TelemetryFileReader(self.message_callback)
 
         self.title("HPR Telemetry Viewer")
         self.config(background="#222222")
@@ -157,7 +157,6 @@ class TelemetryApp(Tk):
         self.status.grid(row=2, column=5, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.status.config(width = CELL_WIDTH)
         self.status.grid_propagate(False)
-        self.test_runner.decoder.name_callback = lambda name: self.setvar("name", name)
 
         self.controls = TelemetryControls(self)
         self.controls.grid(row=2, column=6, padx=PADX, pady=PADY, sticky=(N,E,S,W))
@@ -177,17 +176,13 @@ class TelemetryApp(Tk):
 
         self.protocol("WM_DELETE_WINDOW", on_closing)
 
-    def message_callback(self, message):
+    def message_callback(self, message, state):
         """
         decodes FC-style message into app variables and triggers graphs + map to update
         """
         if isinstance(message, dict):
             for (key, value) in message.items():
                 self.setvar(key, value)
-
-                # var = self.telemetry_vars.get(key)
-                # if var is not None:
-                    # var.set(value)
 
         if self.test_runner.decoder.state == DecoderState.FLIGHT:
             self.map_frame.update()
@@ -220,7 +215,7 @@ class TelemetryApp(Tk):
         """
         self.serial_menu.delete(0, END)
 
-        ports = self.serial_ports()
+        ports = self.serial_reader.ports()
 
         if len(ports) == 0:
             self.serial_menu.add_command("No serial ports", state=DISABLED)
@@ -233,35 +228,6 @@ class TelemetryApp(Tk):
 
         self.menubar.add_cascade(label="Serial Port", menu=self.serial_menu)
 
-
-    def serial_ports(self) -> list:
-        """
-        Lists serial port names
-
-        :raises EnvironmentError:
-            On unsupported or unknown platforms
-        :returns:
-            A list of the serial ports available on the system
-        """
-        if sys.platform.startswith('win'):
-            ports = ['COM%s' % (i + 1) for i in range(256)]
-        elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
-            # this excludes your current terminal "/dev/tty"
-            ports = glob.glob('/dev/tty[A-Za-z]*')
-        elif sys.platform.startswith('darwin'):
-            ports = glob.glob('/dev/tty.*')
-        else:
-            raise EnvironmentError('Unsupported platform')
-
-        result = []
-        for port in ports:
-            try:
-                s = serial.Serial(port)
-                s.close()
-                result.append(port)
-            except (OSError, serial.SerialException):
-                pass
-        return result
 
     def open_telemetry_file(self):
         file = askopenfile(mode ='r', filetypes =[('Telemetry Text Files', '*.txt'), ('Other Telemetry Files', '*.*')])
