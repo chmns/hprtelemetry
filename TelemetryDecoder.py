@@ -8,7 +8,7 @@ import sys
 import glob
 import serial
 
-TIMESTAMP_RESOLUTION = 10000 # timestamp least significant figure is 10e-5 seconds
+TIMESTAMP_RESOLUTION = 10000000 # timestamp least significant figure is 10e-8 seconds
 DEFAULT_BAUD = 57600
 DEFAULT_TIMEOUT = 1 # seconds
 TEST_MESSAGE_INTERVAL = 0.05
@@ -131,7 +131,7 @@ class FlightTelemetryDecoder(object):
                 # as its column actually refers to time, not name. So we return name only.
                 if state == DecoderState.FLIGHT:
                     name = items[0]
-                    items[0] = "time"
+                    self.telemetry_keys[0] = "time"
                     return {"name": name}
                 else:
                     return None # return and await next line to decode it
@@ -151,14 +151,15 @@ class FlightTelemetryDecoder(object):
 
 class TelemetryReader(object):
     def __init__(self, callback: callable = None) -> None:
-        self.callback = None
+        self.callback = callback
         self.stopped = True
         self.decoder = FlightTelemetryDecoder()
+        self.thread = None
 
     def start(self) -> None:
-        thread = Thread(target=self.__run__())
         self.stopped = False
-        thread.start()
+        self.thread = Thread(target=self.__run__())
+        self.thread.start()
 
     def stop(self) -> None:
         self.stopped = True
@@ -177,11 +178,11 @@ class TelemetrySerialReader(TelemetryReader):
         self.serial_port = serial_port
         self.baud_rate = baud_rate
         self.timeout = timeout
-        super.__init__(self, callback)
+        TelemetryReader.__init__(self, callback)
 
-    def run(self):
+    def __run__(self):
         assert self.serial_port is not None
-        assert self.serial_port is not ""
+        assert self.serial_port != ""
 
         port = None
 
@@ -233,29 +234,42 @@ class TelemetrySerialReader(TelemetryReader):
 
 class TelemetryFileReader(TelemetryReader):
     def __init__(self, callback: callable = None) -> None:
-        self.filepath = None
-        super.__init__(self, callback)
+        self.filename = None
+        TelemetryReader.__init__(self, callback)
 
-    def run(self):
-        assert self.filepath is not None
+    def __run__(self):
+        assert self.filename is not None
+
+        print(f"Reading telemetry file {self.filename}")
 
         last_timestamp = 0
 
         try:
-            with open(self.filepath, 'rt') as telemetry_file:
+            with open(self.filename, 'rt') as telemetry_file:
+                print("file open")
                 for line in telemetry_file:
-                    if(self.stopped):
+                    if self.stopped:
                         return
+
                     telemetry_dict = self.decoder.decode_line(line)
 
+                    if telemetry_dict is None:
+                        continue
+
+                    print(telemetry_dict)
+                    self.callback(telemetry_dict)
+
                     if "time" in telemetry_dict:
-                        delta = telemetry_dict["time"] - last_timestamp
-                        self.callback(telemetry_dict)
+                        timestamp = int(telemetry_dict["time"])
+                        delta = timestamp - last_timestamp
+                        last_timestamp = timestamp
+                        print(f"waiting for {delta / TIMESTAMP_RESOLUTION} seconds")
                         sleep(delta / TIMESTAMP_RESOLUTION)
 
-                    sleep(TEST_MESSAGE_INTERVAL)
         except IOError:
-            print(f"Cannot read file: {self.filepath}")
+            print(f"Cannot read file: {self.filename}")
+
+        print(f"Finished reading file {self.filename}")
 
 
 class TelemetryTester(object):
@@ -263,10 +277,14 @@ class TelemetryTester(object):
         assert filepath is not None
         self.rel_path = filepath
         self.decoder = FlightTelemetryDecoder()
+        self.thread = None
 
     def start(self):
-        test_thread = Thread(target=self.read_file)
-        test_thread.start()
+        self.thread = Thread(target=self.run)
+        self.thread.start()
+
+    def run(self):
+        print("Running...")
 
     def read_file(self):
         pwd = os.path.dirname(__file__)
