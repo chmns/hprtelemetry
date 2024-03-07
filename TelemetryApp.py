@@ -12,7 +12,7 @@ from tkinter import *
 from GraphFrame import GraphFrame
 from TelemetryControls import *
 from MapFrame import *
-from tkinter.filedialog import askopenfile
+from tkinter.filedialog import askopenfilename
 from TelemetryDecoder import *
 from matplotlib import style
 style.use('dark_background')
@@ -176,7 +176,7 @@ class TelemetryApp(Tk):
 
         self.protocol("WM_DELETE_WINDOW", on_closing)
 
-    def message_callback(self, message, state):
+    def message_callback(self, message, state = None):
         """
         decodes FC-style message into app variables and triggers graphs + map to update
         """
@@ -230,10 +230,11 @@ class TelemetryApp(Tk):
 
 
     def open_telemetry_file(self):
-        file = askopenfile(mode ='r', filetypes =[('Telemetry Text Files', '*.txt'), ('Other Telemetry Files', '*.*')])
-        if file is not None:
-            self.test_runner.file = file
-            self.test_runner.start()
+        filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'), ('Other Telemetry Files', '*.*')])
+        print(f"Attempting to open file {filename}")
+        if filename is not None:
+            self.file_reader.filename = filename
+            self.file_reader.start()
 
 
 if __name__ == "__main__":
