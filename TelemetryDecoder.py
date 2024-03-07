@@ -9,7 +9,8 @@ import glob
 import serial
 
 TIMESTAMP_RESOLUTION = 10000 # timestamp least significant figure is 10e-5 seconds
-
+DEFAULT_BAUD = 57600
+DEFAULT_TIMEOUT = 1 # seconds
 TEST_MESSAGE_INTERVAL = 0.05
 
 """
@@ -67,8 +68,8 @@ class FlightTelemetryDecoder(object):
     """
     takes line of flight data and decodes it into a dictionary:
     """
-    def __init__(self, name_callback: callable = None, message_callback: callable = None):
-        self.name_callback = name_callback
+    def __init__(self,
+                 message_callback: callable = None):
         self.message_callback = message_callback
 
         self.state = DecoderState.FLIGHT
@@ -167,14 +168,45 @@ class TelemetryReader(object):
 
 
 class TelemetrySerialReader(TelemetryReader):
-    def __init__(self, callback: callable = None) -> None:
-        self.serialport = None
+    def __init__(self,
+                 callback: callable = None,
+                 serial_port = None,
+                 baud_rate = DEFAULT_BAUD,
+                 timeout = DEFAULT_TIMEOUT) -> None:
+
+        self.serial_port = serial_port
+        self.baud_rate = baud_rate
+        self.timeout = timeout
         super.__init__(self, callback)
 
     def run(self):
-        pass
+        assert self.serial_port is not None
+        assert self.serial_port is not ""
 
-    def ports(self) -> list:
+        port = None
+
+        try:
+            port = serial.Serial(port=self.serial_port,
+                                 baudrate=self.baud_rate,
+                                 timeout=self.timeout)
+        except:
+            print(f"Could not open serial port: {self.serial_port}")
+            return
+        finally:
+            port.close()
+
+        while not self.stopped:
+            try:
+                telemetry_dict = self.decoder.decode_line(port.readline().decode("Ascii"))
+                if telemetry_dict is not None:
+                    self.callback()
+            except:
+                pass
+
+        port.close()
+
+
+    def available_ports(self) -> list:
         """
         returns a list of the serial ports available on the system
         """
@@ -238,7 +270,6 @@ class TelemetryTester(object):
 
     def read_file(self):
         pwd = os.path.dirname(__file__)
-        # abs_file_path = os.path.join(pwd, self.rel_path)
 
         if getattr(sys, 'frozen', False):
             abs_file_path = os.path.join(sys._MEIPASS, self.rel_path)
@@ -252,6 +283,5 @@ class TelemetryTester(object):
 
 if __name__ == "__main__":
     test = TelemetryTester("test_data\\FLIGHT10.csv")
-    test.decoder.name_callback = print
     test.decoder.message_callback = print
     test.start()
