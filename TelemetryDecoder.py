@@ -1,5 +1,4 @@
-import os
-from threading import Thread
+from threading import Thread, Event
 from time import sleep
 import sys
 from enum import Enum
@@ -153,17 +152,19 @@ class TelemetryReader(object):
                  queue: queue.Queue = None) -> None:
         assert queue is not None
         self.queue = queue
-        self.stopped = True
+        self.running = Event()
         self.decoder = FlightTelemetryDecoder()
         self.thread = None
 
     def start(self) -> None:
-        self.stopped = False
-        self.thread = Thread(target=self.__run__, args=(self.queue,))
+        self.running.set()
+        self.thread = Thread(target=self.__run__, args=(self.queue,self.running))
         self.thread.start()
 
     def stop(self) -> None:
-        self.stopped = True
+        self.running.clear()
+        if self.thread is not None:
+            self.thread.join()
 
     def __run__(self):
         pass
@@ -181,7 +182,7 @@ class TelemetrySerialReader(TelemetryReader):
         self.timeout = timeout
         TelemetryReader.__init__(self, queue)
 
-    def __run__(self, message_queue):
+    def __run__(self, message_queue, running):
         assert self.serial_port is not None
         assert self.serial_port != ""
 
@@ -197,7 +198,7 @@ class TelemetrySerialReader(TelemetryReader):
         finally:
             port.close()
 
-        while not self.stopped:
+        while running.is_set():
             try:
                 telemetry_dict = self.decoder.decode_line(port.readline().decode("Ascii"))
                 if telemetry_dict is not None:
@@ -205,6 +206,7 @@ class TelemetrySerialReader(TelemetryReader):
             except:
                 pass
 
+        running.clear()
         port.close()
 
 
@@ -240,7 +242,7 @@ class TelemetryFileReader(TelemetryReader):
         self.filename = None
         TelemetryReader.__init__(self, queue)
 
-    def __run__(self, message_queue):
+    def __run__(self, message_queue, running):
         assert self.filename is not None
 
         print(f"Reading telemetry file {self.filename}")
@@ -250,7 +252,7 @@ class TelemetryFileReader(TelemetryReader):
         try:
             with open(self.filename, 'rt') as telemetry_file:
                 for line in telemetry_file:
-                    if self.stopped:
+                    if not running.is_set():
                         return
 
                     telemetry_dict = self.decoder.decode_line(line)
@@ -269,36 +271,7 @@ class TelemetryFileReader(TelemetryReader):
         except IOError:
             print(f"Cannot read file: {self.filename}")
 
+        finally:
+            running.clear()
+
         print(f"Finished reading file {self.filename}")
-
-
-class TelemetryTester(object):
-    def __init__(self, filepath) -> None:
-        assert filepath is not None
-        self.rel_path = filepath
-        self.decoder = FlightTelemetryDecoder()
-        self.thread = None
-
-    def start(self):
-        self.thread = Thread(target=self.run)
-        self.thread.start()
-
-    def run(self):
-        print("Running...")
-
-    def read_file(self):
-        pwd = os.path.dirname(__file__)
-
-        if getattr(sys, 'frozen', False):
-            abs_file_path = os.path.join(sys._MEIPASS, self.rel_path)
-        else:
-            abs_file_path = os.path.join(pwd, self.rel_path)
-
-        with open(abs_file_path, 'rt') as test_telemetry:
-            for line in test_telemetry:
-                self.decoder.decode_line(line)
-                sleep(TEST_MESSAGE_INTERVAL)
-
-# if __name__ == "__main__":
-#     test = TelemetryTester("test_data\\FLIGHT10.csv")
-#     test.start()

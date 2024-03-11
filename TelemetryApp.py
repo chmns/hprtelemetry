@@ -48,10 +48,7 @@ todo:
 -- multipliers (raw accel -> m/s)
 -- secondary units (m/s -> kmh etc)
 
-- change matplotlib graphs to use animators
-
-- open file dialog and run
--- run at speed of file (use timestamp for message parsing)
+- update graphs at different rate to rest of UI
 
 - listen to serial port
 -- select serial port
@@ -59,7 +56,6 @@ todo:
 
 - menus and buttons:
 -- reset
--- load file
 -- connect to serial port
 
 """
@@ -87,8 +83,7 @@ class TelemetryApp(Tk):
         for var in self.telemetry_vars:
             self.setvar(var)
 
-        self.test_runner = TelemetryTester(f"test_data\\{TEST_DATA_FILENAME}")
-        self.test_runner.decoder.message_callback = self.message_callback
+        self.running = BooleanVar(self, False, "running")
 
         self.serial_reader = TelemetrySerialReader(self.message_queue)
         self.file_reader = TelemetryFileReader(self.message_queue)
@@ -103,12 +98,14 @@ class TelemetryApp(Tk):
         self.menubar = Menu(self)
         self.config(menu=self.menubar)
 
-        file_menu = Menu(self.menubar)
-        file_menu.add_command(label="Open", command=self.open_telemetry_file)
-        file_menu.add_command(label='Exit', command=self.destroy)
+        self.file_menu = Menu(self.menubar)
+        self.file_menu.add_command(label="Open", command=self.open_telemetry_file)
+        self.file_menu.add_command(label="Reset", command=self.reset)
+        self.file_menu.add_command(label='Exit', command=self.destroy)
 
         self.serial_menu = Menu(self.menubar)
-        self.menubar.add_cascade(label="File", menu=file_menu)
+        self.menubar.add_cascade(label="File", menu=self.file_menu)
+        self.menubar.add_cascade(label="Serial", menu=self.serial_menu)
 
         current_serial = StringVar(self, name="current_serial", value=None)
 
@@ -169,10 +166,8 @@ class TelemetryApp(Tk):
         self.controls.config(width = CELL_WIDTH)
         self.controls.grid_propagate(False)
 
-        self.bind('t', lambda _: self.test_runner.start())
         self.bind('q', lambda _: self.quit())
-        self.bind('s', lambda _: print(self.serial_ports()))
-        self.bind('d', lambda _: print(self.telemetry_vars.items()))
+        self.bind('s', lambda _: print(self.serial_reader.available_ports()))
         self.bind('r', lambda _: self.reset())
         self.focus()
 
@@ -183,14 +178,19 @@ class TelemetryApp(Tk):
         self.protocol("WM_DELETE_WINDOW", on_closing)
 
     def update(self):
+        self.running.set(True)
+
         try:
             while True:
                 self.message_callback(self.message_queue.get(block=False))
         except queue.Empty:
             return
         finally:
-            if self.running == True:
+            if self.file_reader.running.is_set() or \
+            self.serial_reader.running.is_set():
                 self.after(UPDATE_DELAY, self.update)
+            else:
+                self.running.set(False)
 
     def message_callback(self, message, state = None):
         """
@@ -212,6 +212,8 @@ class TelemetryApp(Tk):
         """
         # stop file decoder if it's running
         # stop serial decoder if it's running
+        self.file_reader.stop()
+        self.serial_reader.stop()
 
         # clear all telemetry variables:
         for var in self.telemetry_vars:
