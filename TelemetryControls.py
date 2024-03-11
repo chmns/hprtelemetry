@@ -1,5 +1,4 @@
 from tkinter import *
-from PIL import ImageTk, Image
 
 BG_COLOR = "#0f0f0f"
 FG_COLOR = "#eeeeee"
@@ -150,16 +149,27 @@ class TelemetryStatus(Frame):
 class TelemetryControls(Frame):
     SPACING = 30
 
-    def update_value(self,
-                    status_number: int) -> None:
-        self.status_number.config(text=status_number)
-
-    def __init__(self, master):
+    def __init__(self, master, serial_reader):
         Frame.__init__(self, master, background=BG_COLOR)
+
+        self.serial_reader = serial_reader
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
+        self.grid_rowconfigure(4, weight=1)
+        self.grid_rowconfigure(6, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        self.status_number = Label(self, text="0", fg=FG_COLOR, bg=BG_COLOR, font="Arial 72")
-        self.status_number.grid(column = 0, row = 1, sticky = (N,E,S,W), pady=(TelemetryStatus.SPACING,0))
+        # self.status_number = Label(self, text="0", fg=FG_COLOR, bg=BG_COLOR, font="Arial 72")
+        # self.status_number.grid(column = 0, row = 1, sticky = (N,E,S,W), pady=(TelemetryStatus.SPACING,0))
+
+        self.file_button = Button(self, text="Load File", height=2, command=lambda: print("Load telemetry file"))
+        self.file_button.grid(column = 0, row = 1)
+
+        self.serial_button = Button(self, text="Listen Serial", height=2, command=lambda: print(f"Listen to: {current_serial_port_var.get()}"))
+        self.serial_button.grid(column = 0, row = 3)
+
+        # ports = ["COM1", "COM2", "COM3", "COM4", "COM5"]
+        # self.serial_port_selection = OptionMenu(self, current_serial_port_var, *ports)
+        # self.serial_port_selection.grid(column = 0, row = 5)
+
