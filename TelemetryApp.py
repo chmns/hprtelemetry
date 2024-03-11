@@ -15,9 +15,12 @@ from MapFrame import *
 from tkinter.filedialog import askopenfilename
 from TelemetryDecoder import *
 from matplotlib import style
+import queue
 style.use('dark_background')
 
 TEST_DATA_FILENAME = "FLIGHT10-short.csv"
+
+UPDATE_DELAY = 100
 
 NUM_COLS = 7
 NUM_ROWS = 3
@@ -73,6 +76,9 @@ class TelemetryApp(Tk):
 
         super().__init__(screenName, baseName, className, useTk, sync, use)
 
+        self.message_queue = queue.Queue()
+        self.running = TRUE
+
         self.telemetry_vars = ["time", "accelX", "accelY", "accelZ", "gyroZ" "highGx", "highGy", "highGz",
                                "smoothHighGz", "offVert", "intVel", "intAlt", "fusionVel", "fusionAlt",
                                "fltEvents", "radioCode", "baroAlt", "altMoveAvg", "gnssLat", "gnssLon",
@@ -84,8 +90,8 @@ class TelemetryApp(Tk):
         self.test_runner = TelemetryTester(f"test_data\\{TEST_DATA_FILENAME}")
         self.test_runner.decoder.message_callback = self.message_callback
 
-        self.serial_reader = TelemetrySerialReader(self.message_callback)
-        self.file_reader = TelemetryFileReader(self.message_callback)
+        self.serial_reader = TelemetrySerialReader(self.message_queue)
+        self.file_reader = TelemetryFileReader(self.message_queue)
 
         self.title("HPR Telemetry Viewer")
         self.config(background="#222222")
@@ -176,6 +182,16 @@ class TelemetryApp(Tk):
 
         self.protocol("WM_DELETE_WINDOW", on_closing)
 
+    def update(self):
+        try:
+            while True:
+                self.message_callback(self.message_queue.get(block=False))
+        except queue.Empty:
+            return
+        finally:
+            if self.running == True:
+                self.after(UPDATE_DELAY, self.update)
+
     def message_callback(self, message, state = None):
         """
         decodes FC-style message into app variables and triggers graphs + map to update
@@ -184,7 +200,7 @@ class TelemetryApp(Tk):
             for (key, value) in message.items():
                 self.setvar(key, value)
 
-        if self.test_runner.decoder.state == DecoderState.FLIGHT:
+        if self.state == DecoderState.FLIGHT:
             self.map_frame.update()
             # self.altitude_graph.append(self.altitude.variable.get())
 
@@ -235,6 +251,7 @@ class TelemetryApp(Tk):
         if filename is not None:
             self.file_reader.filename = filename
             self.file_reader.start()
+            self.update()
 
 
 if __name__ == "__main__":

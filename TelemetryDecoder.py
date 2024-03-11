@@ -3,6 +3,7 @@ from threading import Thread
 from time import sleep
 import sys
 from enum import Enum
+import queue
 
 import sys
 import glob
@@ -68,9 +69,7 @@ class FlightTelemetryDecoder(object):
     """
     takes line of flight data and decodes it into a dictionary:
     """
-    def __init__(self,
-                 message_callback: callable = None):
-        self.message_callback = message_callback
+    def __init__(self) -> None:
 
         self.state = DecoderState.FLIGHT
         self.telemetry_keys = None
@@ -150,15 +149,17 @@ class FlightTelemetryDecoder(object):
         return telemetry_dict
 
 class TelemetryReader(object):
-    def __init__(self, callback: callable = None) -> None:
-        self.callback = callback
+    def __init__(self,
+                 queue: queue.Queue = None) -> None:
+        assert queue is not None
+        self.queue = queue
         self.stopped = True
         self.decoder = FlightTelemetryDecoder()
         self.thread = None
 
     def start(self) -> None:
         self.stopped = False
-        self.thread = Thread(target=self.__run__())
+        self.thread = Thread(target=self.__run__, args=(self.queue,))
         self.thread.start()
 
     def stop(self) -> None:
@@ -170,7 +171,7 @@ class TelemetryReader(object):
 
 class TelemetrySerialReader(TelemetryReader):
     def __init__(self,
-                 callback: callable = None,
+                 queue: queue.Queue = None,
                  serial_port = None,
                  baud_rate = DEFAULT_BAUD,
                  timeout = DEFAULT_TIMEOUT) -> None:
@@ -178,9 +179,9 @@ class TelemetrySerialReader(TelemetryReader):
         self.serial_port = serial_port
         self.baud_rate = baud_rate
         self.timeout = timeout
-        TelemetryReader.__init__(self, callback)
+        TelemetryReader.__init__(self, queue)
 
-    def __run__(self):
+    def __run__(self, message_queue):
         assert self.serial_port is not None
         assert self.serial_port != ""
 
@@ -200,7 +201,7 @@ class TelemetrySerialReader(TelemetryReader):
             try:
                 telemetry_dict = self.decoder.decode_line(port.readline().decode("Ascii"))
                 if telemetry_dict is not None:
-                    self.callback()
+                    message_queue.put(telemetry_dict)
             except:
                 pass
 
@@ -233,11 +234,13 @@ class TelemetrySerialReader(TelemetryReader):
 
 
 class TelemetryFileReader(TelemetryReader):
-    def __init__(self, callback: callable = None) -> None:
-        self.filename = None
-        TelemetryReader.__init__(self, callback)
+    def __init__(self,
+                 queue: queue.Queue = None) -> None:
 
-    def __run__(self):
+        self.filename = None
+        TelemetryReader.__init__(self, queue)
+
+    def __run__(self, message_queue):
         assert self.filename is not None
 
         print(f"Reading telemetry file {self.filename}")
@@ -246,7 +249,6 @@ class TelemetryFileReader(TelemetryReader):
 
         try:
             with open(self.filename, 'rt') as telemetry_file:
-                print("file open")
                 for line in telemetry_file:
                     if self.stopped:
                         return
@@ -256,14 +258,12 @@ class TelemetryFileReader(TelemetryReader):
                     if telemetry_dict is None:
                         continue
 
-                    print(telemetry_dict)
-                    self.callback(telemetry_dict)
+                    message_queue.put(telemetry_dict)
 
                     if "time" in telemetry_dict:
                         timestamp = int(telemetry_dict["time"])
                         delta = timestamp - last_timestamp
                         last_timestamp = timestamp
-                        print(f"waiting for {delta / TIMESTAMP_RESOLUTION} seconds")
                         sleep(delta / TIMESTAMP_RESOLUTION)
 
         except IOError:
@@ -299,7 +299,6 @@ class TelemetryTester(object):
                 self.decoder.decode_line(line)
                 sleep(TEST_MESSAGE_INTERVAL)
 
-if __name__ == "__main__":
-    test = TelemetryTester("test_data\\FLIGHT10.csv")
-    test.decoder.message_callback = print
-    test.start()
+# if __name__ == "__main__":
+#     test = TelemetryTester("test_data\\FLIGHT10.csv")
+#     test.start()
