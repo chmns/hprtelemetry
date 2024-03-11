@@ -1,4 +1,5 @@
 from threading import Thread, Event
+from tkinter import StringVar, BooleanVar
 from time import sleep
 import sys
 from enum import Enum
@@ -12,6 +13,8 @@ TIMESTAMP_RESOLUTION = 10000000 # timestamp least significant figure is 10e-8 se
 DEFAULT_BAUD = 57600
 DEFAULT_TIMEOUT = 1 # seconds
 TEST_MESSAGE_INTERVAL = 0.05
+
+BAUD_RATES = [1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600, 115200]
 
 """
 Telemetry Decoding:
@@ -150,7 +153,7 @@ class FlightTelemetryDecoder(object):
 class TelemetryReader(object):
     def __init__(self,
                  queue: queue.Queue = None) -> None:
-        assert queue is not None
+        # assert queue is not None
         self.queue = queue
         self.running = Event()
         self.decoder = FlightTelemetryDecoder()
@@ -275,3 +278,73 @@ class TelemetryFileReader(TelemetryReader):
             running.clear()
 
         print(f"Finished reading file {self.filename}")
+
+
+
+class TelemetryTestSender(TelemetryReader):
+    def __init__(self, _) -> None:
+
+        self.filename = None
+        self.serial_port = "COM4"
+        TelemetryReader.__init__(self, None)
+
+    def __run__(self, message_queue, running):
+        assert self.filename is not None
+        assert self.serial_port is not None
+
+        print(f"Reading telemetry file {self.filename} to write out of {self.serial_port}")
+
+        last_timestamp = 0
+
+        port = None
+
+        try:
+            port = serial.Serial(port=self.serial_port,
+                                 baudrate=57600,
+                                 timeout=1)
+        except:
+            print(f"Test sender could not open serial port: {self.serial_port}")
+            port.close()
+            return
+
+        print(f"Opened port {self.serial_port}")
+
+        try:
+            with open(self.filename, 'rt') as telemetry_file:
+                for line in telemetry_file:
+                    print("Reading line...")
+                    print(line)
+                    # if not running.is_set():
+                        # return
+
+                    telemetry_dict = self.decoder.decode_line(line)
+
+                    if telemetry_dict is None:
+                        print("dict is none")
+                        continue
+                    else:
+                        print(f"Dict is: {telemetry_dict}")
+
+                    buffer = bytes(line, "ascii")
+
+                    written = port.write(buffer)
+                    print(f"Wrote {written} bytes")
+
+                    print(buffer)
+
+                    # if "time" in telemetry_dict:
+                    #     timestamp = int(telemetry_dict["time"])
+                    #     delta = timestamp - last_timestamp
+                    #     last_timestamp = timestamp
+                    #     sleep(delta / TIMESTAMP_RESOLUTION)
+                    # else:
+                    #     sleep(0.01)
+
+        except IOError:
+            print(f"Cannot read file: {self.filename}")
+
+        finally:
+            running.clear()
+            port.close()
+
+        print(f"Finished reading file {self.filename} out of serial port {self.serial_port}")

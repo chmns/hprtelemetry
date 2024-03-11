@@ -88,6 +88,9 @@ class TelemetryApp(Tk):
         self.serial_reader = TelemetrySerialReader(self.message_queue)
         self.file_reader = TelemetryFileReader(self.message_queue)
 
+        # for testing only:
+        self.test_serial_sender = TelemetryTestSender("")
+
         self.title("HPR Telemetry Viewer")
         self.config(background="#222222")
 
@@ -107,7 +110,9 @@ class TelemetryApp(Tk):
         self.menubar.add_cascade(label="File", menu=self.file_menu)
         self.menubar.add_cascade(label="Serial", menu=self.serial_menu)
 
-        current_serial = StringVar(self, name="current_serial", value=None)
+        self.update_serial_menu()
+
+        current_serial_port = StringVar(self, name="current_serial", value=None)
 
         # fixed column widths
         for col in range (NUM_COLS):
@@ -161,7 +166,7 @@ class TelemetryApp(Tk):
         self.status.config(width = CELL_WIDTH)
         self.status.grid_propagate(False)
 
-        self.controls = TelemetryControls(self)
+        self.controls = TelemetryControls(self, self.serial_reader)
         self.controls.grid(row=2, column=6, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.controls.config(width = CELL_WIDTH)
         self.controls.grid_propagate(False)
@@ -169,6 +174,7 @@ class TelemetryApp(Tk):
         self.bind('q', lambda _: self.quit())
         self.bind('s', lambda _: print(self.serial_reader.available_ports()))
         self.bind('r', lambda _: self.reset())
+        self.bind('t', lambda _: self.open_telemetry_test_file())
         self.focus()
 
         def on_closing():
@@ -233,7 +239,7 @@ class TelemetryApp(Tk):
         """
         self.serial_menu.delete(0, END)
 
-        ports = self.serial_reader.ports()
+        ports = self.serial_reader.available_ports()
 
         if len(ports) == 0:
             self.serial_menu.add_command("No serial ports", state=DISABLED)
@@ -244,16 +250,21 @@ class TelemetryApp(Tk):
         self.serial_menu.add_separator()
         self.serial_menu.add_command(label="Re-scan", command=self.update_serial_menu)
 
-        self.menubar.add_cascade(label="Serial Port", menu=self.serial_menu)
+        # self.menubar.add_cascade(label="Serial", menu=self.serial_menu)
 
 
     def open_telemetry_file(self):
         filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'), ('Other Telemetry Files', '*.*')])
-        print(f"Attempting to open file {filename}")
         if filename is not None:
             self.file_reader.filename = filename
             self.file_reader.start()
             self.update()
+
+    def open_telemetry_test_file(self):
+        filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'), ('Other Telemetry Files', '*.*')])
+        if filename is not None:
+            self.test_serial_sender.filename = filename
+            self.test_serial_sender.start()
 
 
 if __name__ == "__main__":
