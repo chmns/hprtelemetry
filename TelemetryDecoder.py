@@ -285,7 +285,7 @@ class TelemetryTestSender(TelemetryReader):
     def __init__(self, _) -> None:
 
         self.filename = None
-        self.serial_port = "COM4"
+        self.serial_port = "COM3"
         TelemetryReader.__init__(self, None)
 
     def __run__(self, message_queue, running):
@@ -312,33 +312,22 @@ class TelemetryTestSender(TelemetryReader):
         try:
             with open(self.filename, 'rt') as telemetry_file:
                 for line in telemetry_file:
-                    print("Reading line...")
-                    print(line)
-                    # if not running.is_set():
-                        # return
+                    if not running.is_set():
+                        print("stopping")
+                        return
 
                     telemetry_dict = self.decoder.decode_line(line)
 
-                    if telemetry_dict is None:
-                        print("dict is none")
-                        continue
-                    else:
-                        print(f"Dict is: {telemetry_dict}")
-
                     buffer = bytes(line, "ascii")
+                    port.write(buffer)
 
-                    written = port.write(buffer)
-                    print(f"Wrote {written} bytes")
-
-                    print(buffer)
-
-                    # if "time" in telemetry_dict:
-                    #     timestamp = int(telemetry_dict["time"])
-                    #     delta = timestamp - last_timestamp
-                    #     last_timestamp = timestamp
-                    #     sleep(delta / TIMESTAMP_RESOLUTION)
-                    # else:
-                    #     sleep(0.01)
+                    if "time" in telemetry_dict:
+                        timestamp = int(telemetry_dict["time"])
+                        delta = timestamp - last_timestamp
+                        last_timestamp = timestamp
+                        sleep(delta / TIMESTAMP_RESOLUTION)
+                    else:
+                        sleep(0.01)
 
         except IOError:
             print(f"Cannot read file: {self.filename}")
