@@ -263,8 +263,22 @@ class TelemetryApp(Tk):
     def open_telemetry_test_file(self):
         filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'), ('Other Telemetry Files', '*.*')])
         if filename is not None:
+            self.test_serial_sender.serial_port = self.select_serial_port("Select serial port to send out test data",self.serial_reader.available_ports())
             self.test_serial_sender.filename = filename
             self.test_serial_sender.start()
+
+    def select_serial_port(self, prompt, options):
+        root = Tk()
+        if prompt:
+            Label(root, text=prompt).pack()
+        v = IntVar()
+        for i, option in enumerate(options):
+            Radiobutton(root, text=option, variable=v, value=i).pack(anchor="w")
+        Button(text="Submit", command=root.destroy).pack()
+        root.mainloop()
+        if v.get() == 0: return None
+        return options[v.get()]
+
 
 
 if __name__ == "__main__":
