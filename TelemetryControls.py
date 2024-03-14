@@ -3,6 +3,8 @@ from tkinter import *
 BG_COLOR = "#0f0f0f"
 FG_COLOR = "#eeeeee"
 
+NAME_TEXT_WRAPLENGTH = 160
+
 class ReadOut(Frame):
     @staticmethod
     def metresToFeet(metres):
@@ -125,7 +127,7 @@ class TelemetryStatus(Frame):
         self.grid_rowconfigure(7, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        self.name = Label(self, textvariable=StringVar(master, "", name_var), fg=FG_COLOR, bg=BG_COLOR, font="Arial 24")
+        self.name = Label(self, wraplength=NAME_TEXT_WRAPLENGTH, textvariable=StringVar(master, "", name_var), fg=FG_COLOR, bg=BG_COLOR, font="Arial 24")
         self.name.grid(column = 0, row = 0, sticky = (N,E,S,W), pady=(TelemetryStatus.SPACING,0))
 
         self.last_packet = Label(self, textvariable=IntVar(master, 0, packet_num_var_name), fg=FG_COLOR, bg=BG_COLOR, font="Arial 18")
