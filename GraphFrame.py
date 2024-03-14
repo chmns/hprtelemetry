@@ -52,17 +52,6 @@ class GraphFrame(Frame):
         new_value = self.variables[0].get()
         self.ys.append(new_value)
 
-    def update_graph(self, frame):
-        print(frame)
-        """
-        asynchronously called by the FuncAnimation to draw
-        any new graph data that has come in
-        """
-        for (line, y) in zip(self.lines, self.ys):
-            line.set_data(self.xs, y)
-
-        return self.lines
-
 
     def __zero_data__(self):
         # self.xs = [x * INTERVAL for x in (range(0 - NUM_POINTS,0))]
@@ -100,13 +89,6 @@ class GraphFrame(Frame):
         self.subplot.set_autoscaley_on(True)
         self.subplot.grid("True")
 
-        self.animation = animation.FuncAnimation(self.figure,
-                                                 self.update_graph,
-                                                 interval=1/FPS,
-                                                 frames=10,
-                                                 blit=False,
-                                                 repeat=True)
-
         self.__zero_data__()
 
         self.lines = list()
@@ -117,16 +99,19 @@ class GraphFrame(Frame):
         if self.y_range is not None:
             self.subplot.set_ylim(*self.y_range)
 
+        self.subplot.set_xlim(NUM_POINTS)
+
         self.canvas = FigureCanvasTkAgg(self.figure, self)
         self.canvas.get_tk_widget().pack(side=BOTTOM, fill=BOTH, expand=True)
         self.canvas.draw()
 
     def draw(self):
-        self.line.set_xdata(self.xs)
-        self.subplot.set_xlim(self.xs[0],
-                              self.xs[len(self.xs)-1])
+        for (line, y) in zip(self.lines, self.ys):
+            line.set_data(self.xs, y)
 
         self.line.set_ydata(self.ys)
 
-        if self.y_range is None and self.appended > 0:
+        if self.y_range is None:
             self.subplot.set_ylim(self.min, self.max)
+
+        self.canvas.draw()

@@ -9,7 +9,8 @@ import sys
 import glob
 import serial
 
-TIMESTAMP_RESOLUTION = 10000000 # timestamp least significant figure is 10e-8 seconds
+DEFAULT_ACCEL_RESOLUTION = 1024
+TIMESTAMP_RESOLUTION = 1000000 # timestamp least significant figure is 10e-8 seconds
 DEFAULT_BAUD = 57600
 DEFAULT_TIMEOUT = 1 # seconds
 TEST_MESSAGE_INTERVAL = 0.05
@@ -71,7 +72,7 @@ class FlightTelemetryDecoder(object):
     """
     takes line of flight data and decodes it into a dictionary:
     """
-    def __init__(self) -> None:
+    def __init__(self, accel_resolution: int = DEFAULT_ACCEL_RESOLUTION) -> None:
 
         self.state = DecoderState.FLIGHT
         self.telemetry_keys = None
@@ -81,8 +82,18 @@ class FlightTelemetryDecoder(object):
                              DecoderState.LAND: "landing date",
                              DecoderState.END: "Rocket Name" }
 
-        self.modifiers = { "time": lambda time : time / TIMESTAMP_RESOLUTION }
+        self.accel_resolution = accel_resolution
 
+        self.modifiers = { "time": self.time_modifier,
+                           "accelX": self.accel_modifier,
+                           "accelY": self.accel_modifier,
+                           "accelZ": self.accel_modifier }
+
+    def time_modifier(self, time):
+        return float(time) / TIMESTAMP_RESOLUTION
+
+    def accel_modifier(self, accel):
+        return float(accel) / self.accel_resolution
 
     @staticmethod
     def format_key(key):
@@ -147,7 +158,17 @@ class FlightTelemetryDecoder(object):
         except Exception:
             return None
 
+        modified_telemetry = self.apply_modifiers(telemetry_dict)
+
         # return a dict of all the key-value pairs in the received telemetry, ignoring all empties
+        return modified_telemetry
+
+    def apply_modifiers(self, telemetry_dict: dict) -> dict:
+        for key in telemetry_dict:
+            if key in self.modifiers:
+                old_value = telemetry_dict[key]
+                telemetry_dict[key] = self.modifiers[key](old_value)
+
         return telemetry_dict
 
 class TelemetryReader(object):
@@ -207,8 +228,7 @@ class TelemetrySerialReader(TelemetryReader):
                 telemetry_dict = self.decoder.decode_line(read_bytes)
 
                 if telemetry_dict is not None:
-                    print("Read dict successfully")
-                    message_queue.put(telemetry_dict)
+                    message_queue.put((telemetry_dict, self.decoder.state))
             except:
                 pass
 
@@ -266,13 +286,12 @@ class TelemetryFileReader(TelemetryReader):
                     if telemetry_dict is None:
                         continue
 
-                    message_queue.put(telemetry_dict)
+                    message_queue.put((telemetry_dict, self.decoder.state))
 
                     if "time" in telemetry_dict:
-                        timestamp = int(telemetry_dict["time"])
-                        delta = timestamp - last_timestamp
+                        timestamp = float(telemetry_dict["time"])
+                        sleep(timestamp - last_timestamp)
                         last_timestamp = timestamp
-                        sleep(delta / TIMESTAMP_RESOLUTION)
 
         except IOError:
             print(f"Cannot read file: {self.filename}")
@@ -285,7 +304,7 @@ class TelemetryFileReader(TelemetryReader):
 
 
 class TelemetryTestSender(TelemetryReader):
-    def __init__(self, _) -> None:
+    def __init__(self) -> None:
 
         self.filename = None
         self.serial_port = "COM3"
@@ -307,7 +326,6 @@ class TelemetryTestSender(TelemetryReader):
                                  timeout=1)
         except:
             print(f"Test sender could not open serial port: {self.serial_port}")
-            port.close()
             return
 
         print(f"Opened port {self.serial_port}")
@@ -315,9 +333,7 @@ class TelemetryTestSender(TelemetryReader):
         try:
             with open(self.filename, 'rt') as telemetry_file:
                 for line in telemetry_file:
-                    print(line)
                     if not running.is_set():
-                        print("stopping")
                         return
 
                     telemetry_dict = self.decoder.decode_line(line)
@@ -329,10 +345,9 @@ class TelemetryTestSender(TelemetryReader):
                         continue
 
                     if "time" in telemetry_dict:
-                        timestamp = int(telemetry_dict["time"])
-                        delta = timestamp - last_timestamp
+                        timestamp = float(telemetry_dict["time"])
+                        sleep(timestamp - last_timestamp)
                         last_timestamp = timestamp
-                        sleep(delta / TIMESTAMP_RESOLUTION)
                     else:
                         sleep(0.01)
 

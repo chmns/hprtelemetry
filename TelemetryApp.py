@@ -18,9 +18,7 @@ from matplotlib import style
 import queue
 style.use('dark_background')
 
-TEST_DATA_FILENAME = "FLIGHT10-short.csv"
-
-UPDATE_DELAY = 100
+UPDATE_DELAY = 50 # ms between frames, 20 = 50fps
 
 NUM_COLS = 7
 NUM_ROWS = 3
@@ -40,23 +38,15 @@ CELL_WIDTH = 280
 
 """
 todo:
-- quit threads correctly on close window
 
-- connect:
--- pre and post GNSS locations
--- map add markers to make trace
--- multipliers (raw accel -> m/s)
--- secondary units (m/s -> kmh etc)
-
-- update graphs at different rate to rest of UI
-
-- listen to serial port
--- select serial port
--- decode CRC32
-
-- menus and buttons:
--- reset
--- connect to serial port
+x. add preflight state decoding
+x. add postflight state decoding
+x. fix file reading delay
+4. low-speed map updating with markers
+5. status display (listening to port, reading file etc)
+6. graph rendering
+7. secondary units (m/s -> kmh etc)
+8. prompt to write out to file when listening to serial port
 
 """
 
@@ -78,6 +68,8 @@ class TelemetryApp(Tk):
         self.telemetry_vars = ["time", "accelX", "accelY", "accelZ", "gyroZ" "highGx", "highGy", "highGz",
                                "smoothHighGz", "offVert", "intVel", "intAlt", "fusionVel", "fusionAlt",
                                "fltEvents", "radioCode", "baroAlt", "altMoveAvg", "gnssLat", "gnssLon",
+                               "landing_latitude", "landing_longitude", "landing_time",
+                               "launch_latitude", "launch_longitude", "launch_time",
                                "gnssSpeed", "gnssAlt", "gnssAngle", "gnssSatellites", "radioPacketNum"]
 
         for var in self.telemetry_vars:
@@ -89,7 +81,7 @@ class TelemetryApp(Tk):
         self.file_reader = TelemetryFileReader(self.message_queue)
 
         # for testing only:
-        self.test_serial_sender = TelemetryTestSender("")
+        self.test_serial_sender = TelemetryTestSender()
 
         self.title("HPR Telemetry Viewer")
         self.config(background="#222222")
@@ -178,6 +170,12 @@ class TelemetryApp(Tk):
         self.focus()
 
         def on_closing():
+            print("stopping test_serial_sender")
+            self.test_serial_sender.stop()
+            print("stopping serial_reader")
+            self.serial_reader.stop()
+            print("stopping file_reader")
+            self.file_reader.stop()
             self.destroy()
             self.quit()
 
@@ -198,17 +196,37 @@ class TelemetryApp(Tk):
             else:
                 self.running.set(False)
 
-    def message_callback(self, message, state = None):
+    def message_callback(self, message):
         """
         decodes FC-style message into app variables and triggers graphs + map to update
+
+        todo: instead of reading all variables every time, only read the latest value
+              (except for graphed data that should be loaded in bulk across to graphs)
         """
-        if isinstance(message, dict):
-            for (key, value) in message.items():
+        (telemetry, state) = message
+
+        if isinstance(telemetry, dict):
+            for (key, value) in telemetry.items():
                 self.setvar(key, value)
 
-        if self.state == DecoderState.FLIGHT:
-            self.map_frame.update()
-            # self.altitude_graph.append(self.altitude.variable.get())
+                # horrible hack to fix that the name is coming as its own message
+                # in FLIGHT DecoderState
+                # todo: replace this
+                if key == "name":
+                    return
+
+        match state:
+            case DecoderState.FLIGHT:
+                self.map_frame.update()
+            case DecoderState.LAUNCH:
+                self.setvar("launch_time", telemetry["UTC_time"])
+                self.map_frame.set_launch_point(float(self.getvar("launch_latitude")),
+                                                float(self.getvar("launch_longitude")))
+            case DecoderState.LAND:
+                self.setvar("landing_time", telemetry["UTC_time"])
+                self.map_frame.set_landing_point(float(self.getvar("landing_latitude")),
+                                                 float(self.getvar("landing_longitude")))
+
 
 
     def reset(self) -> None:
@@ -217,8 +235,8 @@ class TelemetryApp(Tk):
         for when loading new file or connecting to new serial port
         """
         # stop file decoder if it's running
-        # stop serial decoder if it's running
         self.file_reader.stop()
+        # stop serial decoder if it's running
         self.serial_reader.stop()
 
         # clear all telemetry variables:
@@ -254,13 +272,17 @@ class TelemetryApp(Tk):
 
     def listen_to_port(self, port):
         print(f"Attempting to listen to {port}")
-        assert port in self.serial_reader.available_ports()
-        self.serial_reader.serial_port = port
-        self.serial_reader.start()
+        if port in self.serial_reader.available_ports():
+            self.reset()
+            self.serial_reader.serial_port = port
+            self.serial_reader.start()
+            self.update()
 
     def open_telemetry_file(self):
         filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'), ('Other Telemetry Files', '*.*')])
         if filename is not None:
+            self.reset()
+            self.file_reader.stop()
             self.file_reader.filename = filename
             self.file_reader.start()
             self.update()
@@ -268,10 +290,10 @@ class TelemetryApp(Tk):
     def open_telemetry_test_file(self):
         filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'), ('Other Telemetry Files', '*.*')])
         if filename is not None:
+            self.test_serial_sender.stop()
             self.test_serial_sender.serial_port = "COM3"
             self.test_serial_sender.filename = filename
             self.test_serial_sender.start()
-
 
 
 if __name__ == "__main__":
