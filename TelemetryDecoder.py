@@ -195,16 +195,19 @@ class TelemetrySerialReader(TelemetryReader):
             port = serial.Serial(port=self.serial_port,
                                  baudrate=self.baud_rate,
                                  timeout=self.timeout)
+            print(f"Successfully opened port {self.serial_port}")
         except:
             print(f"Could not open serial port: {self.serial_port}")
             return
-        finally:
-            port.close()
 
-        while running.is_set():
+        while self.running.is_set():
             try:
-                telemetry_dict = self.decoder.decode_line(port.readline().decode("Ascii"))
+                read_bytes = port.readline().decode("Ascii")
+
+                telemetry_dict = self.decoder.decode_line(read_bytes)
+
                 if telemetry_dict is not None:
+                    print("Read dict successfully")
                     message_queue.put(telemetry_dict)
             except:
                 pass
@@ -312,6 +315,7 @@ class TelemetryTestSender(TelemetryReader):
         try:
             with open(self.filename, 'rt') as telemetry_file:
                 for line in telemetry_file:
+                    print(line)
                     if not running.is_set():
                         print("stopping")
                         return
@@ -320,6 +324,9 @@ class TelemetryTestSender(TelemetryReader):
 
                     buffer = bytes(line, "ascii")
                     port.write(buffer)
+
+                    if telemetry_dict is None:
+                        continue
 
                     if "time" in telemetry_dict:
                         timestamp = int(telemetry_dict["time"])
