@@ -136,7 +136,7 @@ class TelemetryStatus(Frame):
         self.last_packet_label = Label(self, text="Last Packet #", fg=FG_COLOR, bg=BG_COLOR, font="Arial 14 bold")
         self.last_packet_label.grid(column = 0, row = 2, sticky = (N,E,S,W))
 
-        self.last_timestamp = Label(self, textvariable=IntVar(master, 0, time_var_name), fg=FG_COLOR, bg=BG_COLOR, font="Arial 18")
+        self.last_timestamp = Label(self, textvariable=IntVar(master, 0, time_var_name), fg=FG_COLOR, bg=BG_COLOR, font="Courier 18 bold")
         self.last_timestamp.grid(column = 0, row = 3, sticky = (N,E,S,W), pady=(TelemetryStatus.SPACING,0))
 
         self.last_timestamp_label = Label(self, text="Last Timestamp", fg=FG_COLOR, bg=BG_COLOR, font="Arial 14 bold")

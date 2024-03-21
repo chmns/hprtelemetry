@@ -18,7 +18,7 @@ from matplotlib import style
 import queue
 style.use('dark_background')
 
-UPDATE_DELAY = 50 # ms between frames, 20 = 50fps
+UPDATE_DELAY = 100 # ms between frames
 
 NUM_COLS = 7
 NUM_ROWS = 3
@@ -71,6 +71,8 @@ class TelemetryApp(Tk):
                                "landing_latitude", "landing_longitude", "landing_time",
                                "launch_latitude", "launch_longitude", "launch_time",
                                "gnssSpeed", "gnssAlt", "gnssAngle", "gnssSatellites", "radioPacketNum"]
+
+        self.priority_vars = ["time", "name", "accelZ", "functionAlt", "fusionVel"]
 
         for var in self.telemetry_vars:
             self.setvar(var)
@@ -132,15 +134,30 @@ class TelemetryApp(Tk):
         self.acceleration.config(width = CELL_WIDTH)
         self.acceleration.grid_propagate(False)
 
-        self.altitude_graph = GraphFrame(self, "m", ALTITUDE_COLOR, None, "time", "accelX", "accelY", "accelZ")
+        self.altitude_graph = GraphFrame(self,
+                                         "m",
+                                         DoubleVar(self, 0.0, "time"),
+                                         DoubleVar(self, 0.0, "fusionAlt"),
+                                         None,
+                                         ALTITUDE_COLOR)
         self.altitude_graph.grid(row=0, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.altitude_graph.grid_propagate(True)
 
-        self.velocity_graph = GraphFrame(self, "m/s", VELOCITY_COLOR, None, "time", "intVel", "fusionVel", "gnssSpeed")
+        self.velocity_graph = GraphFrame(self,
+                                         "m/s",
+                                         DoubleVar(self, 0.0, "time"),
+                                         DoubleVar(self, 0.0, "fusionVel"),
+                                         None,
+                                         VELOCITY_COLOR)
         self.velocity_graph.grid(row=1, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.velocity_graph.grid_propagate(True)
 
-        self.acceleration_graph = GraphFrame(self, "m/s/s", ACCELERATION_COLOR, (-20.0, 80.0), "time", "highGx", "highGy", "highGz", "smoothHighGz")
+        self.acceleration_graph = GraphFrame(self,
+                                             "m/s/s",
+                                             DoubleVar(self, 0.0, "time"),
+                                             DoubleVar(self, 0.0, "accelZ"),
+                                             (-20.0, 80.0),
+                                             ACCELERATION_COLOR)
         self.acceleration_graph.grid(row=2, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.acceleration_graph.grid_propagate(True)
 
@@ -184,17 +201,32 @@ class TelemetryApp(Tk):
     def update(self):
         self.running.set(True)
 
+        message = None
+
         try:
-            while True:
-                self.message_callback(self.message_queue.get(block=False))
+            while True: # need to take in account the Decoder State here,
+                        # as non-flight messages only have single line which gets lost
+                message = self.message_queue.get(block=False)
+                self.priority_message_callback(message)
+
         except queue.Empty:
-            return
+            if message is not None:
+                self.message_callback(message)
+
         finally:
-            if self.file_reader.running.is_set() or \
-            self.serial_reader.running.is_set():
-                self.after(UPDATE_DELAY, self.update)
-            else:
-                self.running.set(False)
+            self.after(UPDATE_DELAY, self.update)
+
+    def priority_message_callback(self, message):
+        (telemetry, state) = message
+
+        if isinstance(telemetry, dict):
+            for priority_var in self.priority_vars:
+                if priority_var in telemetry.keys():
+                    self.setvar(priority_var, telemetry[priority_var])
+
+                self.altitude_graph.update()
+                self.acceleration_graph.update()
+                self.velocity_graph.update()
 
     def message_callback(self, message):
         """
@@ -218,11 +250,16 @@ class TelemetryApp(Tk):
         match state:
             case DecoderState.FLIGHT:
                 self.map_frame.update()
+                self.altitude_graph.render()
+                self.acceleration_graph.render()
+                self.velocity_graph.render()
             case DecoderState.LAUNCH:
+                print("Decoding LAUNCH state")
                 self.setvar("launch_time", telemetry["UTC_time"])
                 self.map_frame.set_launch_point(float(self.getvar("launch_latitude")),
                                                 float(self.getvar("launch_longitude")))
             case DecoderState.LAND:
+                print("Decoding LAND state")
                 self.setvar("landing_time", telemetry["UTC_time"])
                 self.map_frame.set_landing_point(float(self.getvar("landing_latitude")),
                                                  float(self.getvar("landing_longitude")))
