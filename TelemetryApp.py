@@ -47,6 +47,7 @@ x. fix file reading delay
 6. graph rendering
 7. secondary units (m/s -> kmh etc)
 8. prompt to write out to file when listening to serial port
+9. offline maps
 
 """
 
@@ -193,6 +194,7 @@ class TelemetryApp(Tk):
             self.serial_reader.stop()
             print("stopping file_reader")
             self.file_reader.stop()
+            print("stopped all")
             self.destroy()
             self.quit()
 
@@ -201,17 +203,36 @@ class TelemetryApp(Tk):
     def update(self):
         self.running.set(True)
 
-        message = None
+        telemetry_buffer = dict()
+        current_state = None
+        counter = 0
 
         try:
-            while True: # need to take in account the Decoder State here,
-                        # as non-flight messages only have single line which gets lost
+            while True:
                 message = self.message_queue.get(block=False)
-                self.priority_message_callback(message)
+
+                if message is not None:
+                    (telemetry, state) = message
+
+                    # it state changed (launch -> flight, flight -> landed etc)
+                    # then we must decode whole message
+                    if current_state is not state:
+                        self.message_callback(message)
+                        current_state = state
+                        counter = 0
+
+                    # else we just collate the new telemetry values and update the
+                    # most important ones:
+                    else:
+                        self.priority_message_callback(message)
+                        # combine dicts, updating with new values
+                        telemetry_buffer = telemetry_buffer | telemetry
+
+                        counter += 1
 
         except queue.Empty:
-            if message is not None:
-                self.message_callback(message)
+            if telemetry_buffer is not None:
+                self.message_callback((telemetry_buffer, current_state))
 
         finally:
             self.after(UPDATE_DELAY, self.update)
