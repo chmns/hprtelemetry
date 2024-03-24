@@ -173,21 +173,24 @@ class FlightTelemetryDecoder(object):
 
 class TelemetryReader(object):
     def __init__(self,
-                 queue: queue.Queue = None) -> None:
+                 queue: queue.Queue = None,
+                 name: str = "") -> None:
         # assert queue is not None
         self.queue = queue
         self.running = Event()
         self.decoder = FlightTelemetryDecoder()
         self.thread = None
+        self.name = name
 
     def start(self) -> None:
         self.running.set()
-        self.thread = Thread(target=self.__run__, args=(self.queue,self.running))
+        self.thread = Thread(target=self.__run__, args=(self.queue,self.running), name=self.name)
         self.thread.start()
 
     def stop(self) -> None:
         self.running.clear()
         if self.thread is not None:
+            print(f"Stopping thread: {self.thread}")
             self.thread.join()
 
     def __run__(self):
