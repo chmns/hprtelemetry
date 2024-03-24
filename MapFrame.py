@@ -55,6 +55,9 @@ class MapFrame(Frame):
         self.landing_marker = None
         self.launch_marker = None
 
+    def set_offline_database(self, filename):
+        print(f"Setting offline map file to: {filename}")
+
     def __init__(self, master, lat_var_name, lon_var_name, alt_var_name):
         Frame.__init__(self, master, bg="blue")
 
