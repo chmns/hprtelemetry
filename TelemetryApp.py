@@ -42,9 +42,9 @@ todo:
 x. add preflight state decoding
 x. add postflight state decoding
 x. fix file reading delay
-4. low-speed map updating with markers
+x. low-speed map updating with markers
 5. status display (listening to port, reading file etc)
-6. graph rendering
+x. graph rendering
 7. secondary units (m/s -> kmh etc)
 8. prompt to write out to file when listening to serial port
 9. offline maps
@@ -66,13 +66,19 @@ class TelemetryApp(Tk):
         self.message_queue = queue.Queue()
         self.running = TRUE
 
-        self.telemetry_vars = ["time", "accelX", "accelY", "accelZ", "gyroZ" "highGx", "highGy", "highGz",
+        self.telemetry_vars = ["name",
+                               "time", "accelX", "accelY", "accelZ", "gyroZ" "highGx", "highGy", "highGz",
                                "smoothHighGz", "offVert", "intVel", "intAlt", "fusionVel", "fusionAlt",
                                "fltEvents", "radioCode", "baroAlt", "altMoveAvg", "gnssLat", "gnssLon",
                                "landing_latitude", "landing_longitude", "landing_time",
                                "launch_latitude", "launch_longitude", "launch_time",
                                "gnssSpeed", "gnssAlt", "gnssAngle", "gnssSatellites", "radioPacketNum"]
 
+        """
+        priority variables are always updated when a new message comes in
+        (vars not in this list overwrite the last known value and only update at
+        the selected frame rate)
+        """
         self.priority_vars = ["time", "name", "accelZ", "functionAlt", "fusionVel"]
 
         for var in self.telemetry_vars:
@@ -81,7 +87,9 @@ class TelemetryApp(Tk):
         self.running = BooleanVar(self, False, "running")
 
         self.serial_reader = TelemetrySerialReader(self.message_queue)
+        self.serial_reader.name = "serial_reader"
         self.file_reader = TelemetryFileReader(self.message_queue)
+        self.file_reader.name = "file_reader"
 
         # for testing only:
         self.test_serial_sender = TelemetryTestSender()
@@ -188,13 +196,9 @@ class TelemetryApp(Tk):
         self.focus()
 
         def on_closing():
-            print("stopping test_serial_sender")
             self.test_serial_sender.stop()
-            print("stopping serial_reader")
             self.serial_reader.stop()
-            print("stopping file_reader")
             self.file_reader.stop()
-            print("stopped all")
             self.destroy()
             self.quit()
 
@@ -203,7 +207,7 @@ class TelemetryApp(Tk):
     def update(self):
         self.running.set(True)
 
-        telemetry_buffer = dict()
+        telemetry_buffer = {}
         current_state = None
         counter = 0
 
@@ -231,11 +235,14 @@ class TelemetryApp(Tk):
                         counter += 1
 
         except queue.Empty:
-            if telemetry_buffer is not None:
+            if telemetry_buffer is not {}:
                 self.message_callback((telemetry_buffer, current_state))
 
         finally:
-            self.after(UPDATE_DELAY, self.update)
+            if self.file_reader.running.is_set() or self.serial_reader.running.is_set():
+                self.after(UPDATE_DELAY, self.update)
+            else:
+                print("Finished reading")
 
     def priority_message_callback(self, message):
         (telemetry, state) = message
@@ -275,12 +282,10 @@ class TelemetryApp(Tk):
                 self.acceleration_graph.render()
                 self.velocity_graph.render()
             case DecoderState.LAUNCH:
-                print("Decoding LAUNCH state")
                 self.setvar("launch_time", telemetry["UTC_time"])
                 self.map_frame.set_launch_point(float(self.getvar("launch_latitude")),
                                                 float(self.getvar("launch_longitude")))
             case DecoderState.LAND:
-                print("Decoding LAND state")
                 self.setvar("landing_time", telemetry["UTC_time"])
                 self.map_frame.set_landing_point(float(self.getvar("landing_latitude")),
                                                  float(self.getvar("landing_longitude")))
