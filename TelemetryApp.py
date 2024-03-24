@@ -109,9 +109,14 @@ class TelemetryApp(Tk):
         self.file_menu.add_command(label="Reset", command=self.reset)
         self.file_menu.add_command(label='Exit', command=self.destroy)
 
+        self.map_menu = Menu(self.menubar)
+        self.map_menu.add_command(label="Load offline maps", command=self.load_map_database)
+        self.map_menu.add_checkbutton(label="Offline Only", command=self.toggle_offline_maps)
+
         self.serial_menu = Menu(self.menubar)
         self.menubar.add_cascade(label="File", menu=self.file_menu)
         self.menubar.add_cascade(label="Serial", menu=self.serial_menu)
+        self.menubar.add_cascade(label="Map", menu=self.map_menu)
 
         self.update_serial_menu()
 
@@ -357,6 +362,16 @@ class TelemetryApp(Tk):
             self.test_serial_sender.serial_port = "COM3"
             self.test_serial_sender.filename = filename
             self.test_serial_sender.start()
+
+    def load_map_database(self):
+        filename = askopenfilename(filetypes =[('Map Database', '*.db'), ('Other Files', '*.*')])
+        if filename is not None:
+            print(f"Attempting to load map file: {filename}")
+            self.map_frame
+        pass
+
+    def toggle_offline_maps(self, enable):
+        print(f"{enable = }")
 
 
 if __name__ == "__main__":
