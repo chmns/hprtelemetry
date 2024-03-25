@@ -385,10 +385,7 @@ class TelemetryApp(Tk):
             self.download_overlay.grid(row=0, column=0, rowspan=3, columnspan=7, sticky=(N,E,S,W))
 
             ok = messagebox.askokcancel("Download current map",
-                                        """This will currently displayed location at all zoom levels.
-                                        Depending on internet connection this require take several minutes.\n
-                                        During download the app will be unresponsive.\n
-                                        Are you sure you wish to continue?""")
+                                        "This will currently displayed location at all zoom levels. Depending on internet connection this require take several minutes.\n\nDuring download the app will be unresponsive.\n\nAre you sure you wish to continue?")
 
             if not ok:
                 return
