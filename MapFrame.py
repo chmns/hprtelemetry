@@ -5,9 +5,10 @@ import os # for maps db
 
 DEFAULT_LAT = 44.7916443
 DEFAULT_LON = -0.5995578
-DEFAULT_ZOOM = 14
-ZOOM_RANGE = 2 # range of zoom levels to
+OFFLINE_ZOOM_MIN = 0
+OFFLINE_ZOOM_MAX = 14
 MIN_PATH_POINTS = 2
+DEFAULT_ZOOM = 10
 
 START_TEXT = "Start"
 LAUNCH_TEXT = "Landing"
@@ -64,20 +65,21 @@ class MapFrame(Frame):
         current_zoom = self.map_view.zoom
         top_left_position = osm_to_decimal(*self.map_view.upper_left_tile_pos, current_zoom)
         bottom_right_position = osm_to_decimal(*self.map_view.lower_right_tile_pos, current_zoom)
-        zoom_min = 0
-        zoom_max = 14
 
         print(f"Attempting to download region bound by: {top_left_position} and {bottom_right_position}")
         print(f"Zoom level: {self.map_view.zoom}")
 
         self.map_view.set_position(*top_left_position)
 
-        self.downloader.save_offline_tiles(top_left_position,
-                                           bottom_right_position,
-                                           zoom_min,
-                                           zoom_max)
-
-        pass
+        try:
+            self.downloader.save_offline_tiles(top_left_position,
+                                               bottom_right_position,
+                                               OFFLINE_ZOOM_MIN,
+                                               OFFLINE_ZOOM_MAX)
+        except Exception:
+            print("Error downloading offline maps")
+        else:
+            self.map_view.set_position(*top_left_position)
 
     def set_only_offline_maps(self, only_offline):
         self.map_view.use_database_only = only_offline
