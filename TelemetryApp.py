@@ -16,6 +16,7 @@ from tkinter.filedialog import askopenfilename
 from TelemetryDecoder import *
 from matplotlib import style
 import queue
+from pathlib import Path
 style.use('dark_background')
 
 UPDATE_DELAY = 100 # ms between frames
@@ -110,8 +111,12 @@ class TelemetryApp(Tk):
         self.file_menu.add_command(label='Exit', command=self.destroy)
 
         self.map_menu = Menu(self.menubar)
-        self.map_menu.add_command(label="Load offline maps", command=self.load_map_database)
-        self.map_menu.add_checkbutton(label="Offline Only", command=self.toggle_offline_maps)
+        self.map_menu.add_command(label="Set offline map path", command=self.set_offline_path)
+        self.online_maps_enabled = BooleanVar(self, False, "online_maps")
+
+        self.map_menu.add_checkbutton(label="Enable map downloading",
+                                      command=self.toggle_online_maps,
+                                      variable=self.online_maps_enabled)
 
         self.serial_menu = Menu(self.menubar)
         self.menubar.add_cascade(label="File", menu=self.file_menu)
@@ -175,7 +180,11 @@ class TelemetryApp(Tk):
         self.acceleration_graph.grid(row=2, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.acceleration_graph.grid_propagate(True)
 
-        self.map_frame = MapFrame(self, "gnssLat", "gnssLon", "gnssAlt")
+        self.map_frame = MapFrame(self,
+                                  DoubleVar(self, 0.0, "gnssLat"),
+                                  DoubleVar(self, 0.0, "gnssLon"),
+                                  DoubleVar(self, 0.0, "gnssAlt"),
+                                  self.online_maps_enabled)
         self.map_frame.grid(row=0, column=4, rowspan=2, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.map_frame.grid_propagate(False)
 
@@ -200,14 +209,16 @@ class TelemetryApp(Tk):
         self.bind('t', lambda _: self.open_telemetry_test_file())
         self.focus()
 
-        def on_closing():
-            self.test_serial_sender.stop()
-            self.serial_reader.stop()
-            self.file_reader.stop()
-            self.destroy()
-            self.quit()
+        self.offline_map_path = str(Path.home() / "Documents")
 
-        self.protocol("WM_DELETE_WINDOW", on_closing)
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        self.test_serial_sender.stop()
+        self.serial_reader.stop()
+        self.file_reader.stop()
+        self.destroy()
+        self.quit()
 
     def update(self):
         self.running.set(True)
@@ -348,7 +359,7 @@ class TelemetryApp(Tk):
 
     def open_telemetry_file(self):
         filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'), ('Other Telemetry Files', '*.*')])
-        if filename is not None:
+        if filename != "":
             self.reset()
             self.file_reader.stop()
             self.file_reader.filename = filename
@@ -357,21 +368,24 @@ class TelemetryApp(Tk):
 
     def open_telemetry_test_file(self):
         filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'), ('Other Telemetry Files', '*.*')])
-        if filename is not None:
+        if filename != "":
             self.test_serial_sender.stop()
             self.test_serial_sender.serial_port = "COM3"
             self.test_serial_sender.filename = filename
             self.test_serial_sender.start()
 
-    def load_map_database(self):
+    def set_offline_path(self):
         filename = askopenfilename(filetypes =[('Map Database', '*.db'), ('Other Files', '*.*')])
         if filename is not None:
             print(f"Attempting to load map file: {filename}")
-            self.map_frame
+            self.map_frame.load_offline_database(filename)
         pass
 
-    def toggle_offline_maps(self, enable):
-        print(f"{enable = }")
+    def toggle_online_maps(self):
+        online_maps = self.online_maps_enabled.get()
+        print(f"Setting online maps to: {online_maps}")
+        self.map_frame.set_online_maps(online_maps)
+
 
 
 if __name__ == "__main__":
