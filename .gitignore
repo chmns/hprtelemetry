@@ -161,4 +161,5 @@ cython_debug/
 #.idea/
 
 # Offline map database:
-.db
+*.db
+*.db-journal
