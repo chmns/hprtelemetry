@@ -13,6 +13,7 @@ from GraphFrame import GraphFrame
 from TelemetryControls import *
 from MapFrame import *
 from tkinter.filedialog import askopenfilename
+from tkinter import messagebox
 from TelemetryDecoder import *
 from matplotlib import style
 import queue
@@ -111,6 +112,7 @@ class TelemetryApp(Tk):
         self.file_menu.add_command(label='Exit', command=self.destroy)
 
         self.map_menu = Menu(self.menubar)
+        self.map_menu.add_command(label="Download current map", command=self.download_current_map)
         self.map_menu.add_command(label="Set offline map path", command=self.set_offline_path)
         self.offline_maps_only = BooleanVar(self, True, "offline_maps_only")
 
@@ -373,6 +375,17 @@ class TelemetryApp(Tk):
             self.test_serial_sender.serial_port = "COM3"
             self.test_serial_sender.filename = filename
             self.test_serial_sender.start()
+
+    def download_current_map(self):
+        try:
+            self.map_frame.download_current_map()
+        except Exception:
+            messagebox.showerror("Downloading Error",
+                                 "Unable to download map, check internet connection")
+            return
+
+        messagebox.showinfo("Downloading Successful",
+                            f"Saved current location to database: {self.map_frame.database_path}")
 
     def set_offline_path(self):
         filename = askopenfilename(filetypes =[('Map Database', '*.db'), ('Other Files', '*.*')])

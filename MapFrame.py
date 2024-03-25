@@ -1,16 +1,19 @@
 from tkinter import *
-import tkintermapview
+from tkintermapview import TkinterMapView, OfflineLoader
+from tkintermapview.utility_functions import osm_to_decimal
 import os # for maps db
 
 DEFAULT_LAT = 44.7916443
 DEFAULT_LON = -0.5995578
 DEFAULT_ZOOM = 14
+ZOOM_RANGE = 2 # range of zoom levels to
 MIN_PATH_POINTS = 2
 
 START_TEXT = "Start"
 LAUNCH_TEXT = "Landing"
 LANDING_TEXT = "Launch"
 DEFAULT_DATABASE_NAME = "offline_tiles.db"
+TILE_SERVER_URL = "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
 
 class MapFrame(Frame):
 
@@ -56,6 +59,26 @@ class MapFrame(Frame):
         self.landing_marker = None
         self.launch_marker = None
 
+    def download_current_map(self):
+
+        current_zoom = self.map_view.zoom
+        top_left_position = osm_to_decimal(*self.map_view.upper_left_tile_pos, current_zoom)
+        bottom_right_position = osm_to_decimal(*self.map_view.lower_right_tile_pos, current_zoom)
+        zoom_min = 0
+        zoom_max = 14
+
+        print(f"Attempting to download region bound by: {top_left_position} and {bottom_right_position}")
+        print(f"Zoom level: {self.map_view.zoom}")
+
+        self.map_view.set_position(*top_left_position)
+
+        self.downloader.save_offline_tiles(top_left_position,
+                                           bottom_right_position,
+                                           zoom_min,
+                                           zoom_max)
+
+        pass
+
     def set_only_offline_maps(self, only_offline):
         self.map_view.use_database_only = only_offline
 
@@ -68,7 +91,7 @@ class MapFrame(Frame):
     def load_offline_database(self, database_path):
         print(f"Setting offline map file to: {database_path}")
 
-        self.map_view = tkintermapview.TkinterMapView(self, database_path = database_path)
+        self.map_view = TkinterMapView(self, database_path = database_path)
         self.map_view.grid(row=0, column=0, sticky=(N,E,S,W))
         self.map_view.grid_propagate(True)
 
@@ -83,14 +106,18 @@ class MapFrame(Frame):
         self.rowconfigure(0, weight=1)
         self.rowconfigure(1, weight=0)
 
-        print(f"online maps downloading enabled?: {offline_maps_only_var.get()}")
         script_directory = os.path.dirname(os.path.abspath(__file__))
-        database_path = os.path.join(script_directory, DEFAULT_DATABASE_NAME)
-        print(f"Using offline maps database at: {database_path}")
+        self.database_path = os.path.join(script_directory, DEFAULT_DATABASE_NAME)
 
-        self.map_view = tkintermapview.TkinterMapView(self,
-                                                      database_path=database_path,
-                                                      use_database_only=offline_maps_only_var.get())
+        self.downloader = OfflineLoader(path=self.database_path,
+                                        tile_server=TILE_SERVER_URL)
+
+        print(f"Online maps downloading enabled?: {offline_maps_only_var.get()}")
+        print(f"Using offline maps database at: {self.database_path}")
+
+        self.map_view = TkinterMapView(self,
+                                       database_path=self.database_path,
+                                       use_database_only=offline_maps_only_var.get())
 
         self.map_view.grid(row=0, column=0, sticky=(N,E,S,W))
         self.map_view.grid_propagate(True)
