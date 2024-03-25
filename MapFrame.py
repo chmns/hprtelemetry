@@ -10,7 +10,7 @@ MIN_PATH_POINTS = 2
 START_TEXT = "Start"
 LAUNCH_TEXT = "Landing"
 LANDING_TEXT = "Launch"
-
+DEFAULT_DATABASE_NAME = "offline_tiles.db"
 
 class MapFrame(Frame):
 
@@ -56,11 +56,11 @@ class MapFrame(Frame):
         self.landing_marker = None
         self.launch_marker = None
 
-    def set_online_maps(self, enabled):
-        self.map_view.use_database_only = not enabled
+    def set_only_offline_maps(self, only_offline):
+        self.map_view.use_database_only = only_offline
 
         # hack to get maps to start loading when online is re-enabled
-        if enabled:
+        if not only_offline:
             current_zoom = self.map_view.zoom
             self.map_view.set_zoom(current_zoom+1)
             self.map_view.set_zoom(current_zoom)
@@ -72,7 +72,7 @@ class MapFrame(Frame):
         self.map_view.grid(row=0, column=0, sticky=(N,E,S,W))
         self.map_view.grid_propagate(True)
 
-    def __init__(self, master, lat_var, lon_var, alt_var, online_maps_var):
+    def __init__(self, master, lat_var, lon_var, alt_var, offline_maps_only_var):
         Frame.__init__(self, master, bg="blue")
 
         self.lat_var = lat_var
@@ -83,13 +83,15 @@ class MapFrame(Frame):
         self.rowconfigure(0, weight=1)
         self.rowconfigure(1, weight=0)
 
-        print(f"online maps downloading enabled?: {not online_maps_var.get()}")
+        print(f"online maps downloading enabled?: {offline_maps_only_var.get()}")
         script_directory = os.path.dirname(os.path.abspath(__file__))
-        database_path = os.path.join(script_directory, "offline_tiles.db")
+        database_path = os.path.join(script_directory, DEFAULT_DATABASE_NAME)
+        print(f"Using offline maps database at: {database_path}")
 
         self.map_view = tkintermapview.TkinterMapView(self,
                                                       database_path=database_path,
-                                                      use_database_only=not online_maps_var.get())
+                                                      use_database_only=offline_maps_only_var.get())
+
         self.map_view.grid(row=0, column=0, sticky=(N,E,S,W))
         self.map_view.grid_propagate(True)
 
