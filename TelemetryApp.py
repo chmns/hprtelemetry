@@ -205,6 +205,8 @@ class TelemetryApp(Tk):
         self.controls.config(width = CELL_WIDTH)
         self.controls.grid_propagate(False)
 
+        self.download_overlay = None
+
         self.bind('q', lambda _: self.quit())
         self.bind('s', lambda _: print(self.serial_reader.available_ports()))
         self.bind('r', lambda _: self.reset())
@@ -377,15 +379,35 @@ class TelemetryApp(Tk):
             self.test_serial_sender.start()
 
     def download_current_map(self):
+
         try:
+            self.download_overlay = Frame(self, background="#0f0f0f")
+            self.download_overlay.grid(row=0, column=0, rowspan=3, columnspan=7, sticky=(N,E,S,W))
+
+            ok = messagebox.askokcancel("Download current map",
+                                        """This will currently displayed location at all zoom levels.
+                                        Depending on internet connection this require take several minutes.\n
+                                        During download the app will be unresponsive.\n
+                                        Are you sure you wish to continue?""")
+
+            if not ok:
+                return
+
             self.map_frame.download_current_map()
+
         except Exception:
             messagebox.showerror("Downloading Error",
                                  "Unable to download map, check internet connection")
             return
 
-        messagebox.showinfo("Downloading Successful",
-                            f"Saved current location to database: {self.map_frame.database_path}")
+        else:
+            messagebox.showinfo("Downloading Successful",
+                                f"Saved current location to database: {self.map_frame.database_path}")
+
+        finally:
+            self.download_overlay.destroy()
+            self.download_overlay = None
+
 
     def set_offline_path(self):
         filename = askopenfilename(filetypes =[('Map Database', '*.db'), ('Other Files', '*.*')])
