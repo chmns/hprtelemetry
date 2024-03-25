@@ -112,11 +112,11 @@ class TelemetryApp(Tk):
 
         self.map_menu = Menu(self.menubar)
         self.map_menu.add_command(label="Set offline map path", command=self.set_offline_path)
-        self.online_maps_enabled = BooleanVar(self, False, "online_maps")
+        self.offline_maps_only = BooleanVar(self, True, "offline_maps_only")
 
-        self.map_menu.add_checkbutton(label="Enable map downloading",
-                                      command=self.toggle_online_maps,
-                                      variable=self.online_maps_enabled)
+        self.map_menu.add_checkbutton(label="Only use offline maps",
+                                      command=self.toggle_offline_maps_only,
+                                      variable=self.offline_maps_only)
 
         self.serial_menu = Menu(self.menubar)
         self.menubar.add_cascade(label="File", menu=self.file_menu)
@@ -184,7 +184,7 @@ class TelemetryApp(Tk):
                                   DoubleVar(self, 0.0, "gnssLat"),
                                   DoubleVar(self, 0.0, "gnssLon"),
                                   DoubleVar(self, 0.0, "gnssAlt"),
-                                  self.online_maps_enabled)
+                                  self.offline_maps_only)
         self.map_frame.grid(row=0, column=4, rowspan=2, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.map_frame.grid_propagate(False)
 
@@ -381,10 +381,10 @@ class TelemetryApp(Tk):
             self.map_frame.load_offline_database(filename)
         pass
 
-    def toggle_online_maps(self):
-        online_maps = self.online_maps_enabled.get()
-        print(f"Setting online maps to: {online_maps}")
-        self.map_frame.set_online_maps(online_maps)
+    def toggle_offline_maps_only(self):
+        offline_maps_only = self.offline_maps_only.get()
+        print(f"Setting online maps to: {offline_maps_only}")
+        self.map_frame.set_only_offline_maps(offline_maps_only)
 
 
 
