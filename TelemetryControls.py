@@ -161,17 +161,3 @@ class TelemetryControls(Frame):
         self.grid_rowconfigure(4, weight=1)
         self.grid_rowconfigure(6, weight=1)
         self.grid_columnconfigure(0, weight=1)
-
-        # self.status_number = Label(self, text="0", fg=FG_COLOR, bg=BG_COLOR, font="Arial 72")
-        # self.status_number.grid(column = 0, row = 1, sticky = (N,E,S,W), pady=(TelemetryStatus.SPACING,0))
-
-        self.file_button = Button(self, text="Load File", height=2, command=lambda: print("Load telemetry file"))
-        self.file_button.grid(column = 0, row = 1)
-
-        self.serial_button = Button(self, text="Listen Serial", height=2, command=lambda: print(f"Listen to: {current_serial_port_var.get()}"))
-        self.serial_button.grid(column = 0, row = 3)
-
-        # ports = ["COM1", "COM2", "COM3", "COM4", "COM5"]
-        # self.serial_port_selection = OptionMenu(self, current_serial_port_var, *ports)
-        # self.serial_port_selection.grid(column = 0, row = 5)
-

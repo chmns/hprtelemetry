@@ -36,20 +36,23 @@ PREFLIGHT_COORDS_PREFIX = "Pre: "
 CURRENT_COORDS_PREFIX = "Curr:"
 POSTFLIGHT_COORDS_PREFIX = "Post:"
 
-CELL_WIDTH = 280
+CELL_WIDTH = 220
 
 """
 todo:
 
-x. add preflight state decoding
-x. add postflight state decoding
-x. fix file reading delay
-x. low-speed map updating with markers
-5. status display (listening to port, reading file etc)
-x. graph rendering
-7. secondary units (m/s -> kmh etc)
-8. prompt to write out to file when listening to serial port
-9. offline maps
+x.  add preflight state decoding
+x.  add postflight state decoding
+x.  fix file reading delay
+x.  low-speed map updating with markers
+5.  status display (listening to port, reading file etc)
+x.  graph rendering
+7.  secondary units (m/s -> kmh etc)
+8.  prompt to write out to file when listening to serial port
+x.  offline maps
+10. final value display (in addition to rolling max/min)
+11. add online/offline toggle to map itself
+12. add download current area to map itself
 
 """
 
