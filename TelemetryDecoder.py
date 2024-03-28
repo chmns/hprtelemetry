@@ -207,13 +207,18 @@ class TelemetrySerialReader(TelemetryReader):
         self.serial_port = serial_port
         self.baud_rate = baud_rate
         self.timeout = timeout
+        self.filename = None
         TelemetryReader.__init__(self, queue)
 
-    def __run__(self, message_queue, running):
+    def __run__(self,
+                message_queue: queue.Queue,
+                running: bool):
+
         assert self.serial_port is not None
         assert self.serial_port != ""
 
         port = None
+        file = None
 
         try:
             port = serial.Serial(port=self.serial_port,
@@ -226,17 +231,35 @@ class TelemetrySerialReader(TelemetryReader):
 
         while self.running.is_set():
             try:
-                read_bytes = port.readline().decode("Ascii")
-
-                telemetry_dict = self.decoder.decode_line(read_bytes)
-
-                if telemetry_dict is not None:
-                    message_queue.put((telemetry_dict, self.decoder.state))
+                line = port.readline().decode("Ascii")
             except:
-                pass
+                print(f"Error reading from port: {self.serial_port}")
+
+            if file is None and self.filename is not None: # file isn't open but user has added backup file
+                try:
+                    file = open(self.filename, 'a') # open with 'a' mode to append to existing file so we dont over-write
+                except:
+                    print(f"Couldn't open file {self.filename}")
+                    file = None
+
+            if file is not None:
+                try:
+                    file.write("\n") # ensure we start on a new line
+                except:
+                    print(f"Couldn't write line to file {self.filename}")
+
+            telemetry_dict = self.decoder.decode_line(line)
+
+            if telemetry_dict is not None:
+                message_queue.put((telemetry_dict, self.decoder.state))
+
+        if file is not None:
+            file.close()
+
+        if port is not None:
+            port.close()
 
         running.clear()
-        port.close()
 
 
     def available_ports(self) -> list:

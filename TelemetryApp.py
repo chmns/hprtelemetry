@@ -12,7 +12,7 @@ from tkinter import *
 from GraphFrame import GraphFrame
 from TelemetryControls import *
 from MapFrame import *
-from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import askopenfilename, asksaveasfilename
 from tkinter import messagebox
 from TelemetryDecoder import *
 from matplotlib import style
@@ -49,6 +49,10 @@ x.  low-speed map updating with markers
 x.  graph rendering
 7.  secondary units (m/s -> kmh etc)
 8.  prompt to write out to file when listening to serial port
+- when clicking on serial port, open file dialog
+- user choose where to save file
+- telemetry serial reader opens this file and appends new data to it when new line received
+- when closing serial port close file
 x.  offline maps
 10. final value display (in addition to rolling max/min)
 11. add online/offline toggle to map itself
@@ -336,7 +340,6 @@ class TelemetryApp(Tk):
         self.velocity_graph.reset()
         self.acceleration_graph.reset()
 
-
     def update_serial_menu(self) -> None:
         """
         scans for serial ports and updates menu to show detected ports
@@ -359,6 +362,19 @@ class TelemetryApp(Tk):
     def listen_to_port(self, port):
         print(f"Attempting to listen to {port}")
         if port in self.serial_reader.available_ports():
+            yesnocancel = messagebox.askyesnocancel(f"Listen on serial port {port}",
+                                                    "Do you want to save a backup of this telemetry to disk?")
+
+            if yesnocancel is None:
+                return
+
+            if yesnocancel:
+                filename = asksaveasfilename(filetypes =[('Telemetry Text Files', '*.csv')])
+                print(f"Saving telemetry from serial port {port} to file {filename}")
+                self.serial_reader.filename = filename
+            else:
+                print(f"Not saving telemetry from serial port {port} to file")
+
             self.reset()
             self.serial_reader.serial_port = port
             self.serial_reader.start()
@@ -418,7 +434,6 @@ class TelemetryApp(Tk):
 
     def toggle_offline_maps_only(self):
         offline_maps_only = self.offline_maps_only.get()
-        print(f"Setting online maps to: {offline_maps_only}")
         self.map_frame.set_only_offline_maps(offline_maps_only)
 
 
