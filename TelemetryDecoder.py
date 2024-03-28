@@ -238,13 +238,16 @@ class TelemetrySerialReader(TelemetryReader):
             if file is None and self.filename is not None: # file isn't open but user has added backup file
                 try:
                     file = open(self.filename, 'a') # open with 'a' mode to append to existing file so we dont over-write
+                    file.write("\n") # ensure we start on a new line
                 except:
                     print(f"Couldn't open file {self.filename}")
                     file = None
+                else:
+                    print(f"Open file for writing backup to: {self.filename}")
 
             if file is not None:
                 try:
-                    file.write("\n") # ensure we start on a new line
+                    file.write(line)
                 except:
                     print(f"Couldn't write line to file {self.filename}")
 
