@@ -104,7 +104,8 @@ class TelemetryApp(Tk):
         self.test_serial_sender = TelemetryTestSender()
 
         self.title("HPR Telemetry Viewer")
-        self.config(background="#222222")
+        self.config(background="green")
+        # self.config(background="#222222")
 
         w, h = self.winfo_screenwidth(), self.winfo_screenheight()
         self.geometry("%dx%d+0+0" % (w, h))
@@ -136,81 +137,98 @@ class TelemetryApp(Tk):
 
         current_serial_port = StringVar(self, name="current_serial", value=None)
 
-        # fixed column widths
-        for col in range (NUM_COLS):
-            self.columnconfigure(col, weight=0)
+        # # fixed column widths
+        # for col in range (NUM_COLS):
+        #     self.columnconfigure(col, weight=0)
 
-        # single column expands with width:
-        self.columnconfigure(1, weight=1)
+        # # single column expands with width:
+        # self.columnconfigure(1, weight=1)
 
-        # fixed row heights
-        for row in range(NUM_ROWS):
-            self.rowconfigure(row, weight=1)
+        # # fixed row heights
+        # for row in range(NUM_ROWS):
+        #     self.rowconfigure(row, weight=1)
 
-        self.altitude = ReadOut(self, "Altitude", "fusionAlt", "m", "ft", ReadOut.metresToFeet, ALTITUDE_COLOR)
-        self.altitude.grid(row=0, column=0, padx=PADX, pady=PADY, sticky=(N,S))
+        self.window = PanedWindow(orient="horizontal")
+        self.readouts = Frame(self.window, width=CELL_WIDTH, background=BG_COLOR)
+        self.graphs = Frame(self.window, width=400, background="black")
+        self.map_column = PanedWindow(self.window, orient="vertical")
+
+        self.window.add(self.readouts)
+        self.window.add(self.graphs)
+        self.window.add(self.map_column)
+
+        self.window.pack(fill="both", expand=True)
+
+        self.altitude = ReadOut(self.readouts, "Altitude", "fusionAlt", "m", "ft", ReadOut.metresToFeet, ALTITUDE_COLOR)
+        self.altitude.grid(row=0, column=0, padx=PADX, pady=PADY, sticky=(N,E,W,S))
         self.altitude.config(width = CELL_WIDTH)
-        self.altitude.grid_propagate(False)
 
-        self.velocity = ReadOut(self, "Velocity", "fusionVel", "m/s", "mi/h", ReadOut.msToMph, VELOCITY_COLOR)
+        self.velocity = ReadOut(self.readouts, "Velocity", "fusionVel", "m/s", "mi/h", ReadOut.msToMph, VELOCITY_COLOR)
         self.velocity.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,S))
         self.velocity.config(width = CELL_WIDTH)
-        self.velocity.grid_propagate(False)
 
-        self.acceleration = ReadOut(self, "Acceleration", "accelZ", "m/s/s", "G", ReadOut.mssToG, ACCELERATION_COLOR)
+        self.acceleration = ReadOut(self.readouts, "Acceleration", "accelZ", "m/s/s", "G", ReadOut.mssToG, ACCELERATION_COLOR)
         self.acceleration.grid(row=2, column=0, padx=PADX, pady=PADY, sticky=(N,S))
         self.acceleration.config(width = CELL_WIDTH)
-        self.acceleration.grid_propagate(False)
 
-        self.altitude_graph = GraphFrame(self,
+        self.readouts.columnconfigure(0, weight=1)
+        for i in range (NUM_ROWS):
+            self.readouts.rowconfigure(i, weight=1)
+
+        self.altitude_graph = GraphFrame(self.graphs,
                                          "m",
                                          DoubleVar(self, 0.0, "time"),
                                          DoubleVar(self, 0.0, "fusionAlt"),
                                          None,
                                          ALTITUDE_COLOR)
-        self.altitude_graph.grid(row=0, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.altitude_graph.grid_propagate(True)
+        self.altitude_graph.grid(row=0, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
-        self.velocity_graph = GraphFrame(self,
+        self.velocity_graph = GraphFrame(self.graphs,
                                          "m/s",
                                          DoubleVar(self, 0.0, "time"),
                                          DoubleVar(self, 0.0, "fusionVel"),
                                          None,
                                          VELOCITY_COLOR)
-        self.velocity_graph.grid(row=1, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.velocity_graph.grid_propagate(True)
+        self.velocity_graph.grid(row=1, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
-        self.acceleration_graph = GraphFrame(self,
+        self.acceleration_graph = GraphFrame(self.graphs,
                                              "m/s/s",
                                              DoubleVar(self, 0.0, "time"),
                                              DoubleVar(self, 0.0, "accelZ"),
                                              (-20.0, 80.0),
                                              ACCELERATION_COLOR)
-        self.acceleration_graph.grid(row=2, column=1, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.acceleration_graph.grid_propagate(True)
+        self.acceleration_graph.grid(row=2, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.graphs.columnconfigure(0, weight=1)
 
-        self.map_frame = MapFrame(self,
+        for i in range (NUM_ROWS):
+            self.graphs.rowconfigure(i, weight=1)
+
+
+        self.map_frame = MapFrame(self.map_column,
                                   DoubleVar(self, 0.0, "gnssLat"),
                                   DoubleVar(self, 0.0, "gnssLon"),
                                   DoubleVar(self, 0.0, "gnssAlt"),
                                   self.offline_maps_only)
-        self.map_frame.grid(row=0, column=4, rowspan=2, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.map_frame.grid_propagate(False)
+        self.map_frame.grid(row=0, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
-        self.tilt_spin = TiltAndSpin(self, "offVert", "gyroZ")
-        self.tilt_spin.grid(row=2, column=4, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.tilt_spin = TiltAndSpin(self.map_column, "offVert", "gyroZ")
+        self.tilt_spin.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.tilt_spin.config(width = CELL_WIDTH)
-        self.tilt_spin.grid_propagate(False)
 
-        self.status = TelemetryStatus(self, "name", "radioPacketNum", "time", "gnssSatellites")
-        self.status.grid(row=2, column=5, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.status = TelemetryStatus(self.map_column, "name", "radioPacketNum", "time", "gnssSatellites")
+        self.status.grid(row=1, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.status.config(width = CELL_WIDTH)
-        self.status.grid_propagate(False)
 
-        self.controls = TelemetryControls(self, self.serial_reader)
-        self.controls.grid(row=2, column=6, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.controls = TelemetryControls(self.map_column, self.serial_reader)
+        self.controls.grid(row=1, column=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.controls.config(width = CELL_WIDTH)
-        self.controls.grid_propagate(False)
+        self.map_column.rowconfigure(0, weight=2)
+        self.map_column.rowconfigure(1, weight=1)
+
+
+        for i in range (3):
+            self.graphs.columnconfigure(i, weight=1)
+
 
         self.download_overlay = None
 
