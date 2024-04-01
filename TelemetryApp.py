@@ -149,6 +149,9 @@ class TelemetryApp(Tk):
 
         self.window.pack(fill="both", expand=True)
 
+        self.window.sash_place(0, CELL_WIDTH, 0)
+        self.window.sash_place(1, CELL_WIDTH, 0)
+
         self.altitude = ReadOut(self.readouts, "Altitude", "fusionAlt", "m", "ft", ReadOut.metresToFeet, ALTITUDE_COLOR)
         self.altitude.grid(row=0, column=0, padx=PADX, pady=PADY, sticky=(N,E,W,S))
         self.altitude.config(width = CELL_WIDTH)
@@ -209,6 +212,7 @@ class TelemetryApp(Tk):
 
         self.controls = TelemetryControls(self.map_column, self.serial_reader)
         self.controls.grid(row=1, column=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+
         self.map_column.rowconfigure(0, weight=2)
         self.map_column.rowconfigure(1, weight=1)
 
