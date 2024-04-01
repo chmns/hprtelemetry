@@ -98,7 +98,7 @@ class MapFrame(Frame):
         self.map_view.grid_propagate(True)
 
     def __init__(self, master, lat_var, lon_var, alt_var, offline_maps_only_var):
-        Frame.__init__(self, master, bg="blue")
+        Frame.__init__(self, master)
 
         self.lat_var = lat_var
         self.lon_var = lon_var
@@ -132,7 +132,7 @@ class MapFrame(Frame):
 
 class LocationGrid(Frame):
     def __init__(self, master):
-        Frame.__init__(self, master, bg="green", height=110)
+        Frame.__init__(self, master, height=110)
 
         self.pre = LocationRow(self,
                                "Launch:",

@@ -27,6 +27,8 @@ NUM_ROWS = 3
 PADX = 4
 PADY = 4
 
+SASH_WIDTH = 10
+
 ALTITUDE_COLOR = "#8BD3E6"
 VELOCITY_COLOR = "#FF6D6A"
 ACCELERATION_COLOR = "#EFBE7D"
@@ -135,23 +137,11 @@ class TelemetryApp(Tk):
 
         self.update_serial_menu()
 
-        current_serial_port = StringVar(self, name="current_serial", value=None)
-
-        # # fixed column widths
-        # for col in range (NUM_COLS):
-        #     self.columnconfigure(col, weight=0)
-
-        # # single column expands with width:
-        # self.columnconfigure(1, weight=1)
-
-        # # fixed row heights
-        # for row in range(NUM_ROWS):
-        #     self.rowconfigure(row, weight=1)
-
-        self.window = PanedWindow(orient="horizontal")
-        self.readouts = Frame(self.window, width=CELL_WIDTH, background=BG_COLOR)
+        self.window = PanedWindow(orient="horizontal", background="#aaaaaa")
+        self.window.configure(sashwidth=SASH_WIDTH)
+        self.readouts = Frame(self.window, width=CELL_WIDTH*2, background=BG_COLOR)
         self.graphs = Frame(self.window, width=400, background="black")
-        self.map_column = PanedWindow(self.window, orient="vertical")
+        self.map_column = PanedWindow(self.window, orient="vertical", background="black")
 
         self.window.add(self.readouts)
         self.window.add(self.graphs, stretch="always")
@@ -213,18 +203,14 @@ class TelemetryApp(Tk):
 
         self.tilt_spin = TiltAndSpin(self.map_column, "offVert", "gyroZ")
         self.tilt_spin.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.tilt_spin.config(width = CELL_WIDTH)
 
         self.status = TelemetryStatus(self.map_column, "name", "radioPacketNum", "time", "gnssSatellites")
         self.status.grid(row=1, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.status.config(width = CELL_WIDTH)
 
         self.controls = TelemetryControls(self.map_column, self.serial_reader)
         self.controls.grid(row=1, column=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.controls.config(width = CELL_WIDTH)
         self.map_column.rowconfigure(0, weight=2)
         self.map_column.rowconfigure(1, weight=1)
-
 
         for i in range (3):
             self.map_column.columnconfigure(i, weight=1)
