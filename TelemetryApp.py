@@ -59,6 +59,10 @@ x.  offline maps
 10. final value display (in addition to rolling max/min)
 11. add online/offline toggle to map itself
 12. add download current area to map itself
+x. force backup file extension to csv
+14. add log window
+15. check hang/freeze when wrong type telemetry comes
+16. test with FSC type telemetry
 
 """
 
@@ -252,9 +256,7 @@ class TelemetryApp(Tk):
             self.status_label.config(bg=BG_COLOR)
 
     def on_closing(self):
-        self.test_serial_sender.stop()
-        self.serial_reader.stop()
-        self.file_reader.stop()
+        self.stop()
         self.destroy()
         self.quit()
 
@@ -345,6 +347,11 @@ class TelemetryApp(Tk):
                                                  float(self.getvar("landing_longitude")))
 
 
+    def disconnect(self) -> None:
+        if self.serial_reader.running.is_set():
+            if messagebox.askokcancel("Disconnect", "Disconnect from serial port and stop recording. Are you sure?"):
+                self.stop()
+
     def stop(self) -> None:
         """
         stops recording and/or playing back serial or file
@@ -379,7 +386,7 @@ class TelemetryApp(Tk):
         """
         self.serial_menu.delete(0, END)
 
-        self.serial_menu.add_command(label="Disconnect", command=self.stop)
+        self.serial_menu.add_command(label="Disconnect", command=self.disconnect)
 
         ports = self.serial_reader.available_ports()
 
@@ -404,8 +411,8 @@ class TelemetryApp(Tk):
             self.reset()
 
             if yesnocancel:
-                filename = asksaveasfilename(filetypes =[('Telemetry Text Files', '*.csv')])
-                print(f"Saving telemetry from serial port {port} to file {filename}")
+                filename = asksaveasfilename(title="Choose backup file name", defaultextension=".csv", filetypes =[('Comma Separated Values', '*.csv')])
+
                 self.serial_reader.filename = filename
                 self.set_status_text(f"Recording serial port {port}", WHITE, DARK_RED)
             else:
