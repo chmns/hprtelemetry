@@ -79,7 +79,7 @@ class TelemetryApp(Tk):
         super().__init__(screenName, baseName, className, useTk, sync, use)
 
         self.message_queue = queue.Queue()
-        self.running = TRUE
+        self.bytes_stats_queue = queue.Queue()
 
         self.telemetry_vars = ["name",
                                "time", "accelX", "accelY", "accelZ", "gyroZ" "highGx", "highGy", "highGz",
@@ -101,9 +101,13 @@ class TelemetryApp(Tk):
 
         self.running = BooleanVar(self, False, "running")
 
-        self.serial_reader = TelemetrySerialReader(self.message_queue)
+        self.bytes_received = IntVar(self, 0, "bytes_received")
+
+
+
+        self.serial_reader = TelemetrySerialReader(self.message_queue, self.bytes_stats_queue)
         self.serial_reader.name = "serial_reader"
-        self.file_reader = TelemetryFileReader(self.message_queue)
+        self.file_reader = TelemetryFileReader(self.message_queue, self.bytes_stats_queue)
         self.file_reader.name = "file_reader"
 
         # for testing only:
@@ -211,16 +215,19 @@ class TelemetryApp(Tk):
         self.tilt_spin = TiltAndSpin(self.map_column, "offVert", "gyroZ")
         self.tilt_spin.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
-        self.status = TelemetryStatus(self.map_column, "name", "radioPacketNum", "time", "gnssSatellites")
+        self.status = TelemetryStatus(self.map_column, "name", "bytes_received", "time", "gnssSatellites")
+        # self.status = TelemetryStatus(self.map_column, "name", "radioPacketNum", "time", "gnssSatellites")
         self.status.grid(row=1, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
         self.controls = TelemetryControls(self.map_column, self.serial_reader)
         self.controls.grid(row=1, column=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
-        self.status_bar = Frame(self.map_column, background=BG_COLOR)
-        self.status_bar.grid(row=2, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.status_label = Label(self.status_bar, font="Arial 24", text="Disconnected", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
-        self.status_label.pack(fill=BOTH)
+        self.status_label = Label(self.map_column, font="Arial 24", text="Disconnected", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
+        self.status_label.grid(row=2, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+
+        self.bytes_read_label = Label(self.map_column, textvariable=self.bytes_received, font="Arial 24", text="", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
+        self.bytes_read_label.grid(row=3, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+
 
         self.map_column.rowconfigure(0, weight=2)
         self.map_column.rowconfigure(1, weight=1)
@@ -244,7 +251,6 @@ class TelemetryApp(Tk):
     def set_status_text(self, text,
                         color:str = None,
                         bg: str = None):
-        print(f"{text=}, {color=}, {bg=}")
         self.status_label.config(text=text)
 
         if color is not None:
@@ -266,6 +272,14 @@ class TelemetryApp(Tk):
         telemetry_buffer = {}
         current_state = None
         counter = 0
+
+        try:
+            while True:
+                num_bytes_received = self.bytes_stats_queue.get(block=False)
+                if num_bytes_received is not None:
+                    self.bytes_received.set(self.bytes_received.get() + num_bytes_received)
+        except:
+            pass
 
         try:
             while True:
@@ -298,7 +312,8 @@ class TelemetryApp(Tk):
             if self.file_reader.running.is_set() or self.serial_reader.running.is_set():
                 self.after(UPDATE_DELAY, self.update)
             else:
-                print("Finished reading")
+                self.running.set(False)
+                self.stop()
 
     def priority_message_callback(self, message):
         (telemetry, state) = message
@@ -375,6 +390,7 @@ class TelemetryApp(Tk):
 
         # clear app variables and graphs:
         self.setvar("name", "")
+        self.bytes_received.set(0)
         self.map_frame.reset()
         self.altitude_graph.reset()
         self.velocity_graph.reset()
@@ -428,7 +444,7 @@ class TelemetryApp(Tk):
         if filename != "":
             self.reset()
             self.file_reader.filename = filename
-            self.set_status_text(f"Playing: {filename}", WHITE, DARK_GREEN)
+            self.set_status_text(f"Playing: {filename.split('/')[-1]}", WHITE, DARK_GREEN)
             self.file_reader.start()
             self.update()
 

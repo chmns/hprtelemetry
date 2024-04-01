@@ -174,9 +174,11 @@ class FlightTelemetryDecoder(object):
 class TelemetryReader(object):
     def __init__(self,
                  queue: queue.Queue = None,
+                 bytes_received_queue: queue = None,
                  name: str = "") -> None:
         # assert queue is not None
         self.queue = queue
+        self.bytes_received_queue = bytes_received_queue
         self.running = Event()
         self.decoder = FlightTelemetryDecoder()
         self.thread = None
@@ -184,7 +186,7 @@ class TelemetryReader(object):
 
     def start(self) -> None:
         self.running.set()
-        self.thread = Thread(target=self.__run__, args=(self.queue,self.running), name=self.name)
+        self.thread = Thread(target=self.__run__, args=(self.queue,self.bytes_received_queue,self.running), name=self.name)
         self.thread.start()
 
     def stop(self) -> None:
@@ -200,6 +202,7 @@ class TelemetryReader(object):
 class TelemetrySerialReader(TelemetryReader):
     def __init__(self,
                  queue: queue.Queue = None,
+                 bytes_received_queue: queue.Queue = None,
                  serial_port = None,
                  baud_rate = DEFAULT_BAUD,
                  timeout = DEFAULT_TIMEOUT) -> None:
@@ -208,11 +211,12 @@ class TelemetrySerialReader(TelemetryReader):
         self.baud_rate = baud_rate
         self.timeout = timeout
         self.filename = None
-        TelemetryReader.__init__(self, queue)
+        TelemetryReader.__init__(self, queue, bytes_received_queue)
 
     def __run__(self,
                 message_queue: queue.Queue,
-                running: bool):
+                bytes_received_queue: queue.Queue,
+                running):
 
         assert self.serial_port is not None
         assert self.serial_port != ""
@@ -234,6 +238,8 @@ class TelemetrySerialReader(TelemetryReader):
                 line = port.readline().decode("Ascii")
             except:
                 print(f"Error reading from port: {self.serial_port}")
+
+            bytes_received_queue.put(len(line))
 
             if file is None and self.filename is not None: # file isn't open but user has added backup file
                 try:
@@ -292,12 +298,13 @@ class TelemetrySerialReader(TelemetryReader):
 
 class TelemetryFileReader(TelemetryReader):
     def __init__(self,
-                 queue: queue.Queue = None) -> None:
+                 queue: queue.Queue = None,
+                 bytes_received_queue: queue.Queue = None) -> None:
 
         self.filename = None
-        TelemetryReader.__init__(self, queue)
+        TelemetryReader.__init__(self, queue, bytes_received_queue)
 
-    def __run__(self, message_queue, running):
+    def __run__(self, message_queue, bytes_received_queue, running):
         assert self.filename is not None
 
         print(f"Reading telemetry file {self.filename}")
@@ -310,7 +317,9 @@ class TelemetryFileReader(TelemetryReader):
                     if not running.is_set():
                         return
 
+                    bytes_received_queue.put(len(line))
                     telemetry_dict = self.decoder.decode_line(line)
+
 
                     if telemetry_dict is None:
                         continue
@@ -339,7 +348,7 @@ class TelemetryTestSender(TelemetryReader):
         self.serial_port = "COM3"
         TelemetryReader.__init__(self, None)
 
-    def __run__(self, message_queue, running):
+    def __run__(self, message_queue, bytes_received_queue, running):
         assert self.filename is not None
         assert self.serial_port is not None
 
