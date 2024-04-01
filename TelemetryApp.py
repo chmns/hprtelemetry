@@ -154,7 +154,7 @@ class TelemetryApp(Tk):
         self.map_column = PanedWindow(self.window, orient="vertical")
 
         self.window.add(self.readouts)
-        self.window.add(self.graphs)
+        self.window.add(self.graphs, stretch="always")
         self.window.add(self.map_column)
 
         self.window.pack(fill="both", expand=True)
@@ -167,7 +167,7 @@ class TelemetryApp(Tk):
         self.velocity.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,S))
         self.velocity.config(width = CELL_WIDTH)
 
-        self.acceleration = ReadOut(self.readouts, "Acceleration", "accelZ", "m/s/s", "G", ReadOut.mssToG, ACCELERATION_COLOR)
+        self.acceleration = ReadOut(self.readouts, "Accel", "accelZ", "m/s/s", "G", ReadOut.mssToG, ACCELERATION_COLOR)
         self.acceleration.grid(row=2, column=0, padx=PADX, pady=PADY, sticky=(N,S))
         self.acceleration.config(width = CELL_WIDTH)
 
@@ -227,7 +227,7 @@ class TelemetryApp(Tk):
 
 
         for i in range (3):
-            self.graphs.columnconfigure(i, weight=1)
+            self.map_column.columnconfigure(i, weight=1)
 
 
         self.download_overlay = None

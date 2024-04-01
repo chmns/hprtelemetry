@@ -5,6 +5,10 @@ FG_COLOR = "#eeeeee"
 
 NAME_TEXT_WRAPLENGTH = 160
 
+LARGE_FONT_SIZE = 40
+MEDIUM_FONT_SIZE = 24
+SMALL_FONT_SIZE = 14
+
 class ReadOut(Frame):
     @staticmethod
     def metresToFeet(metres):
@@ -71,17 +75,16 @@ class ReadOut(Frame):
 
         self.variable.trace_add("write", self.update_value)
 
-        self.main = Label(self, text="0", fg=FG_COLOR, bg=BG_COLOR, font=("Arial", 48))
-        # self.main = Label(self, text=f'{self.value}', fg=FG_COLOR, bg=BG_COLOR, font=("Arial", 48))
+        self.main = Label(self, text="0", fg=FG_COLOR, bg=BG_COLOR, font=("Arial", LARGE_FONT_SIZE))
         self.main.grid(column = 0, row = 1, sticky = (N,S))
 
-        self.name = Label(self, text=f'{self.units1} {self.name}', fg=self.color, bg=BG_COLOR, font="Arial 18 bold")
+        self.name = Label(self, text=f'{self.name}', fg=self.color, bg=BG_COLOR, font=("Arial", MEDIUM_FONT_SIZE))
         self.name.grid(column = 0, row = 2, sticky=(N,S))
 
-        self.max = Label(self, text=f'Max:\n{self.max_value}{units1}', fg=FG_COLOR, bg=BG_COLOR, font=("Arial", 18))
+        self.max = Label(self, text=f'Max:\n{self.max_value}{units1}', fg=FG_COLOR, bg=BG_COLOR, font=("Arial", SMALL_FONT_SIZE))
         self.max.grid(column = 0, row = 4, sticky=(N,S))
 
-        self.final = Label(self, text="", fg=self.color, bg=BG_COLOR, font=("Arial Bold", 18))
+        self.final = Label(self, text="", fg=self.color, bg=BG_COLOR, font=("Arial Bold", SMALL_FONT_SIZE))
         self.final.grid(column = 0, row = 6, sticky=(N,S))
 
 class TiltAndSpin(Frame):
