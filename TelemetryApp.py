@@ -32,6 +32,10 @@ SASH_WIDTH = 10
 ALTITUDE_COLOR = "#8BD3E6"
 VELOCITY_COLOR = "#FF6D6A"
 ACCELERATION_COLOR = "#EFBE7D"
+LIGHT_GRAY = "#AAAAAA"
+DARK_RED = "#AA3333"
+DARK_GREEN = "#33AA33"
+WHITE = "#EEEEEE"
 
 DEFAULT_COORD = "0.0000000"
 PREFLIGHT_COORDS_PREFIX = "Pre: "
@@ -50,11 +54,7 @@ x.  low-speed map updating with markers
 5.  status display (listening to port, reading file etc)
 x.  graph rendering
 7.  secondary units (m/s -> kmh etc)
-8.  prompt to write out to file when listening to serial port
-- when clicking on serial port, open file dialog
-- user choose where to save file
-- telemetry serial reader opens this file and appends new data to it when new line received
-- when closing serial port close file
+x.  prompt to write out to file when listening to serial port
 x.  offline maps
 10. final value display (in addition to rolling max/min)
 11. add online/offline toggle to map itself
@@ -213,6 +213,11 @@ class TelemetryApp(Tk):
         self.controls = TelemetryControls(self.map_column, self.serial_reader)
         self.controls.grid(row=1, column=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
+        self.status_bar = Frame(self.map_column, background=BG_COLOR)
+        self.status_bar.grid(row=2, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.status_label = Label(self.status_bar, font="Arial 24", text="Disconnected", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
+        self.status_label.pack(fill=BOTH)
+
         self.map_column.rowconfigure(0, weight=2)
         self.map_column.rowconfigure(1, weight=1)
 
@@ -231,6 +236,20 @@ class TelemetryApp(Tk):
         self.offline_map_path = str(Path.home() / "Documents")
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def set_status_text(self, text,
+                        color:str = None,
+                        bg: str = None):
+        print(f"{text=}, {color=}, {bg=}")
+        self.status_label.config(text=text)
+
+        if color is not None:
+            self.status_label.config(fg=color)
+
+        if bg is not None:
+            self.status_label.config(bg=bg)
+        else:
+            self.status_label.config(bg=BG_COLOR)
 
     def on_closing(self):
         self.test_serial_sender.stop()
@@ -326,17 +345,23 @@ class TelemetryApp(Tk):
                                                  float(self.getvar("landing_longitude")))
 
 
-
-    def reset(self) -> None:
+    def stop(self) -> None:
         """
-        resets the app back to zero
-        for when loading new file or connecting to new serial port
+        stops recording and/or playing back serial or file
+        but does not reset the graphs and map e.t.c.
         """
         # stop file decoder if it's running
         self.file_reader.stop()
         # stop serial decoder if it's running
         self.serial_reader.stop()
+        self.set_status_text("Disconnected", LIGHT_GRAY)
 
+    def reset(self) -> None:
+        """
+        resets the app back to zero and stops recording or playback
+        for when loading new file or connecting to new serial port
+        """
+        self.stop()
         # clear all telemetry variables:
         for var in self.telemetry_vars:
             self.setvar(var, "0")
@@ -354,6 +379,8 @@ class TelemetryApp(Tk):
         """
         self.serial_menu.delete(0, END)
 
+        self.serial_menu.add_command(label="Disconnect", command=self.stop)
+
         ports = self.serial_reader.available_ports()
 
         if len(ports) == 0:
@@ -365,8 +392,6 @@ class TelemetryApp(Tk):
         self.serial_menu.add_separator()
         self.serial_menu.add_command(label="Re-scan", command=self.update_serial_menu)
 
-        # self.menubar.add_cascade(label="Serial", menu=self.serial_menu)
-
     def listen_to_port(self, port):
         print(f"Attempting to listen to {port}")
         if port in self.serial_reader.available_ports():
@@ -376,14 +401,17 @@ class TelemetryApp(Tk):
             if yesnocancel is None:
                 return
 
+            self.reset()
+
             if yesnocancel:
                 filename = asksaveasfilename(filetypes =[('Telemetry Text Files', '*.csv')])
                 print(f"Saving telemetry from serial port {port} to file {filename}")
                 self.serial_reader.filename = filename
+                self.set_status_text(f"Recording serial port {port}", WHITE, DARK_RED)
             else:
                 print(f"Not saving telemetry from serial port {port} to file")
+                self.set_status_text(f"Listening serial port {port} (Not Recording)", WHITE)
 
-            self.reset()
             self.serial_reader.serial_port = port
             self.serial_reader.start()
             self.update()
@@ -392,8 +420,8 @@ class TelemetryApp(Tk):
         filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'), ('Other Telemetry Files', '*.*')])
         if filename != "":
             self.reset()
-            self.file_reader.stop()
             self.file_reader.filename = filename
+            self.set_status_text(f"Playing: {filename}", WHITE, DARK_GREEN)
             self.file_reader.start()
             self.update()
 
