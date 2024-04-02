@@ -229,16 +229,17 @@ class TelemetrySerialReader(TelemetryReader):
                                  baudrate=self.baud_rate,
                                  timeout=self.timeout)
             print(f"Successfully opened port {self.serial_port}")
-        except:
-            print(f"Could not open serial port: {self.serial_port}")
+        except Exception as e:
+            print(f"Could not open serial port: {self.serial_port}. Reason: {str(e)}")
             return
 
         while self.running.is_set():
             try:
-                line = port.readline().decode("Ascii")
+                data = port.read_until(size=1000)
                 bytes_received_queue.put(len(line))
-            except:
-                print(f"Error reading from port: {self.serial_port}")
+                print(line)
+            except Exception as e:
+                print(f"Error reading from port: {self.serial_port}. Reason: {str(e)}")
 
             if file is None and self.filename is not None: # file isn't open but user has added backup file
                 try:
@@ -250,11 +251,13 @@ class TelemetrySerialReader(TelemetryReader):
                 else:
                     print(f"Open file for writing backup to: {self.filename}")
 
+            line = data.decode('ascii')
+
             if file is not None:
                 try:
                     file.write(line)
-                except:
-                    print(f"Couldn't write line to file {self.filename}")
+                except Exception as e:
+                    print(f"Couldn't write line to file {self.filename}. Reason: {e}")
 
             telemetry_dict = self.decoder.decode_line(line)
 
