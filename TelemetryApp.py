@@ -215,8 +215,7 @@ class TelemetryApp(Tk):
         self.tilt_spin = TiltAndSpin(self.map_column, "offVert", "gyroZ")
         self.tilt_spin.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
-        self.status = TelemetryStatus(self.map_column, "name", "bytes_received", "time", "gnssSatellites")
-        # self.status = TelemetryStatus(self.map_column, "name", "radioPacketNum", "time", "gnssSatellites")
+        self.status = TelemetryStatus(self.map_column, "name", "radioPacketNum", "time", "gnssSatellites")
         self.status.grid(row=1, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
         self.controls = TelemetryControls(self.map_column, self.serial_reader)
