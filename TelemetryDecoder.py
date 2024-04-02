@@ -236,10 +236,9 @@ class TelemetrySerialReader(TelemetryReader):
         while self.running.is_set():
             try:
                 line = port.readline().decode("Ascii")
+                bytes_received_queue.put(len(line))
             except:
                 print(f"Error reading from port: {self.serial_port}")
-
-            bytes_received_queue.put(len(line))
 
             if file is None and self.filename is not None: # file isn't open but user has added backup file
                 try:
