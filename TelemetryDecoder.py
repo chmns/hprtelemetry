@@ -236,8 +236,8 @@ class TelemetrySerialReader(TelemetryReader):
         while self.running.is_set():
             try:
                 data = port.read_until(size=1000)
-                bytes_received_queue.put(len(line))
-                print(line)
+                bytes_received_queue.put(len(data))
+                print(data)
             except Exception as e:
                 print(f"Error reading from port: {self.serial_port}. Reason: {str(e)}")
 
