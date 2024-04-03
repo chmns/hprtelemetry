@@ -166,3 +166,6 @@ cython_debug/
 
 # Test flight data:
 /test_data
+
+# VS Code settings:
+/.vscode

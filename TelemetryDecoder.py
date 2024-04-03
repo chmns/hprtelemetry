@@ -32,8 +32,6 @@ reads from queue:
 TelemetryDecoder:
 SDCardTelemetryDecoder
 GroundTelemetryDecoder
-
-
 """
 
 class DecoderState(Enum):
@@ -42,126 +40,6 @@ class DecoderState(Enum):
     LAUNCH = 2
     LAND = 3
     END = 4
-
-
-
-class PreFlightPacket:
-    """
-        uint8_t     event           // 1
-        uint8_t     gnss.fix        // 2
-        uint8_t     cont.reportCode // 3
-        char[20?]   rocketName      // 23
-        uint16_t    baseAlt         // 24
-        uint16_t    GPSalt          // 26
-        float       GPS.location.lat
-        float       GPS.location.lng
-        uint16_t    satNum          // 36
-        char[6]     callsign
-    """
-
-    format = "@BBB20sHHffH20s"
-
-    def __init__(self, data_bytes):
-        (self.event,
-         self.gnss_fix,
-         self.cont_report_code,
-         self.rocketName,
-         self.base_alt,
-         self.gps_alt,
-         self.gps_lat,
-         self.gps_lon,
-         self.num_sats,
-         self.callsign) = struct.unpack(self.format, data_bytes)
-
-
-class FlightData:
-    """
-        uint8_t event
-        int16_t fltTime
-        int16_t vel
-        int16_t alt
-        int16_t roll
-        int16_t offVert
-        int16_t accel
-    """
-
-    format = "@B6H"
-
-    def __init__(self, data_bytes):
-        (self.event,
-         self.fltTime,
-         self.vel,
-         self.alt,
-         self.roll,
-         self.off_vert,
-         self.accel) = struct.unpack(self.format, data_bytes)
-
-
-class InFlightPacket:
-    """
-    4x
-        FlightData (13 bytes)
-    1x
-        int16_t packetnum
-        int16_t GPSalt
-        float   GPS.location.lat
-        float   GPS.location.lon
-        char[6] callsign
-    """
-
-    format = "@13B13B13B13BHHff6s"
-
-    def __init__(self, data_bytes):
-        (self.flight_data_1,
-         self.flight_data_2,
-         self.flight_data_3,
-         self.flight_data_4,
-         self.packetnum,
-         self.gps_alt,
-         self.gps_lat,
-         self.gps_lon,
-         self.callsign) = struct.unpack(self.format, data_bytes)
-
-
-class PostFlightPacket:
-    """
-        uint8_t     event
-        uint16_t    maxAlt
-        uint16_t    maxVel
-        uint16_t    maxG
-        uint16_t    maxGPSalt
-        uint8_t     gnss.fix
-        uint16_t    GPSalt
-        float       GPS.location.lat
-        float       GPS.location.lng
-        char[6]     callsign
-    """
-
-    format = "@B4HBHff6s"
-
-    def __init__(self, data_bytes):
-        (self.event,
-         self.max_alt,
-         self.max_vel,
-         self.max_g,
-         self.max_gps_alt,
-         self.gps_fix,
-         self.gps_alt,
-         self.gps_lat,
-         self.gps_lon,
-         self.callsign) = struct.unpack(self.format, data_bytes)
-
-
-
-
-class RadioTelemetryDecoder(object):
-    """
-    Converts flight telemetry received over radio direct from vehicle
-    into SD-card style data for sending to UI (which is wanting SD-card style)
-    """
-    def __init__(self) -> None:
-        pass
-
 
 
 class SDCardTelemetryDecoder(object):
@@ -273,9 +151,9 @@ class SDCardTelemetryDecoder(object):
 
 class TelemetryReader(object):
     """
-    base class for 3 times of telemetry reader: SD card (from FC), Serial (from radio)
-    and app test (for serial loop-back test)
+    base class for 3 times of telemetry reader: File, Serial and Test (for serial loop-back test)
     """
+
     def __init__(self,
                  queue: queue.Queue = None,
                  bytes_received_queue: queue = None,
@@ -338,29 +216,11 @@ class TelemetrySerialReader(TelemetryReader):
             return
 
         while self.running.is_set():
-            try:
-                line = port.readline().decode("Ascii")
-                bytes_received_queue.put(len(line))
-            except:
-                print(f"Error reading from port: {self.serial_port}")
+            telemetry = self.__read_port__(port,
+                                           message_queue,
+                                           bytes_received_queue)
 
-            if file is None and self.filename is not None: # file isn't open but user has added backup file
-                try:
-                    file = open(self.filename, 'a') # open with 'a' mode to append to existing file so we dont over-write
-                    file.write("\n") # ensure we start on a new line
-                except:
-                    print(f"Couldn't open file {self.filename}")
-                    file = None
-                else:
-                    print(f"Open file for writing backup to: {self.filename}")
-
-            if file is not None:
-                try:
-                    file.write(line)
-                except:
-                    print(f"Couldn't write line to file {self.filename}")
-
-            telemetry_dict = self.decoder.decode_line(line)
+            telemetry_dict = self.decoder.decode(telemetry)
 
             if telemetry_dict is not None:
                 message_queue.put((telemetry_dict, self.decoder.state))
@@ -372,6 +232,40 @@ class TelemetrySerialReader(TelemetryReader):
             port.close()
 
         running.clear()
+
+class SDCardSerialReader(TelemetrySerialReader):
+    def __init__(self, *kargs) -> None:
+
+        self.decoder = SDCardTelemetryDecoder()
+        TelemetrySerialReader.__init__(self, kargs)
+
+    def __read_port__(self,
+                      port: serial.Serial,
+                      message_queue: queue.Queue,
+                      bytes_received_queue: queue.Queue) -> None:
+        try:
+            line = port.readline().decode("Ascii")
+            bytes_received_queue.put(len(line))
+        except:
+            print(f"Error reading from port: {self.serial_port}")
+
+        if file is None and self.filename is not None: # file isn't open but user has added backup file
+            try:
+                file = open(self.filename, 'a') # open with 'a' mode to append to existing file so we dont over-write
+                file.write("\n") # ensure we start on a new line
+            except:
+                print(f"Couldn't open file {self.filename}")
+                file = None
+            else:
+                print(f"Open file for writing backup to: {self.filename}")
+
+        if file is not None:
+            try:
+                file.write(line)
+            except:
+                print(f"Couldn't write line to file {self.filename}")
+
+        return line
 
 
     def available_ports(self) -> list:
@@ -407,7 +301,11 @@ class TelemetryFileReader(TelemetryReader):
         self.filename = None
         TelemetryReader.__init__(self, queue, bytes_received_queue)
 
-    def __run__(self, message_queue, bytes_received_queue, running):
+    def __run__(self,
+                message_queue,
+                bytes_received_queue,
+                running) -> None:
+
         assert self.filename is not None
 
         print(f"Reading telemetry file {self.filename}")
@@ -451,7 +349,11 @@ class TelemetryTestSender(TelemetryReader):
         self.serial_port = "COM3"
         TelemetryReader.__init__(self, None)
 
-    def __run__(self, message_queue, bytes_received_queue, running):
+    def __run__(self,
+                message_queue,
+                bytes_received_queue,
+                running) -> None:
+
         assert self.filename is not None
         assert self.serial_port is not None
 
