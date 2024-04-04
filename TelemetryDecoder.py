@@ -1,38 +1,122 @@
-from threading import Thread, Event
-from tkinter import StringVar, BooleanVar
-from time import sleep
-import sys
 from enum import Enum
-import queue
-
-import sys
-import glob
-import serial
 import struct
 
-DEFAULT_ACCEL_RESOLUTION = 1024
-TIMESTAMP_RESOLUTION = 1000000 # timestamp least significant figure is 10e-8 seconds
-DEFAULT_BAUD = 57600
-DEFAULT_TIMEOUT = 1 # seconds
-TEST_MESSAGE_INTERVAL = 0.05
-
-BAUD_RATES = [1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600, 115200]
 
 """
 Telemetry Decoding:
-
-TelemetryReader:
-1) TelemetryFileReader (from SD card file or backup)
-2) TelemetryRadioReader (from Radio)
 
 outputs line (str) to queue
 ...
 reads from queue:
 
 TelemetryDecoder:
-SDCardTelemetryDecoder
-GroundTelemetryDecoder
+  - SDCardTelemetryDecoder
+  - RadioTelemetryDecoder
 """
+
+
+class RadioPacket:
+    def __init__(self,
+                 data_bytes) -> None:
+
+        self.values = struct.unpack(self.format, data_bytes)
+
+    def __iter__(self):
+        return zip(self.keys, self.values)
+
+class PreFlightPacket(RadioPacket):
+    keys = ["event",       # uint8_t   event
+            "gnss_fix",    # uint8_t   gnss.fix
+            "report_code", # uint8_t   cont.reportCode
+            "rocketName",  # char[20?] rocketName   w
+            "base_alt",    # uint16_t  baseAlt
+            "gps_alt",     # uint16_t  GPSalt
+            "gps_lat",     # float     GPS.location.lat
+            "gps_lon",     # float     GPS.location.lng
+            "num_sats"]    # uint16_t  satNum
+
+    format = "@BBB20sHHffH"
+
+class InFlightData(RadioPacket):
+    keys = ["event",    # uint8_t event
+            "fltTime",  # int16_t fltTime
+            "vel",      # int16_t vel
+            "alt",      # int16_t alt
+            "roll",     # int16_t roll
+            "off_vert", # int16_t offVert
+            "accel"]    # int16_t accel
+
+    format = "@B6H"
+
+class InFlightMetaData(RadioPacket):
+    keys = ["packetnum",    # int16_t packetnum
+            "gps_alt",      # int16_t GPSalt
+            "gps_lat",      # float   GPS.location.lat
+            "gps_lon"]      # float   GPS.location.lon
+
+    format = "@13B13B13B13BHHff"
+
+class PostFlightPacket(RadioPacket):
+    keys = ["event",        # uint8_t  event
+            "max_alt",      # uint16_t maxAlt
+            "max_vel",      # uint16_t maxVel
+            "max_g",        # uint16_t maxG
+            "max_gps_alt",  # uint16_t maxGPSalt
+            "gps_fix",      # uint8_t  gnss.fix
+            "gps_alt",      # uint16_t GPSalt
+            "gps_lat",      # float    GPS.location.lat
+            "gps_lon"]      # float    GPS.location.lng
+
+    format = "@B4HBHff"
+
+
+class RadioTelemetryDecoder(object):
+    """
+    Converts flight telemetry received over radio direct from vehicle
+    into SD-card style data for sending to UI (which is wanting SD-card style)
+    """
+
+    NUM_FLIGHT_DATA_MESSAGES = 4        # each in-flight packet contains this many actual data samples
+    FLIGHT_DATA_MESSAGE_LENGTH = 13     # length of each of this samples
+    FLIGHT_DATA_TOTAL_LENGTH = NUM_FLIGHT_DATA_MESSAGES * FLIGHT_DATA_MESSAGE_LENGTH
+
+    # Mapping of event number to text name:
+    event_names =  ["Preflight","Liftoff","Booster Burnout","Apogee Detected","Firing Apogee Pyro"
+                    "Separation Detected","Firing Mains","Under Chute","Ejecting Booster",
+                    "Firing 2nd Stage","2nd Stage Ignition","2nd Stage Burnout","Firing Airstart1",
+                    "Airstart 1 Ignition","Airstart 1 Burnout","Firing Airstart2","Airstart 2 Ignition",
+                    "Airstart 2 Burnout","NoFire: Rotn Limit","NoFire: Alt Limit","NoFire: Rotn/Alt Lmt",
+                    "Booster Apogee","Booster Apogee Fire","Booster Separation","Booster Main Deploy",
+                    "Booster Under Chute","Time Limit Exceeded","Touchdown!","Power Loss! Restart",
+                    "Booster Touchdown","Booster Preflight","Booster Time Limit","Booster Pwr Restart"]
+
+    def decode(self, data_bytes) -> list | None:
+
+        event = data_bytes[0]
+
+        try:
+            if event == 0 or event == 30:
+                return [dict(PreFlightPacket(data_bytes))]
+            elif event < 26:
+                messages = []
+                last_index = 0
+
+                for index in range(0,
+                                   self.FLIGHT_DATA_TOTAL_LENGTH,
+                                   self.FLIGHT_DATA_MESSAGE_LENGTH):
+                    inflight_bytes = data_bytes[index:index + self.FLIGHT_DATA_MESSAGE_LENGTH]
+                    messages.append(dict(InFlightData(inflight_bytes)))
+
+                in_flight_meta_bytes = data_bytes[self.FLIGHT_DATA_MESSAGE_LENGTH:]
+                messages.append(dict(InFlightMetaData(in_flight_meta_bytes)))
+
+            else:
+                return [dict(PostFlightPacket(data_bytes))]
+
+        except Exception:
+            return None
+
+
 
 class DecoderState(Enum):
     FLIGHT = 0
@@ -46,6 +130,10 @@ class SDCardTelemetryDecoder(object):
     """
     takes line of FC SD-card data and decodes it into a dictionary:
     """
+
+    TIMESTAMP_RESOLUTION = 1000000 # timestamp least significant figure is 10e-8 seconds
+    DEFAULT_ACCEL_RESOLUTION = 1024
+
     def __init__(self, accel_resolution: int = DEFAULT_ACCEL_RESOLUTION) -> None:
 
         self.state = DecoderState.FLIGHT
@@ -64,7 +152,7 @@ class SDCardTelemetryDecoder(object):
                            "accelZ": self.accel_modifier }
 
     def time_modifier(self, time):
-        return float(time) / TIMESTAMP_RESOLUTION
+        return float(time) / self.TIMESTAMP_RESOLUTION
 
     def accel_modifier(self, accel):
         return float(accel) / self.accel_resolution
@@ -148,257 +236,3 @@ class SDCardTelemetryDecoder(object):
                 telemetry_dict[key] = self.modifiers[key](old_value)
 
         return telemetry_dict
-
-class TelemetryReader(object):
-    """
-    base class for 3 times of telemetry reader: File, Serial and Test (for serial loop-back test)
-    """
-
-    def __init__(self,
-                 queue: queue.Queue = None,
-                 bytes_received_queue: queue = None,
-                 name: str = "") -> None:
-        # assert queue is not None
-        self.queue = queue
-        self.bytes_received_queue = bytes_received_queue
-        self.running = Event()
-        self.decoder = SDCardTelemetryDecoder()
-        self.thread = None
-        self.name = name
-
-    def start(self) -> None:
-        self.running.set()
-        self.thread = Thread(target=self.__run__, args=(self.queue,self.bytes_received_queue,self.running), name=self.name)
-        self.thread.start()
-
-    def stop(self) -> None:
-        self.running.clear()
-        if self.thread is not None:
-            print(f"Stopping thread: {self.thread}")
-            self.thread.join()
-
-    def __run__(self):
-        pass
-
-
-class TelemetrySerialReader(TelemetryReader):
-    def __init__(self,
-                 queue: queue.Queue = None,
-                 bytes_received_queue: queue.Queue = None,
-                 serial_port = None,
-                 baud_rate = DEFAULT_BAUD,
-                 timeout = DEFAULT_TIMEOUT) -> None:
-
-        self.serial_port = serial_port
-        self.baud_rate = baud_rate
-        self.timeout = timeout
-        self.filename = None
-        TelemetryReader.__init__(self, queue, bytes_received_queue)
-
-    def __run__(self,
-                message_queue: queue.Queue,
-                bytes_received_queue: queue.Queue,
-                running):
-
-        assert self.serial_port is not None
-        assert self.serial_port != ""
-
-        port = None
-        file = None
-
-        try:
-            port = serial.Serial(port=self.serial_port,
-                                 baudrate=self.baud_rate,
-                                 timeout=self.timeout)
-            print(f"Successfully opened port {self.serial_port}")
-        except:
-            print(f"Could not open serial port: {self.serial_port}")
-            return
-
-        while self.running.is_set():
-            telemetry = self.__read_port__(port,
-                                           message_queue,
-                                           bytes_received_queue)
-
-            telemetry_dict = self.decoder.decode(telemetry)
-
-            if telemetry_dict is not None:
-                message_queue.put((telemetry_dict, self.decoder.state))
-
-        if file is not None:
-            file.close()
-
-        if port is not None:
-            port.close()
-
-        running.clear()
-
-class SDCardSerialReader(TelemetrySerialReader):
-    def __init__(self, *kargs) -> None:
-
-        self.decoder = SDCardTelemetryDecoder()
-        TelemetrySerialReader.__init__(self, kargs)
-
-    def __read_port__(self,
-                      port: serial.Serial,
-                      message_queue: queue.Queue,
-                      bytes_received_queue: queue.Queue) -> None:
-        try:
-            line = port.readline().decode("Ascii")
-            bytes_received_queue.put(len(line))
-        except:
-            print(f"Error reading from port: {self.serial_port}")
-
-        if file is None and self.filename is not None: # file isn't open but user has added backup file
-            try:
-                file = open(self.filename, 'a') # open with 'a' mode to append to existing file so we dont over-write
-                file.write("\n") # ensure we start on a new line
-            except:
-                print(f"Couldn't open file {self.filename}")
-                file = None
-            else:
-                print(f"Open file for writing backup to: {self.filename}")
-
-        if file is not None:
-            try:
-                file.write(line)
-            except:
-                print(f"Couldn't write line to file {self.filename}")
-
-        return line
-
-
-    def available_ports(self) -> list:
-        """
-        returns a list of the serial ports available on the system
-        """
-        if sys.platform.startswith('win'):
-            ports = ['COM%s' % (i + 1) for i in range(256)]
-        elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
-            # this excludes your current terminal "/dev/tty"
-            ports = glob.glob('/dev/tty[A-Za-z]*')
-        elif sys.platform.startswith('darwin'):
-            ports = glob.glob('/dev/tty.*')
-        else:
-            raise EnvironmentError('Unsupported platform')
-
-        result = []
-        for port in ports:
-            try:
-                serial_port = serial.Serial(port)
-                serial_port.close()
-                result.append(port)
-            except (OSError, serial.SerialException):
-                pass
-        return result
-
-
-class TelemetryFileReader(TelemetryReader):
-    def __init__(self,
-                 queue: queue.Queue = None,
-                 bytes_received_queue: queue.Queue = None) -> None:
-
-        self.filename = None
-        TelemetryReader.__init__(self, queue, bytes_received_queue)
-
-    def __run__(self,
-                message_queue,
-                bytes_received_queue,
-                running) -> None:
-
-        assert self.filename is not None
-
-        print(f"Reading telemetry file {self.filename}")
-
-        last_timestamp = 0
-
-        try:
-            with open(self.filename, 'rt') as telemetry_file:
-                for line in telemetry_file:
-                    if not running.is_set():
-                        return
-
-                    bytes_received_queue.put(len(line))
-                    telemetry_dict = self.decoder.decode_line(line)
-
-
-                    if telemetry_dict is None:
-                        continue
-
-                    message_queue.put((telemetry_dict, self.decoder.state))
-
-                    if "time" in telemetry_dict:
-                        timestamp = float(telemetry_dict["time"])
-                        sleep(timestamp - last_timestamp)
-                        last_timestamp = timestamp
-
-        except IOError:
-            print(f"Cannot read file: {self.filename}")
-
-        finally:
-            running.clear()
-
-        print(f"Finished reading file {self.filename}")
-
-
-
-class TelemetryTestSender(TelemetryReader):
-    def __init__(self) -> None:
-
-        self.filename = None
-        self.serial_port = "COM3"
-        TelemetryReader.__init__(self, None)
-
-    def __run__(self,
-                message_queue,
-                bytes_received_queue,
-                running) -> None:
-
-        assert self.filename is not None
-        assert self.serial_port is not None
-
-        print(f"Reading telemetry file {self.filename} to write out of {self.serial_port}")
-
-        last_timestamp = 0
-
-        port = None
-
-        try:
-            port = serial.Serial(port=self.serial_port,
-                                 baudrate=57600,
-                                 timeout=1)
-        except:
-            print(f"Test sender could not open serial port: {self.serial_port}")
-            return
-
-        print(f"Opened port {self.serial_port}")
-
-        try:
-            with open(self.filename, 'rt') as telemetry_file:
-                for line in telemetry_file:
-                    if not running.is_set():
-                        return
-
-                    telemetry_dict = self.decoder.decode_line(line)
-
-                    buffer = bytes(line, "ascii")
-                    port.write(buffer)
-
-                    if telemetry_dict is None:
-                        continue
-
-                    if "time" in telemetry_dict:
-                        timestamp = float(telemetry_dict["time"])
-                        sleep(timestamp - last_timestamp)
-                        last_timestamp = timestamp
-                    else:
-                        sleep(0.01)
-
-        except IOError:
-            print(f"Cannot read file: {self.filename}")
-
-        finally:
-            running.clear()
-            port.close()
-
-        print(f"Finished reading file {self.filename} out of serial port {self.serial_port}")

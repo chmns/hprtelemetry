@@ -14,7 +14,9 @@ from TelemetryControls import *
 from MapFrame import *
 from tkinter.filedialog import askopenfilename, asksaveasfilename
 from tkinter import messagebox
-from TelemetryDecoder import *
+from TelemetryDecoder import DecoderState
+from TelemetryReader import SDCardFileReader, RadioTelemetryReader
+from TelemetrySender import TelemetryTestSender
 from matplotlib import style
 import queue
 from pathlib import Path
@@ -105,9 +107,9 @@ class TelemetryApp(Tk):
 
 
 
-        self.serial_reader = TelemetrySerialReader(self.message_queue, self.bytes_stats_queue)
+        self.serial_reader = RadioTelemetryReader(self.message_queue, self.bytes_stats_queue)
         self.serial_reader.name = "serial_reader"
-        self.file_reader = TelemetryFileReader(self.message_queue, self.bytes_stats_queue)
+        self.file_reader = SDCardFileReader(self.message_queue, self.bytes_stats_queue)
         self.file_reader.name = "file_reader"
 
         # for testing only:
