@@ -17,15 +17,14 @@ class PreFlightPacket(RadioPacket):
     keys = ["event",       # uint8_t   event
             "gnss_fix",    # uint8_t   gnss.fix
             "report_code", # uint8_t   cont.reportCode
-            "rocketName",  # char[20?] rocketName
+            "rocketName",  # char[20?] rocketName   w
             "base_alt",    # uint16_t  baseAlt
             "gps_alt",     # uint16_t  GPSalt
             "gps_lat",     # float     GPS.location.lat
             "gps_lon",     # float     GPS.location.lng
-            "num_sats",    # uint16_t  satNum
-            "callsign"]    # char[6]   callsign
+            "num_sats"]    # uint16_t  satNum
 
-    format = "@BBB20sHHffH20s"
+    format = "@BBB20sHHffH"
 
 class FlightData(RadioPacket):
     keys = ["event",    # uint8_t event
@@ -46,10 +45,9 @@ class InFlightPacket(RadioPacket):
             "packetnum",        # int16_t packetnum
             "gps_alt",          # int16_t GPSalt
             "gps_lat",          # float   GPS.location.lat
-            "gps_lon",          # float   GPS.location.lon
-            "callsign"]         # char[6] callsign
+            "gps_lon"]          # float   GPS.location.lon
 
-    format = "@13B13B13B13BHHff6s"
+    format = "@13B13B13B13BHHff"
 
 class PostFlightPacket(RadioPacket):
     keys = ["event",        # uint8_t  event
@@ -60,10 +58,9 @@ class PostFlightPacket(RadioPacket):
             "gps_fix",      # uint8_t  gnss.fix
             "gps_alt",      # uint16_t GPSalt
             "gps_lat",      # float    GPS.location.lat
-            "gps_lon",      # float    GPS.location.lng
-            "callsign"]     # char[6]  callsign
+            "gps_lon"]      # float    GPS.location.lng
 
-    format = "@B4HBHff6s"
+    format = "@B4HBHff"
 
 class RadioTelemetryDecoder(object):
     """
