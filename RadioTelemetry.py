@@ -27,7 +27,7 @@ class PreFlightPacket(RadioPacket):
 
     format = "@BBB20sHHffH20s"
 
-class FlightData:
+class FlightData(RadioPacket):
     keys = ["event",    # uint8_t event
             "fltTime",  # int16_t fltTime
             "vel",      # int16_t vel
@@ -39,30 +39,17 @@ class FlightData:
     format = "@B6H"
 
 class InFlightPacket(RadioPacket):
-    """
-    4x
-        FlightData (13 bytes)
-    1x
-        int16_t packetnum
-        int16_t GPSalt
-        float   GPS.location.lat
-        float   GPS.location.lon
-        char[6] callsign
-    """
+    keys = ["flight_data_1",    # 4x 13 bytes of FlightData
+            "flight_data_2",
+            "flight_data_3",
+            "flight_data_4",
+            "packetnum",        # int16_t packetnum
+            "gps_alt",          # int16_t GPSalt
+            "gps_lat",          # float   GPS.location.lat
+            "gps_lon",          # float   GPS.location.lon
+            "callsign"]         # char[6] callsign
 
     format = "@13B13B13B13BHHff6s"
-
-    def __init__(self, data_bytes):
-        (self.flight_data_1,
-         self.flight_data_2,
-         self.flight_data_3,
-         self.flight_data_4,
-         self.packetnum,
-         self.gps_alt,
-         self.gps_lat,
-         self.gps_lon,
-         self.callsign) = struct.unpack(self.format, data_bytes)
-
 
 class PostFlightPacket(RadioPacket):
     keys = ["event",        # uint8_t  event
@@ -78,47 +65,20 @@ class PostFlightPacket(RadioPacket):
 
     format = "@B4HBHff6s"
 
-
-
 class RadioTelemetryDecoder(object):
     """
     Converts flight telemetry received over radio direct from vehicle
     into SD-card style data for sending to UI (which is wanting SD-card style)
     """
 
-    event_names =  ["Preflight",
-                    "Liftoff",
-                    "Booster Burnout",
-                    "Apogee Detected",
-                    "Firing Apogee Pyro",
-                    "Separation Detected",
-                    "Firing Mains",
-                    "Under Chute",
-                    "Ejecting Booster",
-                    "Firing 2nd Stage",
-                    "2nd Stage Ignition",
-                    "2nd Stage Burnout",
-                    "Firing Airstart1",
-                    "Airstart 1 Ignition",
-                    "Airstart 1 Burnout",
-                    "Firing Airstart2",
-                    "Airstart 2 Ignition",
-                    "Airstart 2 Burnout",
-                    "NoFire: Rotn Limit",
-                    "NoFire: Alt Limit",
-                    "NoFire: Rotn/Alt Lmt",
-                    "Booster Apogee",
-                    "Booster Apogee Fire",
-                    "Booster Separation",
-                    "Booster Main Deploy",
-                    "Booster Under Chute",
-                    "Time Limit Exceeded",
-                    "Touchdown!",
-                    "Power Loss! Restart",
-                    "Booster Touchdown",
-                    "Booster Preflight",
-                    "Booster Time Limit",
-                    "Booster Pwr Restart"]
+    event_names =  ["Preflight","Liftoff","Booster Burnout","Apogee Detected","Firing Apogee Pyro"
+                    "Separation Detected","Firing Mains","Under Chute","Ejecting Booster",
+                    "Firing 2nd Stage","2nd Stage Ignition","2nd Stage Burnout","Firing Airstart1",
+                    "Airstart 1 Ignition","Airstart 1 Burnout","Firing Airstart2","Airstart 2 Ignition",
+                    "Airstart 2 Burnout","NoFire: Rotn Limit","NoFire: Alt Limit","NoFire: Rotn/Alt Lmt",
+                    "Booster Apogee","Booster Apogee Fire","Booster Separation","Booster Main Deploy",
+                    "Booster Under Chute","Time Limit Exceeded","Touchdown!","Power Loss! Restart",
+                    "Booster Touchdown","Booster Preflight","Booster Time Limit","Booster Pwr Restart"]
 
     def __init__(self) -> None:
         pass
