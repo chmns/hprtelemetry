@@ -49,23 +49,12 @@ CELL_WIDTH = 220
 """
 todo:
 
-x.  add preflight state decoding
-x.  add postflight state decoding
-x.  fix file reading delay
-x.  low-speed map updating with markers
-5.  status display (listening to port, reading file etc)
-x.  graph rendering
-7.  secondary units (m/s -> kmh etc)
-x.  prompt to write out to file when listening to serial port
-x.  offline maps
-10. final value display (in addition to rolling max/min)
-11. add online/offline toggle to map itself
-12. add download current area to map itself
-x. force backup file extension to csv
-14. add log window
-15. check hang/freeze when wrong type telemetry comes
-16. test with FSC type telemetry
-
+1.  secondary units (m/s -> kmh etc)
+2. final value display (in addition to rolling max/min)
+3. add online/offline toggle to map itself
+4. add download current area to map itself
+5. add log window
+6. telemetry.ino format decoding
 """
 
 class TelemetryApp(Tk):
@@ -81,14 +70,13 @@ class TelemetryApp(Tk):
         super().__init__(screenName, baseName, className, useTk, sync, use)
 
         self.message_queue = queue.Queue()
-        self.bytes_stats_queue = queue.Queue()
 
         self.telemetry_vars = ["name",
                                "time", "accelX", "accelY", "accelZ", "gyroZ" "highGx", "highGy", "highGz",
                                "smoothHighGz", "offVert", "intVel", "intAlt", "fusionVel", "fusionAlt",
                                "fltEvents", "radioCode", "baroAlt", "altMoveAvg", "gnssLat", "gnssLon",
                                "landing_latitude", "landing_longitude", "landing_time",
-                               "launch_latitude", "launch_longitude", "launch_time",
+                               "launch_latitude", "launch_longitude", "launch_time", "gnssFix",
                                "gnssSpeed", "gnssAlt", "gnssAngle", "gnssSatellites", "radioPacketNum"]
 
         """
@@ -96,20 +84,18 @@ class TelemetryApp(Tk):
         (vars not in this list overwrite the last known value and only update at
         the selected frame rate)
         """
-        self.priority_vars = ["time", "name", "accelZ", "functionAlt", "fusionVel"]
+        self.priority_vars = ["time", "name", "accelZ", "fusionAlt", "fusionVel"]
 
         for var in self.telemetry_vars:
             self.setvar(var)
 
         self.running = BooleanVar(self, False, "running")
 
-        self.bytes_received = IntVar(self, 0, "bytes_received")
+        self.bytes_read = IntVar(self, 0, "bytes_read")
 
-
-
-        self.serial_reader = RadioTelemetryReader(self.message_queue, self.bytes_stats_queue)
+        self.serial_reader = RadioTelemetryReader(self.message_queue)
         self.serial_reader.name = "serial_reader"
-        self.file_reader = SDCardFileReader(self.message_queue, self.bytes_stats_queue)
+        self.file_reader = SDCardFileReader(self.message_queue)
         self.file_reader.name = "file_reader"
 
         # for testing only:
@@ -117,7 +103,6 @@ class TelemetryApp(Tk):
 
         self.title("HPR Telemetry Viewer")
         self.config(background="green")
-        # self.config(background="#222222")
 
         w, h = self.winfo_screenwidth(), self.winfo_screenheight()
         self.geometry("%dx%d+0+0" % (w, h))
@@ -226,7 +211,7 @@ class TelemetryApp(Tk):
         self.status_label = Label(self.map_column, font="Arial 24", text="Disconnected", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
         self.status_label.grid(row=2, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
-        self.bytes_read_label = Label(self.map_column, textvariable=self.bytes_received, font="Arial 24", text="", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
+        self.bytes_read_label = Label(self.map_column, textvariable=self.bytes_read, font="Arial 24", text="", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
         self.bytes_read_label.grid(row=3, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
 
@@ -238,6 +223,10 @@ class TelemetryApp(Tk):
 
 
         self.download_overlay = None
+
+        self.bind('1', lambda _: self.test_serial_sender.send_single_packet(TelemetryTestSender.PRE_FLIGHT_TEST))
+        self.bind('2', lambda _: self.test_serial_sender.send_single_packet(TelemetryTestSender.IN_FLIGHT_TEST))
+        self.bind('3', lambda _: self.test_serial_sender.send_single_packet(TelemetryTestSender.POST_FLIGHT_TEST))
 
         self.bind('q', lambda _: self.quit())
         self.bind('s', lambda _: print(self.serial_reader.available_ports()))
@@ -276,14 +265,6 @@ class TelemetryApp(Tk):
 
         try:
             while True:
-                num_bytes_received = self.bytes_stats_queue.get(block=False)
-                if num_bytes_received is not None:
-                    self.bytes_received.set(self.bytes_received.get() + num_bytes_received)
-        except:
-            pass
-
-        try:
-            while True:
                 message = self.message_queue.get(block=False)
 
                 if message is not None:
@@ -291,19 +272,19 @@ class TelemetryApp(Tk):
 
                     # it state changed (launch -> flight, flight -> landed etc)
                     # then we must decode whole message
-                    if current_state is not state:
-                        self.message_callback(message)
-                        current_state = state
-                        counter = 0
+                    self.message_callback(message)
+                    # if current_state is not state:
+                    #     current_state = state
+                    #     counter = 0
 
-                    # else we just collate the new telemetry values and update the
-                    # most important ones:
-                    else:
-                        self.priority_message_callback(message)
-                        # combine dicts, updating with new values
-                        telemetry_buffer = telemetry_buffer | telemetry
+                    # # else we just collate the new telemetry values and update the
+                    # # most important ones:
+                    # else:
+                    #     self.priority_message_callback(message)
+                    #     # combine dicts, updating with new values
+                    #     telemetry_buffer = telemetry_buffer | telemetry
 
-                        counter += 1
+                    #     counter += 1
 
         except queue.Empty:
             if telemetry_buffer is not {}:
@@ -341,14 +322,14 @@ class TelemetryApp(Tk):
             for (key, value) in telemetry.items():
                 self.setvar(key, value)
 
-                # horrible hack to fix that the name is coming as its own message
-                # in FLIGHT DecoderState
-                # todo: replace this
-                if key == "name":
-                    return
+                # # horrible hack to fix that the name is coming as its own message
+                # # in FLIGHT DecoderState
+                # # todo: replace this
+                # if key == "name":
+                #     return
 
         match state:
-            case DecoderState.FLIGHT:
+            case DecoderState.INFLIGHT:
                 self.map_frame.update()
                 self.altitude_graph.render()
                 self.acceleration_graph.render()
@@ -391,7 +372,7 @@ class TelemetryApp(Tk):
 
         # clear app variables and graphs:
         self.setvar("name", "")
-        self.bytes_received.set(0)
+        self.bytes_read.set(0)
         self.map_frame.reset()
         self.altitude_graph.reset()
         self.velocity_graph.reset()

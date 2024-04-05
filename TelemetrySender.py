@@ -3,6 +3,7 @@ from time import sleep
 import serial
 
 class TelemetryTestSender(TelemetryReader):
+
     TEST_MESSAGE_INTERVAL = 0.05
 
     def __init__(self) -> None:
@@ -10,6 +11,26 @@ class TelemetryTestSender(TelemetryReader):
         self.filename = None
         self.serial_port = "COM3"
         TelemetryReader.__init__(self, None)
+
+    def send_single_packet(self, packet: bytes):
+        assert self.serial_port is not None
+        port = None
+
+        try:
+            port = serial.Serial(port=self.serial_port,
+                                 baudrate=57600,
+                                 timeout=1)
+        except:
+            print(f"Test sender could not open serial port: {self.serial_port}")
+            return
+
+        try:
+            # print(f"Sending packet {packet} out of port: {self.serial_port}")
+            port.write(packet)
+        except IOError as e:
+            print(e)
+        finally:
+            port.close()
 
     def __run__(self,
                 message_queue,

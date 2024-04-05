@@ -13,64 +13,92 @@ TelemetryDecoder:
   - SDCardTelemetryDecoder
   - RadioTelemetryDecoder
 """
-
+ENDIANNESS = "<"
 
 class RadioPacket:
     def __init__(self,
                  data_bytes) -> None:
-
-        self.values = struct.unpack(self.format, data_bytes)
+        self.values = list(struct.unpack(self.format, data_bytes))
 
     def __iter__(self):
-        return zip(self.keys, self.values)
+        zipped = zip(self.keys, self.values)
+        return zipped
 
 class PreFlightPacket(RadioPacket):
-    keys = ["event",       # uint8_t   event
-            "gnss_fix",    # uint8_t   gnss.fix
-            "report_code", # uint8_t   cont.reportCode
-            "rocketName",  # char[20?] rocketName   w
-            "base_alt",    # uint16_t  baseAlt
-            "gps_alt",     # uint16_t  GPSalt
-            "gps_lat",     # float     GPS.location.lat
-            "gps_lon",     # float     GPS.location.lng
-            "num_sats"]    # uint16_t  satNum
+    keys = ["event",          # uint8_t   event
+            "gnssFix",        # uint8_t   gnss.fix
+            "reportCode",     # uint8_t   cont.reportCode
+            "name",           # char[20?] rocketName
+            "base_alt",       # uint16_t  baseAlt
+            "gnssAlt",        # uint16_t  GPSalt
+            "gnssLat",        # float     GPS.location.lat
+            "gnssLon",        # float     GPS.location.lng
+            "gnssSatellites"] # uint16_t  satNum
 
-    format = "@BBB20sHHffH"
+    format = f"{ENDIANNESS}BBB20sHHffH"
 
 class InFlightData(RadioPacket):
-    keys = ["event",    # uint8_t event
-            "fltTime",  # int16_t fltTime
-            "vel",      # int16_t vel
-            "alt",      # int16_t alt
-            "roll",     # int16_t roll
-            "off_vert", # int16_t offVert
-            "accel"]    # int16_t accel
+    keys = ["event",     # uint8_t event
+            "time",      # int16_t fltTime
+            "fusionVel", # int16_t vel
+            "fusionAlt", # int16_t alt
+            "gyroZ",     # int16_t roll
+            "offVert",   # int16_t offVert
+            "accelZ"]    # int16_t accel
 
-    format = "@B6H"
+    format = f"{ENDIANNESS}B6H"
 
 class InFlightMetaData(RadioPacket):
-    keys = ["packetnum",    # int16_t packetnum
-            "gps_alt",      # int16_t GPSalt
-            "gps_lat",      # float   GPS.location.lat
-            "gps_lon"]      # float   GPS.location.lon
+    keys = ["radioPacketNum", # int16_t packetnum
+            "gnssAlt",        # int16_t GPSalt
+            "gnssLat",        # float   GPS.location.lat
+            "gnssLon"]        # float   GPS.location.lon
 
-    format = "@13B13B13B13BHHff"
+    format = f"{ENDIANNESS}13B13B13B13BHHff"
 
 class PostFlightPacket(RadioPacket):
-    keys = ["event",        # uint8_t  event
-            "max_alt",      # uint16_t maxAlt
-            "max_vel",      # uint16_t maxVel
-            "max_g",        # uint16_t maxG
-            "max_gps_alt",  # uint16_t maxGPSalt
-            "gps_fix",      # uint8_t  gnss.fix
-            "gps_alt",      # uint16_t GPSalt
-            "gps_lat",      # float    GPS.location.lat
-            "gps_lon"]      # float    GPS.location.lng
+    keys = ["event",      # uint8_t  event
+            "maxAlt",     # uint16_t maxAlt
+            "maxVel",     # uint16_t maxVel
+            "maxG",       # uint16_t maxG
+            "maxGnssAlt", # uint16_t maxGPSalt
+            "gnssFix",    # uint8_t  gnss.fix
+            "gnssAlt",    # uint16_t GPSalt
+            "gnssLat",    # float    GPS.location.lat
+            "gnssLon"]    # float    GPS.location.lng
 
-    format = "@B4HBHff"
+    format = f"{ENDIANNESS}B4HBHff"
+
+class DecoderState(Enum):
+    PREFLIGHT = 0
+    INFLIGHT = 1
+    MAXES = 2
+    LAUNCH = 3
+    LAND = 4
+    POSTFLIGHT = 5
+
+class TelemetryDecoder(object):
+    def __init__(self):
+        self.state = DecoderState.PREFLIGHT
+        self.modifiers = {}
+
+    def decode(self, line: str) -> dict | None:
+        return None
+
+    def apply_modifiers(self, telemetry_dict: dict) -> dict:
+        """
+        some values which are received from SD reading are not in a format good for
+        the user interface, so we change them before sending to UI
+        """
+        for key in telemetry_dict:
+            if key in self.modifiers:
+                old_value = telemetry_dict[key]
+                telemetry_dict[key] = self.modifiers[key](old_value)
+
+        return telemetry_dict
 
 
-class RadioTelemetryDecoder(object):
+class RadioTelemetryDecoder(TelemetryDecoder):
     """
     Converts flight telemetry received over radio direct from vehicle
     into SD-card style data for sending to UI (which is wanting SD-card style)
@@ -79,6 +107,7 @@ class RadioTelemetryDecoder(object):
     NUM_FLIGHT_DATA_MESSAGES = 4        # each in-flight packet contains this many actual data samples
     FLIGHT_DATA_MESSAGE_LENGTH = 13     # length of each of this samples
     FLIGHT_DATA_TOTAL_LENGTH = NUM_FLIGHT_DATA_MESSAGES * FLIGHT_DATA_MESSAGE_LENGTH
+    SYNC_WORD_LENGTH = 4
 
     # Mapping of event number to text name:
     event_names =  ["Preflight","Liftoff","Booster Burnout","Apogee Detected","Firing Apogee Pyro"
@@ -90,16 +119,29 @@ class RadioTelemetryDecoder(object):
                     "Booster Under Chute","Time Limit Exceeded","Touchdown!","Power Loss! Restart",
                     "Booster Touchdown","Booster Preflight","Booster Time Limit","Booster Pwr Restart"]
 
+    def __init__(self):
+        TelemetryDecoder.__init__(self)
+
     def decode(self, data_bytes) -> list | None:
+
+        data_bytes = data_bytes[:-self.SYNC_WORD_LENGTH]
+
+        print(f"expecting a struct of {struct.calcsize(PreFlightPacket.format)} bytes")
 
         event = data_bytes[0]
 
         try:
             if event == 0 or event == 30:
-                return [dict(PreFlightPacket(data_bytes))]
+                print("Preflight")
+                self.state = DecoderState.PREFLIGHT
+                packet = PreFlightPacket(data_bytes)
+                return [dict(packet.__iter__())]
+
             elif event < 26:
+                print("Inflight")
+                self.state = DecoderState.INFLIGHT
+
                 messages = []
-                last_index = 0
 
                 for index in range(0,
                                    self.FLIGHT_DATA_TOTAL_LENGTH,
@@ -110,23 +152,22 @@ class RadioTelemetryDecoder(object):
                 in_flight_meta_bytes = data_bytes[self.FLIGHT_DATA_MESSAGE_LENGTH:]
                 messages.append(dict(InFlightMetaData(in_flight_meta_bytes)))
 
+                print(f"{messages = }")
+
+                return messages
+
             else:
+                print("Postflight")
+                self.state = DecoderState.POSTFLIGHT
+
                 return [dict(PostFlightPacket(data_bytes))]
 
-        except Exception:
+        except Exception as e:
+            print(e)
             return None
 
 
-
-class DecoderState(Enum):
-    FLIGHT = 0
-    MAXES = 1
-    LAUNCH = 2
-    LAND = 3
-    END = 4
-
-
-class SDCardTelemetryDecoder(object):
+class SDCardTelemetryDecoder(TelemetryDecoder):
     """
     takes line of FC SD-card data and decodes it into a dictionary:
     """
@@ -135,14 +176,14 @@ class SDCardTelemetryDecoder(object):
     DEFAULT_ACCEL_RESOLUTION = 1024
 
     def __init__(self, accel_resolution: int = DEFAULT_ACCEL_RESOLUTION) -> None:
+        TelemetryDecoder.__init__(self)
 
-        self.state = DecoderState.FLIGHT
         self.telemetry_keys = None
-        self.unique_keys = { DecoderState.FLIGHT: "fltEvents",
+        self.unique_keys = { DecoderState.INFLIGHT: "fltEvents",
                              DecoderState.MAXES: "Max Baro Alt",
                              DecoderState.LAUNCH: "launch date",
                              DecoderState.LAND: "landing date",
-                             DecoderState.END: "Rocket Name" }
+                             DecoderState.POSTFLIGHT: "Rocket Name" }
 
         self.accel_resolution = accel_resolution
 
@@ -162,7 +203,7 @@ class SDCardTelemetryDecoder(object):
         # change all keys to be consistently formatted
         return key.strip().replace(" ","_")
 
-    def decode_line(self, line: str) -> dict | None:
+    def decode(self, line: str) -> dict | None:
         """
         decodes a line of SD-card flight telemetry
 
@@ -184,7 +225,7 @@ class SDCardTelemetryDecoder(object):
             return None
 
         # vast majority of lines will be raw telemetry so check for this first:
-        if self.state == DecoderState.FLIGHT and items[0].isnumeric():
+        if self.state == DecoderState.INFLIGHT and items[0].isnumeric():
             return self.decode_telemetry_values(items)
 
         # but if not raw telemetry, we check to see if there's a row of keys instead
@@ -200,7 +241,7 @@ class SDCardTelemetryDecoder(object):
 
                 # item 0 of FLIGHT key-row is actually name of rocket which complicates things
                 # as its column actually refers to time, not name. So we return name only.
-                if state == DecoderState.FLIGHT:
+                if state == DecoderState.INFLIGHT:
                     name = items[0]
                     self.telemetry_keys[0] = "time"
                     return {"name": name}
@@ -225,14 +266,3 @@ class SDCardTelemetryDecoder(object):
         # return a dict of all the key-value pairs in the received telemetry, ignoring all empties
         return modified_telemetry
 
-    def apply_modifiers(self, telemetry_dict: dict) -> dict:
-        """
-        some values which are received from SD reading are not in a format good for
-        the user interface, so we change them before sending to UI
-        """
-        for key in telemetry_dict:
-            if key in self.modifiers:
-                old_value = telemetry_dict[key]
-                telemetry_dict[key] = self.modifiers[key](old_value)
-
-        return telemetry_dict
