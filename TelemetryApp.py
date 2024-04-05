@@ -47,16 +47,16 @@ POSTFLIGHT_COORDS_PREFIX = "Post:"
 CELL_WIDTH = 220
 
 """
-todo:
+Work list:
 
-1. secondary units (m/s -> kmh etc)
-2. final value display (in addition to rolling max/min)
-3. add online/offline toggle to map itself
-4. add download current area to map itself
-5. add log window
-6. telemetry.ino format decoding
-7. bytes received total and per-second display
-8. event display
+1. Display text of event value in UI
+2. Correctly show bytes received and bytes per second received
+3. Save 2x backup files in both format of CSV and raw binary incoming
+4. final value display (in addition to rolling max/min)
+5. add online/offline toggle to map itself
+6. add download current area to map itself
+7. add log window
+8. correct display of units (m/s, kmh etc)
 """
 
 class TelemetryApp(Tk):
