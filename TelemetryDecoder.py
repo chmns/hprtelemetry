@@ -29,7 +29,7 @@ class PreFlightPacket(RadioPacket):
             "gnssFix",        # uint8_t   gnss.fix
             "reportCode",     # uint8_t   cont.reportCode
             "name",           # char[20?] rocketName
-            "base_alt",       # uint16_t  baseAlt
+            "baroAlt",        # uint16_t  baseAlt
             "gnssAlt",        # uint16_t  GPSalt
             "gnssLat",        # float     GPS.location.lat
             "gnssLon",        # float     GPS.location.lng

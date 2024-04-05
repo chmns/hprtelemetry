@@ -101,7 +101,7 @@ class TelemetrySerialReader(TelemetryReader):
                     print(f"Couldn't open file {self.filename}")
                     file = None
                 else:
-                    print(f"Open file for writing backup to: {self.filename}\n{str(error)}")
+                    print(f"Open file for writing backup to: {self.filename}")
 
             if file is not None:
                 try:
