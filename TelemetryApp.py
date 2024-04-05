@@ -49,12 +49,14 @@ CELL_WIDTH = 220
 """
 todo:
 
-1.  secondary units (m/s -> kmh etc)
+1. secondary units (m/s -> kmh etc)
 2. final value display (in addition to rolling max/min)
 3. add online/offline toggle to map itself
 4. add download current area to map itself
 5. add log window
 6. telemetry.ino format decoding
+7. bytes received total and per-second display
+8. event display
 """
 
 class TelemetryApp(Tk):

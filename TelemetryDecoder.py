@@ -15,14 +15,14 @@ TelemetryDecoder:
 """
 ENDIANNESS = "<"
 
-class RadioPacket:
+class RadioPacket(dict):
     def __init__(self,
-                 data_bytes) -> None:
+                 data_bytes: bytes) -> None:
         self.values = list(struct.unpack(self.format, data_bytes))
 
-    def __iter__(self):
+    def as_dict(self):
         zipped = zip(self.keys, self.values)
-        return zipped
+        return dict(zipped)
 
 class PreFlightPacket(RadioPacket):
     keys = ["event",          # uint8_t   event
@@ -54,7 +54,7 @@ class InFlightMetaData(RadioPacket):
             "gnssLat",        # float   GPS.location.lat
             "gnssLon"]        # float   GPS.location.lon
 
-    format = f"{ENDIANNESS}13B13B13B13BHHff"
+    format = f"{ENDIANNESS}HHff"
 
 class PostFlightPacket(RadioPacket):
     keys = ["event",      # uint8_t  event
@@ -126,19 +126,14 @@ class RadioTelemetryDecoder(TelemetryDecoder):
 
         data_bytes = data_bytes[:-self.SYNC_WORD_LENGTH]
 
-        print(f"expecting a struct of {struct.calcsize(PreFlightPacket.format)} bytes")
-
         event = data_bytes[0]
 
         try:
             if event == 0 or event == 30:
-                print("Preflight")
                 self.state = DecoderState.PREFLIGHT
-                packet = PreFlightPacket(data_bytes)
-                return [dict(packet.__iter__())]
+                return [PreFlightPacket(data_bytes).as_dict()]
 
             elif event < 26:
-                print("Inflight")
                 self.state = DecoderState.INFLIGHT
 
                 messages = []
@@ -146,21 +141,18 @@ class RadioTelemetryDecoder(TelemetryDecoder):
                 for index in range(0,
                                    self.FLIGHT_DATA_TOTAL_LENGTH,
                                    self.FLIGHT_DATA_MESSAGE_LENGTH):
+
                     inflight_bytes = data_bytes[index:index + self.FLIGHT_DATA_MESSAGE_LENGTH]
-                    messages.append(dict(InFlightData(inflight_bytes)))
+                    messages.append(InFlightData(inflight_bytes).as_dict())
 
-                in_flight_meta_bytes = data_bytes[self.FLIGHT_DATA_MESSAGE_LENGTH:]
-                messages.append(dict(InFlightMetaData(in_flight_meta_bytes)))
-
-                print(f"{messages = }")
+                in_flight_meta_bytes = data_bytes[self.FLIGHT_DATA_TOTAL_LENGTH:]
+                messages.append(InFlightMetaData(in_flight_meta_bytes).as_dict())
 
                 return messages
 
             else:
-                print("Postflight")
                 self.state = DecoderState.POSTFLIGHT
-
-                return [dict(PostFlightPacket(data_bytes))]
+                return [PostFlightPacket(data_bytes).as_dict()]
 
         except Exception as e:
             print(e)

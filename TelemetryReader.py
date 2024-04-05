@@ -85,7 +85,6 @@ class TelemetrySerialReader(TelemetryReader):
 
             try:
                 telemetry_bytes = self.read(port)
-                # print(f"Read {len(telemetry_bytes)} bytes: {telemetry_bytes.hex(' ',-1) }")
 
                 if len(telemetry_bytes) == 0:
                     sleep(0.01)
