@@ -89,6 +89,8 @@ class TelemetrySerialReader(TelemetryReader):
                 if len(telemetry_bytes) == 0:
                     sleep(0.01)
                     continue
+                else:
+                    print(telemetry_bytes.hex(' '))
 
             except Exception as error:
                 print(f"Error reading from port: {self.serial_port}\n{str(error)}")
@@ -96,7 +98,7 @@ class TelemetrySerialReader(TelemetryReader):
 
             if file is None and self.filename is not None: # file isn't open but user has added backup file during running
                 try:
-                    file = open(self.filename, 'a') # open with 'a' mode to append to existing file so we dont over-write
+                    file = open(self.filename, 'wb') # open with 'wb' write binary mode - will overwrite any existing file
                 except Exception as error:
                     print(f"Couldn't open file {self.filename}")
                     file = None
@@ -147,6 +149,7 @@ class TelemetrySerialReader(TelemetryReader):
             raise EnvironmentError('Unsupported platform')
 
         result = []
+
         for port in ports:
             try:
                 serial_port = serial.Serial(port)

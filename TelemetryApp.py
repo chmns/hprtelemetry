@@ -49,6 +49,12 @@ CELL_WIDTH = 220
 """
 Work list:
 
+bugs:
+1. AttributeError: 'str' object has no attribute 'items' in TelemetryApp.py", line 394, in update_serial_menu
+2. Couldn't write backup data to file C:/Users/User/Desktop/test.csv: write() argument must be str, not bytes
+3. print received bytes
+
+features:
 1. Display text of event value in UI
 2. Correctly show bytes received and bytes per second received
 3. Save 2x backup files in both format of CSV and raw binary incoming
@@ -411,7 +417,7 @@ class TelemetryApp(Tk):
             self.reset()
 
             if yesnocancel:
-                filename = asksaveasfilename(title="Choose backup file name", defaultextension=".csv", filetypes =[('Comma Separated Values', '*.csv')])
+                filename = asksaveasfilename(title="Choose backup file name", defaultextension=".tlm", filetypes =[('Binary Telemetry Data', '*.tlm')])
 
                 self.serial_reader.filename = filename
                 self.set_status_text(f"Recording serial port {port}", WHITE, DARK_RED)
