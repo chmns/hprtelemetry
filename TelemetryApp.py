@@ -51,8 +51,6 @@ Work list:
 
 bugs:
 1. AttributeError: 'str' object has no attribute 'items' in TelemetryApp.py", line 394, in update_serial_menu
-2. Couldn't write backup data to file C:/Users/User/Desktop/test.csv: write() argument must be str, not bytes
-3. print received bytes
 
 features:
 1. Display text of event value in UI
