@@ -1,7 +1,6 @@
 from enum import Enum
 import struct
 
-
 """
 Telemetry Decoding:
 
@@ -119,10 +118,28 @@ class RadioTelemetryDecoder(TelemetryDecoder):
                     "Booster Under Chute","Time Limit Exceeded","Touchdown!","Power Loss! Restart",
                     "Booster Touchdown","Booster Preflight","Booster Time Limit","Booster Pwr Restart"]
 
+
     def __init__(self):
         TelemetryDecoder.__init__(self)
+        self.modifiers = { "event": self.event_modifier }
+
+    def event_modifier(self, event: int) -> str:
+        try:
+            return self.event_names[event]
+        except:
+            return event
+
 
     def decode(self, data_bytes) -> list | None:
+        telemetry = self.__decode__(data_bytes)
+
+        if telemetry is not None:
+            for message in telemetry:
+                message = self.apply_modifiers(message)
+
+        return telemetry
+
+    def __decode__(self, data_bytes) -> list | None:
 
         data_bytes = data_bytes[:-self.SYNC_WORD_LENGTH]
 
