@@ -24,7 +24,7 @@ style.use('dark_background')
 
 UPDATE_DELAY = 100 # ms between frames
 
-NUM_COLS = 7
+NUM_COLS = 6
 NUM_ROWS = 3
 PADX = 4
 PADY = 4
@@ -96,8 +96,10 @@ class TelemetryApp(Tk):
             self.setvar(var)
 
         self.running = BooleanVar(self, False, "running")
-
+        self.event = IntVar(self, "", "event")
+        self.state = IntVar(self, "", "state")
         self.bytes_read = IntVar(self, 0, "bytes_read")
+
 
         self.serial_reader = RadioTelemetryReader(self.message_queue)
         self.serial_reader.name = "serial_reader"
@@ -197,34 +199,36 @@ class TelemetryApp(Tk):
         for i in range (NUM_ROWS):
             self.graphs.rowconfigure(i, weight=1)
 
-
         self.map_frame = MapFrame(self.map_column,
                                   DoubleVar(self, 0.0, "gnssLat"),
                                   DoubleVar(self, 0.0, "gnssLon"),
                                   DoubleVar(self, 0.0, "gnssAlt"),
                                   self.offline_maps_only)
-        self.map_frame.grid(row=0, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.map_frame.grid(row=0, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+
+        self.event_label = Label(self.map_column, textvariable=self.event, font="Arial 24", bg=BG_COLOR, fg=LIGHT_GRAY)
+        self.event_label.grid(row=1, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
         self.tilt_spin = TiltAndSpin(self.map_column, "offVert", "gyroZ")
-        self.tilt_spin.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.tilt_spin.grid(row=2, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
         self.status = TelemetryStatus(self.map_column, "name", "radioPacketNum", "time", "gnssSatellites")
-        self.status.grid(row=1, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.status.grid(row=2, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
-        self.controls = TelemetryControls(self.map_column, self.serial_reader)
-        self.controls.grid(row=1, column=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        # self.controls = TelemetryControls(self.map_column, self.serial_reader)
+        # self.controls.grid(row=2, column=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
         self.status_label = Label(self.map_column, font="Arial 24", text="Disconnected", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
-        self.status_label.grid(row=2, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.status_label.grid(row=3, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
-        self.bytes_read_label = Label(self.map_column, textvariable=self.bytes_read, font="Arial 24", text="", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
-        self.bytes_read_label.grid(row=3, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        # self.bytes_read_label = Label(self.map_column, textvariable=self.bytes_read, font="Arial 24", text="", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
+        # self.bytes_read_label.grid(row=4, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
 
         self.map_column.rowconfigure(0, weight=2)
-        self.map_column.rowconfigure(1, weight=1)
+        self.map_column.rowconfigure(2, weight=1)
 
-        for i in range (3):
+        for i in range (2):
             self.map_column.columnconfigure(i, weight=1)
 
 
@@ -448,7 +452,7 @@ class TelemetryApp(Tk):
 
         try:
             self.download_overlay = Frame(self, background="#0f0f0f")
-            self.download_overlay.grid(row=0, column=0, rowspan=3, columnspan=7, sticky=(N,E,S,W))
+            self.download_overlay.grid(row=0, column=0, rowspan=3, columnspan=NUM_COLS, sticky=(N,E,S,W))
 
             ok = messagebox.askokcancel("Download current map",
                                         "This will currently displayed location at all zoom levels. Depending on internet connection this require take several minutes.\n\nDuring download the app will be unresponsive.\n\nAre you sure you wish to continue?")
