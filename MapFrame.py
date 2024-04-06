@@ -14,7 +14,8 @@ START_TEXT = "Start"
 LAUNCH_TEXT = "Landing"
 LANDING_TEXT = "Launch"
 DEFAULT_DATABASE_NAME = "offline_tiles.db"
-TILE_SERVER_URL = "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
+TILE_SERVER_URL = "http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}&s=Ga"
+
 
 class MapFrame(Frame):
 
@@ -120,6 +121,7 @@ class MapFrame(Frame):
         self.map_view = TkinterMapView(self,
                                        database_path=self.database_path,
                                        use_database_only=offline_maps_only_var.get())
+        self.map_view.set_tile_server(TILE_SERVER_URL)
 
         self.map_view.grid(row=0, column=0, sticky=(N,E,S,W))
         self.map_view.grid_propagate(True)
