@@ -64,6 +64,7 @@ class MapFrame(Frame):
     def download_current_map(self):
 
         current_zoom = self.map_view.zoom
+        current_position = self.map_view.get_position()
         top_left_position = osm_to_decimal(*self.map_view.upper_left_tile_pos, current_zoom)
         bottom_right_position = osm_to_decimal(*self.map_view.lower_right_tile_pos, current_zoom)
 
@@ -80,7 +81,7 @@ class MapFrame(Frame):
         except Exception:
             print("Error downloading offline maps")
         else:
-            self.map_view.set_position(*top_left_position)
+            self.map_view.set_position(*current_position)
 
     def set_only_offline_maps(self, only_offline):
         self.map_view.use_database_only = only_offline
