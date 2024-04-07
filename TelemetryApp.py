@@ -17,6 +17,7 @@ from tkinter import messagebox
 from TelemetryDecoder import DecoderState
 from TelemetryReader import SDCardFileReader, RadioTelemetryReader
 from TelemetrySender import TelemetryTestSender
+from enum import Enum
 from matplotlib import style
 import queue
 from pathlib import Path
@@ -66,6 +67,13 @@ features:
 8. correct display of units (m/s, kmh etc)
 """
 
+
+class AppState(Enum):
+    IDLE = 0
+    READING_FILE = 1
+    READING_SERIAL = 2
+    RECORDING_SERIAL = 3
+
 class TelemetryApp(Tk):
 
     def __init__(self,
@@ -77,6 +85,8 @@ class TelemetryApp(Tk):
                  use: str | None = None) -> None:
 
         super().__init__(screenName, baseName, className, useTk, sync, use)
+
+        self.state = AppState.IDLE
 
         self.message_queue = queue.Queue()
 
@@ -98,9 +108,8 @@ class TelemetryApp(Tk):
         for var in self.telemetry_vars:
             self.setvar(var)
 
-        self.running = BooleanVar(self, False, "running")
         self.event = IntVar(self, "", "event")
-        self.state = IntVar(self, "", "state")
+        self.decoder_state = IntVar(self, "", "decoder_state")
         self.bytes_read = IntVar(self, 0, "bytes_read")
 
 
@@ -270,11 +279,19 @@ class TelemetryApp(Tk):
         self.quit()
 
     def update(self):
-        self.running.set(True)
-
         telemetry_buffer = {}
         current_state = None
         counter = 0
+
+        """
+        matplotlib is relatively expensive to update so we can not redraw it
+        every time a message comes, because on SD card data it is very often
+        we could change the rendering to use blitting in future but for now
+        we use this system: we only update occasionally (10x per second), and
+        use the last received telemetry values.
+        some values are 'priority' values, like time and packet number, so they
+        are always updated.
+        """
 
         try:
             while True:
@@ -285,29 +302,28 @@ class TelemetryApp(Tk):
 
                     # it state changed (launch -> flight, flight -> landed etc)
                     # then we must decode whole message
-                    self.message_callback(message)
-                    # if current_state is not state:
-                    #     current_state = state
-                    #     counter = 0
+                    if current_state is not state:
+                        current_state = state
+                        counter = 0
 
-                    # # else we just collate the new telemetry values and update the
-                    # # most important ones:
-                    # else:
-                    #     self.priority_message_callback(message)
-                    #     # combine dicts, updating with new values
-                    #     telemetry_buffer = telemetry_buffer | telemetry
+                    # else we just collate the new telemetry values and update the
+                    # most important ones:
+                    else:
+                        self.priority_message_callback(message)
+                        # combine dicts, updating with new values
+                        telemetry_buffer |= telemetry
 
-                    #     counter += 1
+                        counter += 1
 
         except queue.Empty:
             if telemetry_buffer is not {}:
                 self.message_callback((telemetry_buffer, current_state))
+                # print(f"{counter = }")
 
         finally:
             if self.file_reader.running.is_set() or self.serial_reader.running.is_set():
                 self.after(UPDATE_DELAY, self.update)
             else:
-                self.running.set(False)
                 self.stop()
 
     def priority_message_callback(self, message):
@@ -356,22 +372,43 @@ class TelemetryApp(Tk):
                 self.map_frame.set_landing_point(float(self.getvar("landing_latitude")),
                                                  float(self.getvar("landing_longitude")))
 
-
-    def disconnect(self) -> None:
-        if self.serial_reader.running.is_set():
-            if messagebox.askokcancel("Disconnect", "Disconnect from serial port and stop recording. Are you sure?"):
-                self.stop()
-
-    def stop(self) -> None:
+    def stop(self) -> bool:
         """
         stops recording and/or playing back serial or file
         but does not reset the graphs and map e.t.c.
+
+        return true if user decided to stop, false if they canceled
         """
-        # stop file decoder if it's running
-        self.file_reader.stop()
-        # stop serial decoder if it's running
-        self.serial_reader.stop()
-        self.set_status_text("Disconnected", LIGHT_GRAY)
+        okcancel = True
+
+        match self.state:
+            case AppState.IDLE:
+                pass
+
+            case AppState.READING_FILE:
+                okcancel = messagebox.askokcancel("Stop Reading",
+                                                  "This will stop the playback of this file, are you sure?")
+
+            case AppState.READING_SERIAL:
+                okcancel = messagebox.askokcancel("Stop Listening",
+                                                  "This will disconnect from current serial port, are you sure?")
+
+            case AppState.RECORDING_SERIAL:
+                okcancel = messagebox.askokcancel("Stop Recording",
+                                                  "This will disconnect and stop recording current serial port, are you sure?")
+
+        if okcancel:
+            # stop file decoder if it's running
+            self.file_reader.stop()
+            # stop serial decoder if it's running
+            self.serial_reader.stop()
+            # update status display to show we are now disconnected
+            self.set_status_text("Disconnected", LIGHT_GRAY)
+
+            self.state = AppState.IDLE
+
+        return okcancel
+
 
     def reset(self) -> None:
         """
@@ -397,7 +434,7 @@ class TelemetryApp(Tk):
         """
         self.serial_menu.delete(0, END)
 
-        self.serial_menu.add_command(label="Disconnect", command=self.disconnect)
+        self.serial_menu.add_command(label="Disconnect", command=self.stop)
 
         ports = self.serial_reader.available_ports()
 
@@ -411,7 +448,9 @@ class TelemetryApp(Tk):
         self.serial_menu.add_command(label="Re-scan", command=self.update_serial_menu)
 
     def listen_to_port(self, port):
-        print(f"Attempting to listen to {port}")
+        if self.stop():
+            self.reset() # if user has decided to cancel current operation then we should also reset
+
         if port in self.serial_reader.available_ports():
             yesnocancel = messagebox.askyesnocancel(f"Listen on serial port {port}",
                                                     "Do you want to save a backup of this telemetry to disk?")
@@ -425,9 +464,12 @@ class TelemetryApp(Tk):
                 filename = asksaveasfilename(title="Choose backup file name", defaultextension=".tlm", filetypes =[('Binary Telemetry Data', '*.tlm')])
 
                 self.serial_reader.filename = filename
+                self.state = AppState.RECORDING_SERIAL
                 self.set_status_text(f"Recording serial port {port}", WHITE, DARK_RED)
+
             else:
                 print(f"Not saving telemetry from serial port {port} to file")
+                self.state = AppState.READING_SERIAL
                 self.set_status_text(f"Listening serial port {port} (Not Recording)", WHITE)
 
             self.serial_reader.serial_port = port
@@ -435,10 +477,15 @@ class TelemetryApp(Tk):
             self.update()
 
     def open_telemetry_file(self):
-        filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'), ('Other Telemetry Files', '*.*')])
+        if self.stop():
+            self.reset() # if user has decided to cancel current operation then we should also reset
+
+        filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'),
+                                               ('Telemetry Binary Files', '*.tlm')])
         if filename != "":
             self.reset()
             self.file_reader.filename = filename
+            self.state = AppState.READING_FILE
             self.set_status_text(f"Playing: {filename.split('/')[-1]}", WHITE, DARK_GREEN)
             self.file_reader.start()
             self.update()
