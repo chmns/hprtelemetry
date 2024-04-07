@@ -498,8 +498,8 @@ class TelemetryApp(Tk):
     def download_current_map(self):
 
         try:
-            self.download_overlay = Frame(self, background="#0f0f0f")
-            self.download_overlay.grid(row=0, column=0, rowspan=3, columnspan=NUM_COLS, sticky=(N,E,S,W))
+            self.download_overlay = Frame(self.window, background="#0f0f0f")
+            self.download_overlay.pack(expand=True, fill=BOTH)
 
             ok = messagebox.askokcancel("Download current map",
                                         "This will currently displayed location at all zoom levels. Depending on internet connection this require take several minutes.\n\nDuring download the app will be unresponsive.\n\nAre you sure you wish to continue?")
@@ -509,9 +509,9 @@ class TelemetryApp(Tk):
 
             self.map_frame.download_current_map()
 
-        except Exception:
+        except Exception as e:
             messagebox.showerror("Downloading Error",
-                                 "Unable to download map, check internet connection")
+                                 f"Unable to download map, check internet connection\n\n({e})")
             return
 
         else:
