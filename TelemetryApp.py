@@ -439,7 +439,7 @@ class TelemetryApp(Tk):
         ports = self.serial_reader.available_ports()
 
         if len(ports) == 0:
-            self.serial_menu.add_command("No serial ports", state=DISABLED)
+            self.serial_menu.add_command(label="No serial ports", state=DISABLED)
         else:
             for port_name in ports:
                 self.serial_menu.add_command(label=port_name, command=lambda name=port_name: self.listen_to_port(name))
