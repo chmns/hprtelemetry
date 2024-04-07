@@ -50,10 +50,13 @@ CELL_WIDTH = 220
 Work list:
 
 bugs:
-1. AttributeError: 'str' object has no attribute 'items' in TelemetryApp.py", line 394, in update_serial_menu
+1. Can't run without USB connected
+   (AttributeError: 'str' object has no attribute 'items' in TelemetryApp.py", line 394, in update_serial_menu)
+2. Event indicator not showing
+3. Doesn't disconnect from old serial port when listen to new port
 
 features:
-1. Display text of event value in UI
+1. Add reader for .tlm files
 2. Correctly show bytes received and bytes per second received
 3. Save 2x backup files in both format of CSV and raw binary incoming
 4. final value display (in addition to rolling max/min)
@@ -401,8 +404,8 @@ class TelemetryApp(Tk):
         if len(ports) == 0:
             self.serial_menu.add_command("No serial ports", state=DISABLED)
         else:
-            for port in ports:
-                self.serial_menu.add_command(label=port, command=lambda: self.listen_to_port(port))
+            for port_name in ports:
+                self.serial_menu.add_command(label=port_name, command=lambda name=port_name: self.listen_to_port(name))
 
         self.serial_menu.add_separator()
         self.serial_menu.add_command(label="Re-scan", command=self.update_serial_menu)
