@@ -50,8 +50,6 @@ CELL_WIDTH = 220
 """
 Work list:
 
-bugs:
-1. Event indicator not showing text
 
 features:
 1. Add reader for .tlm files
@@ -62,6 +60,7 @@ features:
 6. Add download current area to map itself
 7. Add log window
 8. Correct display of units (m/s, kmh etc)
+9. Show current map co-ords and zoom level on map itself
 """
 
 
@@ -277,8 +276,6 @@ class TelemetryApp(Tk):
 
     def update(self):
         telemetry_buffer = {}
-        current_state = None
-        counter = 0
 
         """
         matplotlib is relatively expensive to update so we can not redraw it
@@ -296,12 +293,11 @@ class TelemetryApp(Tk):
 
                 if message is not None:
                     (telemetry, state) = message
-
                     # it state changed (launch -> flight, flight -> landed etc)
                     # then we must decode whole message
-                    if current_state is not state:
-                        current_state = state
-                        counter = 0
+                    if state is not self.decoder_state:
+                        self.message_callback(message)
+                        self.decoder_state = state
 
                     # else we just collate the new telemetry values and update the
                     # most important ones:
@@ -310,12 +306,9 @@ class TelemetryApp(Tk):
                         # combine dicts, updating with new values
                         telemetry_buffer |= telemetry
 
-                        counter += 1
-
         except queue.Empty:
             if telemetry_buffer is not {}:
-                self.message_callback((telemetry_buffer, current_state))
-                # print(f"{counter = }")
+                self.message_callback((telemetry_buffer, self.decoder_state))
 
         finally:
             if self.file_reader.running.is_set() or self.serial_reader.running.is_set():
@@ -324,7 +317,7 @@ class TelemetryApp(Tk):
                 self.stop()
 
     def priority_message_callback(self, message):
-        (telemetry, state) = message
+        (telemetry, _) = message
 
         if isinstance(telemetry, dict):
             for priority_var in self.priority_vars:
@@ -459,11 +452,12 @@ class TelemetryApp(Tk):
 
             if yesnocancel:
                 filename = asksaveasfilename(title="Choose backup file name", defaultextension=".tlm", filetypes =[('Binary Telemetry Data', '*.tlm')])
-
-                self.serial_reader.filename = filename
-                self.state = AppState.RECORDING_SERIAL
-                self.set_status_text(f"Recording serial port {port}", WHITE, DARK_RED)
-
+                if filename != "":
+                    self.serial_reader.filename = filename
+                    self.state = AppState.RECORDING_SERIAL
+                    self.set_status_text(f"Recording serial port {port}", WHITE, DARK_RED)
+                else:
+                    return
             else:
                 print(f"Not saving telemetry from serial port {port} to file")
                 self.state = AppState.READING_SERIAL

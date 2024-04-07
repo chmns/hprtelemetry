@@ -23,8 +23,6 @@ class MapFrame(Frame):
         new_lat = self.lat_var.get()
         new_lon = self.lon_var.get()
 
-        # print(f"{new_lat = } : {new_lon =}")
-
         if new_lat != self.lat or new_lon != self.lon:
             self.lat = new_lat
             self.lon = new_lon

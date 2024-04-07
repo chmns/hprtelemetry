@@ -24,6 +24,7 @@ class TelemetryReader(object):
         self.decoder = None
         self.thread = None
         self.name = name
+        self.num_received = 0
 
     def start(self) -> None:
         self.running.set()
@@ -90,7 +91,8 @@ class TelemetrySerialReader(TelemetryReader):
                     sleep(0.01)
                     continue
                 else:
-                    print(telemetry_bytes.hex(' '))
+                    self.num_received += 1
+                    print(f"{self.num_received:>6}: {telemetry_bytes.hex(' ')}")
 
             except Exception as error:
                 print(f"Error reading from port: {self.serial_port}\n{str(error)}")
