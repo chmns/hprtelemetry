@@ -49,18 +49,16 @@ CELL_WIDTH = 220
 
 """
 Work list:
-
-
-features:
-1. Add reader for .tlm files
-2. Correctly show bytes received and bytes per second received
-3. Also save CSV backup file format
-4. Show final value display (in addition to rolling max/min)
-5. Add online/offline toggle to map itself
-6. Add download current area to map itself
-7. Add log window
-8. Correct display of units (m/s, kmh etc)
-9. Show current map co-ords and zoom level on map itself
+1.  Add decoder state readout (preflight, inflight etc)
+2.  Add reader for .tlm files
+3.  Correctly show bytes received and bytes per second received
+4.  Also save CSV backup file format
+5.  Show final value display (in addition to rolling max/min)
+6.  Add online/offline toggle to map itself
+7.  Add download current area to map itself
+8.  Add log window
+9.  Correct display of units (m/s, kmh etc)
+10. Show current map co-ords and zoom level on map itself
 """
 
 
@@ -232,13 +230,11 @@ class TelemetryApp(Tk):
         # self.bytes_read_label = Label(self.map_column, textvariable=self.bytes_read, font="Arial 24", text="", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
         # self.bytes_read_label.grid(row=4, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
-
         self.map_column.rowconfigure(0, weight=2)
         self.map_column.rowconfigure(2, weight=1)
 
         for i in range (2):
             self.map_column.columnconfigure(i, weight=1)
-
 
         self.download_overlay = None
 

@@ -121,7 +121,8 @@ class RadioTelemetryDecoder(TelemetryDecoder):
 
     def __init__(self):
         TelemetryDecoder.__init__(self)
-        self.modifiers = { "event": self.event_modifier }
+        self.modifiers = { "event": self.event_modifier,
+                           "name": self.name_modifier }
 
     def event_modifier(self, event: int) -> str:
         try:
@@ -129,6 +130,8 @@ class RadioTelemetryDecoder(TelemetryDecoder):
         except:
             return event
 
+    def name_modifier(self, name: bytes) -> str:
+        return name.decode("ascii").strip()
 
     def decode(self, data_bytes) -> list | None:
         telemetry = self.__decode__(data_bytes)
