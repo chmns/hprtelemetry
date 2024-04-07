@@ -51,20 +51,17 @@ CELL_WIDTH = 220
 Work list:
 
 bugs:
-1. Can't run without USB connected
-   (AttributeError: 'str' object has no attribute 'items' in TelemetryApp.py", line 394, in update_serial_menu)
-2. Event indicator not showing
-3. Doesn't disconnect from old serial port when listen to new port
+1. Event indicator not showing text
 
 features:
 1. Add reader for .tlm files
 2. Correctly show bytes received and bytes per second received
-3. Save 2x backup files in both format of CSV and raw binary incoming
-4. final value display (in addition to rolling max/min)
-5. add online/offline toggle to map itself
-6. add download current area to map itself
-7. add log window
-8. correct display of units (m/s, kmh etc)
+3. Also save CSV backup file format
+4. Show final value display (in addition to rolling max/min)
+5. Add online/offline toggle to map itself
+6. Add download current area to map itself
+7. Add log window
+8. Correct display of units (m/s, kmh etc)
 """
 
 
