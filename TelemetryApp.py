@@ -10,10 +10,11 @@ MFL
 
 from tkinter import *
 from GraphFrame import GraphFrame
-from TelemetryControls import *
+from TelemetryControls import TelemetryStatus, TiltAndSpin, ReadOut
 from MapFrame import *
 from tkinter.filedialog import askopenfilename, asksaveasfilename
 from tkinter import messagebox
+from Styles import Fonts, Colors
 from TelemetryDecoder import DecoderState
 from TelemetryReader import SDCardFileReader, RadioTelemetryReader
 from TelemetrySender import TelemetryTestSender
@@ -61,7 +62,6 @@ Work list:
 10. Show current map co-ords and zoom level on map itself
 """
 
-
 class AppState(Enum):
     IDLE = 0
     READING_FILE = 1
@@ -82,7 +82,7 @@ class TelemetryApp(Tk):
 
         self.state = AppState.IDLE
 
-        self.message_queue = queue.Queue()
+        self.message_queue = queue.Queue() # incoming telemetry from file or serial port
 
         self.telemetry_vars = ["name",
                                "time", "accelX", "accelY", "accelZ", "gyroZ" "highGx", "highGy", "highGz",
@@ -113,16 +113,25 @@ class TelemetryApp(Tk):
         self.file_reader = SDCardFileReader(self.message_queue)
         self.file_reader.name = "file_reader"
 
-        # for testing only:
-        self.test_serial_sender = TelemetryTestSender()
 
+        self.test_serial_sender = TelemetryTestSender() # for test data only
+
+
+        """
+        Window properties
+        -----------------
+        """
         self.title("HPR Telemetry Viewer")
         self.config(background="green")
 
         w, h = self.winfo_screenwidth(), self.winfo_screenheight()
         self.geometry("%dx%d+0+0" % (w, h))
 
-        # create a menubar
+
+        """
+        Menu Bar
+        --------
+        """
         self.menubar = Menu(self)
         self.config(menu=self.menubar)
 
@@ -147,9 +156,14 @@ class TelemetryApp(Tk):
 
         self.update_serial_menu()
 
+
+        """
+        Window panes
+        ------------
+        """
         self.window = PanedWindow(orient="horizontal", background="#aaaaaa")
         self.window.configure(sashwidth=SASH_WIDTH)
-        self.readouts = Frame(self.window, width=CELL_WIDTH*2, background=BG_COLOR)
+        self.readouts = Frame(self.window, width=CELL_WIDTH*2, background=Colors.BG_COLOR)
         self.graphs = Frame(self.window, width=400, background="black")
         self.map_column = PanedWindow(self.window, orient="vertical", background="black")
 
@@ -162,15 +176,23 @@ class TelemetryApp(Tk):
         self.window.sash_place(0, CELL_WIDTH, 0)
         self.window.sash_place(1, CELL_WIDTH, 0)
 
-        self.altitude = ReadOut(self.readouts, "Altitude", "fusionAlt", "m", "ft", ReadOut.metresToFeet, ALTITUDE_COLOR)
+        self.download_overlay = None # Used to blank the UI when map download is happen
+
+
+        """
+        Readouts Column
+        ---------------
+        Left side
+        """
+        self.altitude = ReadOut(self.readouts, "Altitude", "fusionAlt", "m", "ft", ReadOut.metresToFeet, color=ALTITUDE_COLOR)
         self.altitude.grid(row=0, column=0, padx=PADX, pady=PADY, sticky=(N,E,W,S))
         self.altitude.config(width = CELL_WIDTH)
 
-        self.velocity = ReadOut(self.readouts, "Velocity", "fusionVel", "m/s", "mi/h", ReadOut.msToMph, VELOCITY_COLOR)
+        self.velocity = ReadOut(self.readouts, "Velocity", "fusionVel", "m/s", "mi/h", ReadOut.msToMph, color=VELOCITY_COLOR)
         self.velocity.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,S))
         self.velocity.config(width = CELL_WIDTH)
 
-        self.acceleration = ReadOut(self.readouts, "Accel", "accelZ", "m/s/s", "G", ReadOut.mssToG, ACCELERATION_COLOR)
+        self.acceleration = ReadOut(self.readouts, "Accel", "accelZ", "m/s/s", "G", ReadOut.mssToG, color=ACCELERATION_COLOR)
         self.acceleration.grid(row=2, column=0, padx=PADX, pady=PADY, sticky=(N,S))
         self.acceleration.config(width = CELL_WIDTH)
 
@@ -178,6 +200,12 @@ class TelemetryApp(Tk):
         for i in range (NUM_ROWS):
             self.readouts.rowconfigure(i, weight=1)
 
+
+        """
+        Graphs Column
+        -------------
+        Centre
+        """
         self.altitude_graph = GraphFrame(self.graphs,
                                          "m",
                                          DoubleVar(self, 0.0, "time"),
@@ -206,14 +234,20 @@ class TelemetryApp(Tk):
         for i in range (NUM_ROWS):
             self.graphs.rowconfigure(i, weight=1)
 
-        self.name_label = Label(self.map_column, textvariable=self.name, font="Arial 28", bg=BG_COLOR, fg=WHITE)
+
+        """
+        Map Column
+        ----------
+        Right-side
+        """
+        self.name_label = Label(self.map_column, textvariable=self.name, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=WHITE)
         self.name_label.grid(row=0, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.map_column.rowconfigure(0, weight=0)
 
-        self.event_label = Label(self.map_column, textvariable=self.event, font="Arial 20", bg=BG_COLOR, fg=WHITE)
+        self.event_label = Label(self.map_column, textvariable=self.event, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=WHITE)
         self.event_label.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
-        self.telemetry_state_label = Label(self.map_column, textvariable=self.telemetry_state_name, font="Arial 18 bold", bg=BG_COLOR, fg=WHITE)
+        self.telemetry_state_label = Label(self.map_column, textvariable=self.telemetry_state_name, font=Fonts.MEDIUM_FONT, bg=Colors.BG_COLOR, fg=LIGHT_GRAY)
         self.telemetry_state_label.grid(row=1, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.map_column.rowconfigure(1, weight=0)
 
@@ -230,17 +264,20 @@ class TelemetryApp(Tk):
 
         self.status = TelemetryStatus(self.map_column, "radioPacketNum", "time", "gnssSatellites")
         self.status.grid(row=3, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.map_column.rowconfigure(3, weight=1)
+        self.map_column.rowconfigure(3, weight=0)
 
-        self.status_label = Label(self.map_column, font="Arial 20", text="Disconnected", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
+        self.status_label = Label(self.map_column, font=Fonts.MEDIUM_FONT, text="Disconnected", bg=Colors.BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
         self.status_label.grid(row=4, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.map_column.rowconfigure(4, weight=0)
 
         for i in range (2):
             self.map_column.columnconfigure(i, weight=2, uniform="a")
 
-        self.download_overlay = None
 
+        """
+        Keyboard shortcuts
+        ------------------
+        """
         self.bind('1', lambda _: self.test_serial_sender.send_single_packet(TelemetryTestSender.PRE_FLIGHT_TEST))
         self.bind('2', lambda _: self.test_serial_sender.send_single_packet(TelemetryTestSender.IN_FLIGHT_TEST))
         self.bind('3', lambda _: self.test_serial_sender.send_single_packet(TelemetryTestSender.POST_FLIGHT_TEST))
@@ -251,13 +288,11 @@ class TelemetryApp(Tk):
         self.bind('t', lambda _: self.open_telemetry_test_file())
         self.focus()
 
-        self.offline_map_path = str(Path.home() / "Documents")
-
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def set_telemetry_state(self, state: DecoderState) -> None:
         self.telemetry_state = state
-        self.telemetry_state_name.set(f"TELEMETRY: {str(state).upper()}")
+        self.telemetry_state_name.set(f"{str(state).upper()}")
 
     def set_status_text(self, text,
                         color:str = None,
@@ -270,7 +305,7 @@ class TelemetryApp(Tk):
         if bg is not None:
             self.status_label.config(bg=bg)
         else:
-            self.status_label.config(bg=BG_COLOR)
+            self.status_label.config(bg=Colors.BG_COLOR)
 
     def on_closing(self):
         self.stop()
