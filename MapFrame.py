@@ -47,6 +47,7 @@ class MapFrame(Frame):
         self.launch_marker = self.map_view.set_marker(launch_lat, launch_lon, LAUNCH_TEXT)
 
     def reset(self):
+        self.location_grid.reset()
         self.lat = DEFAULT_LAT
         self.lon = DEFAULT_LON
         self.map_view.set_position(self.lat, self.lon)
@@ -135,32 +136,59 @@ class LocationGrid(Frame):
     def __init__(self, master):
         Frame.__init__(self, master, height=110)
 
+        self.launch_latitude  = StringVar(master, "0.0", "launch_latitude")
+        self.launch_longitude = StringVar(master, "0.0", "launch_longitude")
+        self.launch_altitude  = StringVar(master, "0", "launch_altitude")
+        self.gnss_lat = StringVar(master, DEFAULT_LAT, "gnssLat")
+        self.gnss_lon = StringVar(master, DEFAULT_LON, "gnssLon")
+        self.gnss_alt = StringVar(master, "0", "gnssAlt")
+        self.landing_latitude  = StringVar(master, "0.0", "landing_latitude")
+        self.landing_longitude = StringVar(master, "0.0", "landing_longitude")
+        self.landing_altitude  = StringVar(master, "0", "landing_altitude")
+
+        self.variables = [self.launch_latitude,
+                          self.launch_longitude,
+                          self.launch_altitude,
+                          self.gnss_lat,
+                          self.gnss_lon,
+                          self.gnss_alt,
+                          self.landing_latitude,
+                          self.landing_longitude,
+                          self.landing_altitude]
+
         self.pre = LocationRow(self,
                                "Launch:",
-                               DoubleVar(master, "0.0", "launch_latitude"),
-                               DoubleVar(master, "0.0", "launch_longitude"),
-                               DoubleVar(master, "0.0", "launch_altitude"))
+                               self.launch_latitude,
+                               self.launch_longitude,
+                               self.launch_altitude)
         self.pre.grid(row=0, column=0, sticky=(E,W))
         self.pre.grid_propagate(True)
 
         self.current = LocationRow(self,
                                    "Current:",
-                                   DoubleVar(master, "0.0", "gnssLat"),
-                                   DoubleVar(master, "0.0", "gnssLon"),
-                                   DoubleVar(master, "0.0", "gnssAlt"))
+                                   self.gnss_lat,
+                                   self.gnss_lon,
+                                   self.gnss_alt)
         self.current.grid(row=1, column=0, sticky=(E,W))
         self.current.grid_propagate(True)
 
         self.post = LocationRow(self,
-                                   "Landing:",
-                                   StringVar(master, "0.0", "landing_latitude"),
-                                   StringVar(master, "0.0", "landing_longitude"),
-                                   StringVar(master, "0.0", "landing_altitude"))
+                                "Landing:",
+                                self.landing_latitude,
+                                self.landing_longitude,
+                                self.landing_altitude)
         self.post.grid(row=2, column=0, sticky=(E,W))
         self.post.grid_propagate(True)
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure((0, 1, 2), weight=0)
+
+    def reset(self):
+        for variable in self.variables:
+            variable.set("0.0")
+
+        self.gnss_lat.set(DEFAULT_LAT)
+        self.gnss_lon.set(DEFAULT_LON)
 
 class LocationRow(Frame):
     def __init__(self,
@@ -176,16 +204,16 @@ class LocationRow(Frame):
         Frame.__init__(self, master, bg=bg)
 
         self.name = Label(self, text=name, bg=bg, fg=fg, font=font, width=14, justify="right")
-        self.name.grid(row=0, column=0, sticky=(N,S))
+        self.name.grid(row=0, column=0, sticky=(N,E,W,S))
 
-        self.lat = Label(self, textvariable=lat_var, bg=bg, fg=fg, font=font)
-        self.lat.grid(row=0, column=1, sticky=(N,S))
+        self.lat = Label(self, textvariable=lat_var, bg=bg, fg=fg, font=font, justify="center")
+        self.lat.grid(row=0, column=1, sticky=(N,E,W,S))
 
-        self.lon = Label(self, textvariable=lon_var, bg=bg, fg=fg, font=font)
-        self.lon.grid(row=0, column=2, sticky=(N,S))
+        self.lon = Label(self, textvariable=lon_var, bg=bg, fg=fg, font=font, justify="center")
+        self.lon.grid(row=0, column=2, sticky=(N,E,W,S))
 
-        self.alt = Label(self, textvariable=alt_time_var, bg=bg, fg=fg, font=font)
-        self.alt.grid(row=0, column=3, sticky=(N,S))
+        self.alt = Label(self, textvariable=alt_time_var, bg=bg, fg=fg, font=font, justify="center")
+        self.alt.grid(row=0, column=3, sticky=(N,E,W,S))
 
-        self.columnconfigure(0, weight=0)
-        self.columnconfigure((1,2,3), weight=1)
+        self.columnconfigure((0,3), weight=0, uniform="b")
+        self.columnconfigure((1,2), weight=3, uniform="c")

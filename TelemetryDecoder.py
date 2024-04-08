@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 import struct
 
 """
@@ -68,13 +68,14 @@ class PostFlightPacket(RadioPacket):
 
     format = f"{ENDIANNESS}B4HBHff"
 
-class DecoderState(Enum):
-    PREFLIGHT = 0
-    INFLIGHT = 1
-    MAXES = 2
-    LAUNCH = 3
-    LAND = 4
-    POSTFLIGHT = 5
+class DecoderState(StrEnum):
+    OFFLINE = "Offline"
+    PREFLIGHT = "Preflight"
+    INFLIGHT = "Inflight"
+    MAXES = "Maximums"
+    LAUNCH = "Minimums"
+    LAND = "Landed"
+    POSTFLIGHT = "Postflight"
 
 class TelemetryDecoder(object):
     def __init__(self):
@@ -96,6 +97,9 @@ class TelemetryDecoder(object):
 
         return telemetry_dict
 
+    def gnss_coords_modifier(self, coord: float) -> str:
+        return "{:.6f}".format(coord)
+
 
 class RadioTelemetryDecoder(TelemetryDecoder):
     """
@@ -115,14 +119,16 @@ class RadioTelemetryDecoder(TelemetryDecoder):
                     "Airstart 1 Ignition","Airstart 1 Burnout","Firing Airstart2","Airstart 2 Ignition",
                     "Airstart 2 Burnout","NoFire: Rotn Limit","NoFire: Alt Limit","NoFire: Rotn/Alt Lmt",
                     "Booster Apogee","Booster Apogee Fire","Booster Separation","Booster Main Deploy",
-                    "Booster Under Chute","Time Limit Exceeded","Touchdown!","Power Loss! Restart",
-                    "Booster Touchdown","Booster Preflight","Booster Time Limit","Booster Pwr Restart"]
+                    "Booster Under Chute","Time Limit Exceeded","Landed","Power Loss! Restart",
+                    "Booster Landed","Booster Preflight","Booster Time Limit","Booster Pwr Restart"]
 
 
     def __init__(self):
         TelemetryDecoder.__init__(self)
         self.modifiers = { "event": self.event_modifier,
-                           "name": self.name_modifier }
+                           "name": self.name_modifier,
+                           "gnssLat": self.gnss_coords_modifier,
+                           "gnssLon": self.gnss_coords_modifier }
 
     def event_modifier(self, event: int) -> str:
         try:
@@ -131,7 +137,7 @@ class RadioTelemetryDecoder(TelemetryDecoder):
             return event
 
     def name_modifier(self, name: bytes) -> str:
-        return name.decode("ascii").strip()
+        return name.decode("ascii").strip().upper()
 
     def decode(self, data_bytes) -> list | None:
         telemetry = self.__decode__(data_bytes)

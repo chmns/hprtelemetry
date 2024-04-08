@@ -102,10 +102,11 @@ class TelemetryApp(Tk):
         for var in self.telemetry_vars:
             self.setvar(var)
 
-        self.event = IntVar(self, "", "event")
-        self.decoder_state = IntVar(self, "", "decoder_state")
         self.bytes_read = IntVar(self, 0, "bytes_read")
-
+        self.event = IntVar(self, "", "event")
+        self.name = StringVar(self, "", "name")
+        self.telemetry_state_name = StringVar(self, "", "telemetry_state_name")
+        self.set_telemetry_state(DecoderState.OFFLINE)
 
         self.serial_reader = RadioTelemetryReader(self.message_queue)
         self.serial_reader.name = "serial_reader"
@@ -205,36 +206,38 @@ class TelemetryApp(Tk):
         for i in range (NUM_ROWS):
             self.graphs.rowconfigure(i, weight=1)
 
+        self.name_label = Label(self.map_column, textvariable=self.name, font="Arial 28", bg=BG_COLOR, fg=WHITE)
+        self.name_label.grid(row=0, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.map_column.rowconfigure(0, weight=0)
+
+        self.event_label = Label(self.map_column, textvariable=self.event, font="Arial 20", bg=BG_COLOR, fg=WHITE)
+        self.event_label.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+
+        self.telemetry_state_label = Label(self.map_column, textvariable=self.telemetry_state_name, font="Arial 18 bold", bg=BG_COLOR, fg=WHITE)
+        self.telemetry_state_label.grid(row=1, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.map_column.rowconfigure(1, weight=0)
+
         self.map_frame = MapFrame(self.map_column,
                                   DoubleVar(self, 0.0, "gnssLat"),
                                   DoubleVar(self, 0.0, "gnssLon"),
                                   DoubleVar(self, 0.0, "gnssAlt"),
                                   self.offline_maps_only)
-        self.map_frame.grid(row=0, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-
-        self.event_label = Label(self.map_column, textvariable=self.event, font="Arial 24", bg=BG_COLOR, fg=LIGHT_GRAY)
-        self.event_label.grid(row=1, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.map_frame.grid(row=2, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.map_column.rowconfigure(2, weight=2)
 
         self.tilt_spin = TiltAndSpin(self.map_column, "offVert", "gyroZ")
-        self.tilt_spin.grid(row=2, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.tilt_spin.grid(row=3, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
-        self.status = TelemetryStatus(self.map_column, "name", "radioPacketNum", "time", "gnssSatellites")
-        self.status.grid(row=2, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.status = TelemetryStatus(self.map_column, "radioPacketNum", "time", "gnssSatellites")
+        self.status.grid(row=3, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.map_column.rowconfigure(3, weight=1)
 
-        # self.controls = TelemetryControls(self.map_column, self.serial_reader)
-        # self.controls.grid(row=2, column=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-
-        self.status_label = Label(self.map_column, font="Arial 24", text="Disconnected", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
-        self.status_label.grid(row=3, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-
-        # self.bytes_read_label = Label(self.map_column, textvariable=self.bytes_read, font="Arial 24", text="", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
-        # self.bytes_read_label.grid(row=4, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-
-        self.map_column.rowconfigure(0, weight=2)
-        self.map_column.rowconfigure(2, weight=1)
+        self.status_label = Label(self.map_column, font="Arial 20", text="Disconnected", bg=BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
+        self.status_label.grid(row=4, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.map_column.rowconfigure(4, weight=0)
 
         for i in range (2):
-            self.map_column.columnconfigure(i, weight=1)
+            self.map_column.columnconfigure(i, weight=2, uniform="a")
 
         self.download_overlay = None
 
@@ -251,6 +254,10 @@ class TelemetryApp(Tk):
         self.offline_map_path = str(Path.home() / "Documents")
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def set_telemetry_state(self, state: DecoderState) -> None:
+        self.telemetry_state = state
+        self.telemetry_state_name.set(f"TELEMETRY: {str(state).upper()}")
 
     def set_status_text(self, text,
                         color:str = None,
@@ -291,9 +298,9 @@ class TelemetryApp(Tk):
                     (telemetry, state) = message
                     # it state changed (launch -> flight, flight -> landed etc)
                     # then we must decode whole message
-                    if state is not self.decoder_state:
+                    if state is not self.telemetry_state:
                         self.message_callback(message)
-                        self.decoder_state = state
+                        self.set_telemetry_state(state)
 
                     # else we just collate the new telemetry values and update the
                     # most important ones:
@@ -304,7 +311,7 @@ class TelemetryApp(Tk):
 
         except queue.Empty:
             if telemetry_buffer is not {}:
-                self.message_callback((telemetry_buffer, self.decoder_state))
+                self.message_callback((telemetry_buffer, self.telemetry_state))
 
         finally:
             if self.file_reader.running.is_set() or self.serial_reader.running.is_set():
@@ -457,7 +464,7 @@ class TelemetryApp(Tk):
             else:
                 print(f"Not saving telemetry from serial port {port} to file")
                 self.state = AppState.READING_SERIAL
-                self.set_status_text(f"Listening serial port {port} (Not Recording)", WHITE)
+                self.set_status_text(f"Listening serial port {port} (Not Recording)", WHITE, "dark blue")
 
             self.serial_reader.serial_port = port
             self.serial_reader.start()
