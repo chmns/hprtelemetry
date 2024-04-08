@@ -297,6 +297,7 @@ class TelemetryApp(Tk):
     def set_status_text(self, text,
                         color:str = None,
                         bg: str = None):
+
         self.status_label.config(text=text)
 
         if color is not None:
@@ -308,9 +309,9 @@ class TelemetryApp(Tk):
             self.status_label.config(bg=Colors.BG_COLOR)
 
     def on_closing(self):
-        self.stop()
-        self.destroy()
-        self.quit()
+        if self.confirm_stop():
+            self.destroy()
+            self.quit()
 
     def update(self):
         telemetry_buffer = {}
@@ -400,7 +401,7 @@ class TelemetryApp(Tk):
                 self.map_frame.set_landing_point(float(self.getvar("landing_latitude")),
                                                  float(self.getvar("landing_longitude")))
 
-    def stop(self) -> bool:
+    def confirm_stop(self) -> bool:
         """
         stops recording and/or playing back serial or file
         but does not reset the graphs and map e.t.c.
@@ -426,24 +427,28 @@ class TelemetryApp(Tk):
                                                   "This will disconnect and stop recording current serial port, are you sure?")
 
         if okcancel:
-            # stop file decoder if it's running
-            self.file_reader.stop()
-            # stop serial decoder if it's running
-            self.serial_reader.stop()
-            # update status display to show we are now disconnected
-            self.set_status_text("Disconnected", LIGHT_GRAY)
-
-            self.state = AppState.IDLE
+            self.stop()
 
         return okcancel
 
+    def stop(self):
+        # stop file decoder if it's running
+        self.file_reader.stop()
+        # stop serial decoder if it's running
+        self.serial_reader.stop()
+        # update status display to show we are now disconnected
+        self.set_status_text("Disconnected", LIGHT_GRAY)
+
+        self.state = AppState.IDLE
 
     def reset(self) -> None:
         """
         resets the app back to zero and stops recording or playback
         for when loading new file or connecting to new serial port
         """
-        self.stop()
+        if self.confirm_stop():
+            self.stop()
+
         # clear all telemetry variables:
         for var in self.telemetry_vars:
             self.setvar(var, "0")
@@ -462,7 +467,7 @@ class TelemetryApp(Tk):
         """
         self.serial_menu.delete(0, END)
 
-        self.serial_menu.add_command(label="Disconnect", command=self.stop)
+        self.serial_menu.add_command(label="Disconnect", command=self.confirm_stop)
 
         ports = self.serial_reader.available_ports()
 
@@ -476,7 +481,7 @@ class TelemetryApp(Tk):
         self.serial_menu.add_command(label="Re-scan", command=self.update_serial_menu)
 
     def listen_to_port(self, port):
-        if self.stop():
+        if self.confirm_stop():
             self.reset() # if user has decided to cancel current operation then we should also reset
 
         if port in self.serial_reader.available_ports():
@@ -506,7 +511,7 @@ class TelemetryApp(Tk):
             self.update()
 
     def open_telemetry_file(self):
-        if self.stop():
+        if self.confirm_stop():
             self.reset() # if user has decided to cancel current operation then we should also reset
 
         filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'),
