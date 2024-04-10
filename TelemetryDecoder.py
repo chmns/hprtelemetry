@@ -32,9 +32,10 @@ class PreFlightPacket(RadioPacket):
             "gnssAlt",        # uint16_t  GPSalt
             "gnssLat",        # float     GPS.location.lat
             "gnssLon",        # float     GPS.location.lng
-            "gnssSatellites"] # uint16_t  satNum
+            "gnssSatellites", # uint16_t  satNum
+            "callsign"]
 
-    format = f"{ENDIANNESS}BBB20sHHffH"
+    format = f"{ENDIANNESS}BBB20sHHffH6s"
 
 class InFlightData(RadioPacket):
     keys = ["event",     # uint8_t event
@@ -43,17 +44,19 @@ class InFlightData(RadioPacket):
             "fusionAlt", # int16_t alt
             "gyroZ",     # int16_t roll
             "offVert",   # int16_t offVert
-            "accelZ"]    # int16_t accel
+            "accelZ",    # int16_t accel
+            "callsign"]
 
-    format = f"{ENDIANNESS}B6H"
+    format = f"{ENDIANNESS}B6H6s"
 
 class InFlightMetaData(RadioPacket):
     keys = ["radioPacketNum", # int16_t packetnum
             "gnssAlt",        # int16_t GPSalt
             "gnssLat",        # float   GPS.location.lat
-            "gnssLon"]        # float   GPS.location.lon
+            "gnssLon",        # float   GPS.location.lon
+            "callsign"]
 
-    format = f"{ENDIANNESS}HHff"
+    format = f"{ENDIANNESS}HHff6s"
 
 class PostFlightPacket(RadioPacket):
     keys = ["event",      # uint8_t  event
