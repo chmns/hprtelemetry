@@ -49,8 +49,11 @@ POSTFLIGHT_COORDS_PREFIX = "Post:"
 CELL_WIDTH = 220
 
 """
+Bugs:
+1. Acceleration not showing properly
+
 Work list:
-1.  Add decoder state readout (preflight, inflight etc)
+1.  Add callsign display
 2.  Add reader for .tlm files
 3.  Correctly show bytes received and bytes per second received
 4.  Also save CSV backup file format

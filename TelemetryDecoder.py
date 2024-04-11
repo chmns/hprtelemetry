@@ -27,13 +27,13 @@ class PreFlightPacket(RadioPacket):
     keys = ["event",          # uint8_t   event
             "gnssFix",        # uint8_t   gnss.fix
             "reportCode",     # uint8_t   cont.reportCode
-            "name",           # char[20?] rocketName
+            "name",           # char[20]  rocketName
             "baroAlt",        # uint16_t  baseAlt
             "gnssAlt",        # uint16_t  GPSalt
             "gnssLat",        # float     GPS.location.lat
             "gnssLon",        # float     GPS.location.lng
             "gnssSatellites", # uint16_t  satNum
-            "callsign"]
+            "callsign"]       # char[6]   callsign
 
     format = f"{ENDIANNESS}BBB20sHHffH6s"
 
@@ -44,17 +44,16 @@ class InFlightData(RadioPacket):
             "fusionAlt", # int16_t alt
             "gyroZ",     # int16_t roll
             "offVert",   # int16_t offVert
-            "accelZ",    # int16_t accel
-            "callsign"]
+            "accelZ"]    # int16_t accel
 
-    format = f"{ENDIANNESS}B6H6s"
+    format = f"{ENDIANNESS}B6H"
 
 class InFlightMetaData(RadioPacket):
     keys = ["radioPacketNum", # int16_t packetnum
             "gnssAlt",        # int16_t GPSalt
             "gnssLat",        # float   GPS.location.lat
             "gnssLon",        # float   GPS.location.lon
-            "callsign"]
+            "callsign"]       # char[6]   callsign
 
     format = f"{ENDIANNESS}HHff6s"
 
@@ -67,9 +66,10 @@ class PostFlightPacket(RadioPacket):
             "gnssFix",    # uint8_t  gnss.fix
             "gnssAlt",    # uint16_t GPSalt
             "gnssLat",    # float    GPS.location.lat
-            "gnssLon"]    # float    GPS.location.lng
+            "gnssLon",    # float    GPS.location.lng
+            "callsign"]   # char[6] callsign
 
-    format = f"{ENDIANNESS}B4HBHff"
+    format = f"{ENDIANNESS}B4HBHff6s"
 
 class DecoderState(StrEnum):
     OFFLINE = "Offline"
