@@ -38,22 +38,22 @@ class PreFlightPacket(RadioPacket):
     format = f"{ENDIANNESS}BBB20sHHffH6s"
 
 class InFlightData(RadioPacket):
-    keys = ["event",     # uint8_t event
-            "time",      # int16_t fltTime
-            "fusionVel", # int16_t vel
-            "fusionAlt", # int16_t alt
-            "gyroZ",     # int16_t roll
-            "offVert",   # int16_t offVert
-            "accelZ"]    # int16_t accel
+    keys = ["event",     # uint8_t  event
+            "time",      # uint16_t fltTime
+            "fusionVel", # int16_t  vel
+            "fusionAlt", # int16_t  alt
+            "gyroZ",     # int16_t  roll
+            "offVert",   # int16_t  offVert
+            "accelZ"]    # int16_t  accel
 
-    format = f"{ENDIANNESS}B6H"
+    format = f"{ENDIANNESS}BHhhhhh"
 
 class InFlightMetaData(RadioPacket):
     keys = ["radioPacketNum", # int16_t packetnum
             "gnssAlt",        # int16_t GPSalt
             "gnssLat",        # float   GPS.location.lat
             "gnssLon",        # float   GPS.location.lon
-            "callsign"]       # char[6]   callsign
+            "callsign"]       # char[6] callsign
 
     format = f"{ENDIANNESS}HHff6s"
 
