@@ -24,7 +24,9 @@ class TelemetryReader(object):
         self.decoder = None
         self.thread = None
         self.name = name
-        self.num_received = 0
+        self.bytes_received = 0
+        self.messages_decoded = 0
+        self.print_received = True
 
     def start(self) -> None:
         self.running.set()
@@ -91,8 +93,10 @@ class TelemetrySerialReader(TelemetryReader):
                     sleep(0.01)
                     continue
                 else:
-                    self.num_received += 1
-                    print(f"{self.num_received:>6}: {telemetry_bytes.hex(' ')}")
+                    self.bytes_received += len(telemetry_bytes) # keep track of total amount of data we got since start
+
+                    if self.print_received:
+                        print(f"{len(telemetry_bytes):>6} bytes: {telemetry_bytes.hex(' ')}  ({self.bytes_received} bytes total)") # for debug
 
             except Exception as error:
                 print(f"Error reading from port: {self.serial_port}\n{str(error)}")
@@ -113,7 +117,7 @@ class TelemetrySerialReader(TelemetryReader):
                 except Exception as error:
                     print(f"Couldn't write backup data to file {self.filename}\n{str(error)}")
 
-            telemetry_dict = {"bytes_read" : len(telemetry_bytes)} # always report when we receive data, even if we can't decode it
+            telemetry_dict = {"bytes_read" : self.bytes_received} # always report when we receive data, even if we can't decode it
 
             received_telemetry = None
 
@@ -124,7 +128,10 @@ class TelemetrySerialReader(TelemetryReader):
 
             if received_telemetry is not None:
                 for received_telemetry_dict in received_telemetry:
+                    self.messages_decoded += 1
                     telemetry_dict |= received_telemetry_dict
+
+            telemetry_dict["messages_decoded"] = self.messages_decoded # keep track of how many good messages we got so far
 
             message_queue.put((telemetry_dict, self.decoder.state))
 
