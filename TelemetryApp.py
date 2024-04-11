@@ -50,7 +50,7 @@ CELL_WIDTH = 220
 
 """
 Bugs:
-1. Acceleration not showing properly
+1. Graphs too big
 
 Work list:
 1.  Add callsign display
