@@ -14,7 +14,7 @@ TelemetryDecoder:
 """
 ENDIANNESS = "<"
 
-class RadioPacket(dict):
+class RadioPacket(object):
     def __init__(self,
                  data_bytes: bytes) -> None:
         self.values = list(struct.unpack(self.format, data_bytes))
@@ -23,10 +23,14 @@ class RadioPacket(dict):
         zipped = zip(self.keys, self.values)
         return dict(zipped)
 
+class ErrorPacket(object):
+    def __init__(self, event) -> None:
+        self.values["event"] = event
+
 class PreFlightPacket(RadioPacket):
     keys = ["event",          # uint8_t   event
             "gnssFix",        # uint8_t   gnss.fix
-            "reportCode",     # uint8_t   cont.reportCode
+            "cont",           # uint8_t   cont.reportCode
             "name",           # char[20]  rocketName
             "baroAlt",        # int16_t   baseAlt
             "gnssAlt",        # int16_t   GPSalt
@@ -79,6 +83,7 @@ class DecoderState(StrEnum):
     LAUNCH = "Minimums"
     LAND = "Landed"
     POSTFLIGHT = "Postflight"
+    ERROR = "Error"
 
 class TelemetryDecoder(object):
     def __init__(self):
@@ -119,7 +124,7 @@ class RadioTelemetryDecoder(TelemetryDecoder):
     OFFVERT_MULTIPLIER = 0.1
 
     # Mapping of event number to text name:
-    event_names =  ["Preflight","Liftoff","Booster Burnout","Apogee Detected","Firing Apogee Pyro"
+    event_names =  ["Preflight","Liftoff","Booster Burnout","Apogee Detected","Firing Apogee Pyro",
                     "Separation Detected","Firing Mains","Under Chute","Ejecting Booster",
                     "Firing 2nd Stage","2nd Stage Ignition","2nd Stage Burnout","Firing Airstart1",
                     "Airstart 1 Ignition","Airstart 1 Burnout","Firing Airstart2","Airstart 2 Ignition",
@@ -128,24 +133,21 @@ class RadioTelemetryDecoder(TelemetryDecoder):
                     "Booster Under Chute","Time Limit Exceeded","Landed","Power Loss! Restart",
                     "Booster Landed","Booster Preflight","Booster Time Limit","Booster Pwr Restart"]
 
+    cont_names = ["No Pyros Detected", "No Continuity Pyro 1", "No Continuity Pyro 2", "No Continuity Pyro 3",
+                  "No Continuity Pyro 4", "All 3 Pyros Detected", "All 4 Pyros Detected", "Pyro Apogee Only",
+                  "Pyro Mains Only", "Pyro Mains & Apogee"]
+
 
     def __init__(self):
         TelemetryDecoder.__init__(self)
-        self.modifiers = { "event": self.event_modifier,
-                           "name": self.name_modifier,
+        self.modifiers = { "name": self.name_modifier,
                            "accelZ" : self.accel_modifier,
                            "offVert" : self.offvert_modifier,
                            "gnssLat": self.gnss_coords_modifier,
                            "gnssLon": self.gnss_coords_modifier }
 
-    def event_modifier(self, event: int) -> str:
-        try:
-            return self.event_names[event]
-        except:
-            return event
-
     def name_modifier(self, name: bytes) -> str:
-        return name.decode("ascii").strip().upper()
+        return name.decode("ascii").strip()
 
     def accel_modifier(self, accel: float) -> float:
         return accel * self.ACCEL_MULTIPLIER
@@ -158,6 +160,20 @@ class RadioTelemetryDecoder(TelemetryDecoder):
 
         if telemetry is not None:
             for message in telemetry:
+                # add separate event name value:
+                try:
+                    event = message["event"]
+                    message["eventName"] = f"{self.event_names[event]} [{event}]"
+                except:
+                    pass # if [event] doesn't exist in message then it will give exception, we ignore
+
+                # if there's a cont code (PREFLIGHT) then also add the name for it
+                try:
+                    cont = message["cont"]
+                    message["contName"] = f"{self.cont_names[cont]} [{cont}]"
+                except:
+                    pass # if [cont] doesn't exist in message then it will give exception, we ignore
+
                 message = self.apply_modifiers(message)
 
         return telemetry
@@ -189,6 +205,10 @@ class RadioTelemetryDecoder(TelemetryDecoder):
                 messages.append(InFlightMetaData(in_flight_meta_bytes).as_dict())
 
                 return messages
+
+            elif event == 28 or event == 32:
+                self.state = DecoderState.ERROR
+                return
 
             else:
                 self.state = DecoderState.POSTFLIGHT

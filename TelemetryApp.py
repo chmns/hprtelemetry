@@ -24,7 +24,7 @@ import queue
 from pathlib import Path
 style.use('dark_background')
 
-UPDATE_DELAY = 100 # ms between frames
+UPDATE_DELAY = 50 # ms between frames
 
 NUM_COLS = 6
 NUM_ROWS = 3
@@ -53,16 +53,16 @@ Bugs:
 1. Graphs too big
 
 Work list:
-1.  Add callsign display
-2.  Add reader for .tlm files
-3.  Correctly show bytes received and bytes per second received
-4.  Also save CSV backup file format
-5.  Show final value display (in addition to rolling max/min)
-6.  Add online/offline toggle to map itself
-7.  Add download current area to map itself
-8.  Add log window
-9.  Correct display of units (m/s, kmh etc)
-10. Show current map co-ords and zoom level on map itself
+1.  Add reader for .tlm files
+2.  Correctly show bytes received and bytes per second received
+3.  Also save CSV backup file format
+4.  Show final value display (in addition to rolling max/min)
+5.  Add online/offline toggle to map itself
+6.  Add download current area to map itself
+7.  Add log window
+8.  Correct display of units (m/s, kmh etc)
+9.  Show current map co-ords and zoom level on map itself
+10. Event colors: 18 to 21,26,28 red color. Range 8-5 green.
 """
 
 class AppState(Enum):
@@ -106,10 +106,10 @@ class TelemetryApp(Tk):
             self.setvar(var)
 
         self.bytes_read = IntVar(self, 0, "bytes_read")
-        self.event = IntVar(self, "", "event")
+        self.event_name = StringVar(self, "", "eventName")
         self.name = StringVar(self, "", "name")
-        self.telemetry_state_name = StringVar(self, "", "telemetry_state_name")
-        self.set_telemetry_state(DecoderState.OFFLINE)
+        self.telemetry_state_name = StringVar(self, "", "telemetryStateName")
+        self.cont_name = StringVar(self, "", "contName")
 
         self.serial_reader = RadioTelemetryReader(self.message_queue)
         self.serial_reader.name = "serial_reader"
@@ -125,7 +125,7 @@ class TelemetryApp(Tk):
         -----------------
         """
         self.title("HPR Telemetry Viewer")
-        self.config(background="green")
+        self.config(background=Colors.BG_COLOR)
 
         w, h = self.winfo_screenwidth(), self.winfo_screenheight()
         self.geometry("%dx%d+0+0" % (w, h))
@@ -247,34 +247,42 @@ class TelemetryApp(Tk):
         self.name_label.grid(row=0, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.map_column.rowconfigure(0, weight=0)
 
-        self.event_label = Label(self.map_column, textvariable=self.event, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=WHITE)
-        self.event_label.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.cont_label = Label(self.map_column, textvariable=self.cont_name, font=Fonts.MEDIUM_FONT, bg=Colors.BG_COLOR, fg=WHITE)
+        self.cont_label.grid(row=1, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.map_column.rowconfigure(1, weight=0)
+
+        self.event_name_label = Label(self.map_column, textvariable=self.event_name, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=WHITE)
+        self.event_name_label.grid(row=2, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
         self.telemetry_state_label = Label(self.map_column, textvariable=self.telemetry_state_name, font=Fonts.MEDIUM_FONT, bg=Colors.BG_COLOR, fg=LIGHT_GRAY)
-        self.telemetry_state_label.grid(row=1, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.map_column.rowconfigure(1, weight=0)
+        self.telemetry_state_label.grid(row=2, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.map_column.rowconfigure(2, weight=0)
 
         self.map_frame = MapFrame(self.map_column,
                                   DoubleVar(self, 0.0, "gnssLat"),
                                   DoubleVar(self, 0.0, "gnssLon"),
                                   DoubleVar(self, 0.0, "gnssAlt"),
                                   self.offline_maps_only)
-        self.map_frame.grid(row=2, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.map_column.rowconfigure(2, weight=2)
+        self.map_frame.grid(row=3, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.map_column.rowconfigure(3, weight=2)
 
         self.tilt_spin = TiltAndSpin(self.map_column, "offVert", "gyroZ")
-        self.tilt_spin.grid(row=3, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.tilt_spin.grid(row=4, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
         self.status = TelemetryStatus(self.map_column, "radioPacketNum", "time", "gnssSatellites")
-        self.status.grid(row=3, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.map_column.rowconfigure(3, weight=0)
+        self.status.grid(row=4, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.map_column.rowconfigure(4, weight=0)
 
         self.status_label = Label(self.map_column, font=Fonts.MEDIUM_FONT, text="Disconnected", bg=Colors.BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
-        self.status_label.grid(row=4, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.map_column.rowconfigure(4, weight=0)
+        self.status_label.grid(row=5, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.map_column.rowconfigure(5, weight=0)
 
         for i in range (2):
             self.map_column.columnconfigure(i, weight=2, uniform="a")
+
+
+        # Must be after setup because it affects the grid
+        self.set_telemetry_state(DecoderState.OFFLINE)
 
 
         """
@@ -296,6 +304,10 @@ class TelemetryApp(Tk):
     def set_telemetry_state(self, state: DecoderState) -> None:
         self.telemetry_state = state
         self.telemetry_state_name.set(f"{str(state).upper()}")
+        if state == DecoderState.PREFLIGHT:
+            self.cont_label.grid()
+        else:
+            self.cont_label.grid_remove()
 
     def set_status_text(self, text,
                         color:str = None,
