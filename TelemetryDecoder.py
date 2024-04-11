@@ -28,14 +28,14 @@ class PreFlightPacket(RadioPacket):
             "gnssFix",        # uint8_t   gnss.fix
             "reportCode",     # uint8_t   cont.reportCode
             "name",           # char[20]  rocketName
-            "baroAlt",        # uint16_t  baseAlt
-            "gnssAlt",        # uint16_t  GPSalt
+            "baroAlt",        # int16_t   baseAlt
+            "gnssAlt",        # int16_t   GPSalt
             "gnssLat",        # float     GPS.location.lat
             "gnssLon",        # float     GPS.location.lng
             "gnssSatellites", # uint16_t  satNum
             "callsign"]       # char[6]   callsign
 
-    format = f"{ENDIANNESS}BBB20sHHffH6s"
+    format = f"{ENDIANNESS}BBB20shhffH6s"
 
 class InFlightData(RadioPacket):
     keys = ["event",     # uint8_t  event
@@ -115,6 +115,9 @@ class RadioTelemetryDecoder(TelemetryDecoder):
     FLIGHT_DATA_TOTAL_LENGTH = NUM_FLIGHT_DATA_MESSAGES * FLIGHT_DATA_MESSAGE_LENGTH
     SYNC_WORD_LENGTH = 4
 
+    ACCEL_MULTIPLIER = 0.029927521
+    OFFVERT_MULTIPLIER = 0.1
+
     # Mapping of event number to text name:
     event_names =  ["Preflight","Liftoff","Booster Burnout","Apogee Detected","Firing Apogee Pyro"
                     "Separation Detected","Firing Mains","Under Chute","Ejecting Booster",
@@ -130,6 +133,8 @@ class RadioTelemetryDecoder(TelemetryDecoder):
         TelemetryDecoder.__init__(self)
         self.modifiers = { "event": self.event_modifier,
                            "name": self.name_modifier,
+                           "accelZ" : self.accel_modifier,
+                           "offVert" : self.offvert_modifier,
                            "gnssLat": self.gnss_coords_modifier,
                            "gnssLon": self.gnss_coords_modifier }
 
@@ -141,6 +146,12 @@ class RadioTelemetryDecoder(TelemetryDecoder):
 
     def name_modifier(self, name: bytes) -> str:
         return name.decode("ascii").strip().upper()
+
+    def accel_modifier(self, accel: float) -> float:
+        return accel * self.ACCEL_MULTIPLIER
+
+    def offvert_modifier(self, offvert: float) -> float:
+        return offvert * self.OFFVERT_MULTIPLIER
 
     def decode(self, data_bytes) -> list | None:
         telemetry = self.__decode__(data_bytes)
