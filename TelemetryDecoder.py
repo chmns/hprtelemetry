@@ -141,13 +141,17 @@ class RadioTelemetryDecoder(TelemetryDecoder):
     def __init__(self):
         TelemetryDecoder.__init__(self)
         self.modifiers = { "name": self.name_modifier,
+                           "callsign" : self.callsign_modifier,
                            "accelZ" : self.accel_modifier,
                            "offVert" : self.offvert_modifier,
                            "gnssLat": self.gnss_coords_modifier,
                            "gnssLon": self.gnss_coords_modifier }
 
     def name_modifier(self, name: bytes) -> str:
-        return name.decode("ascii").strip()
+        return name.decode("ascii").strip().rstrip('\x00')
+
+    def callsign_modifier(self, callsign: bytes) -> str:
+        return callsign.decode("ascii").strip()
 
     def accel_modifier(self, accel: float) -> float:
         return accel * self.ACCEL_MULTIPLIER
@@ -160,6 +164,9 @@ class RadioTelemetryDecoder(TelemetryDecoder):
 
         if telemetry is not None:
             for message in telemetry:
+                # apply modifiers from our list
+                message = self.apply_modifiers(message)
+
                 # add separate event name value:
                 try:
                     event = message["event"]
@@ -174,7 +181,13 @@ class RadioTelemetryDecoder(TelemetryDecoder):
                 except:
                     pass # if [cont] doesn't exist in message then it will give exception, we ignore
 
-                message = self.apply_modifiers(message)
+                # if we decoded a callsign then add it in parenthes after name
+                try:
+                    name = message["name"]
+                    callsign = message["callsign"]
+                    message["name"] = f"{name} ({callsign})"
+                except:
+                    pass
 
         return telemetry
 
