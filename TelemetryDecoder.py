@@ -143,7 +143,8 @@ class RadioTelemetryDecoder(TelemetryDecoder):
         self.modifiers = { "name": self.name_modifier,
                            "callsign" : self.callsign_modifier,
                            "accelZ" : self.accel_modifier,
-                           "offVert" : self.offvert_modifier,
+                           "offVert" : self.offvert_and_spin_modifier,
+                           "spin" : self.offvert_and_spin_modifier,
                            "gnssLat": self.gnss_coords_modifier,
                            "gnssLon": self.gnss_coords_modifier }
 
@@ -156,7 +157,7 @@ class RadioTelemetryDecoder(TelemetryDecoder):
     def accel_modifier(self, accel: float) -> float:
         return accel * self.ACCEL_MULTIPLIER
 
-    def offvert_modifier(self, offvert: float) -> float:
+    def offvert_and_spin_modifier(self, offvert: float) -> float:
         return offvert * self.OFFVERT_MULTIPLIER
 
     def decode(self, data_bytes) -> list | None:
