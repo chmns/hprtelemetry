@@ -59,7 +59,6 @@ class MapColumn(PanedWindow):
         self.callsign = StringVar(master, "", "callsign")
         self.telemetry_state_name = StringVar(master, "", "telemetryStateName")
         self.cont_name = StringVar(master, "", "contName")
-        self.offline_maps_only = BooleanVar(master, True, "offline_maps_only")
 
         self.name_callsign_state_frame = Frame(self, bg=Colors.BG_COLOR)
         self.name_callsign_state_frame.pack(side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
@@ -82,7 +81,7 @@ class MapColumn(PanedWindow):
         self.event_name_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
 
-        self.map_frame = MapFrame(self)
+        self.map_frame = MapFrame(self, BooleanVar(master, name="offline_maps_only"))
         self.map_frame.pack(side=TOP, expand=True, fill=BOTH)
 
 
@@ -107,8 +106,11 @@ class MapColumn(PanedWindow):
         self.status_bar = Frame(self, bg=Colors.BG_COLOR)
         self.status_bar.pack(side=BOTTOM, expand=False, fill=X)
 
+        self.bytes_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, textvariable=self.bytes_read, bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
+        self.bytes_label.pack(side=LEFT, expand=False, fill=X, padx=PADX, pady=PADY)
+
         self.status_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, text="Disconnected", bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
-        self.status_label.pack(side=BOTTOM, expand=False, fill=X, padx=PADX, pady=PADY)
+        self.status_label.pack(side=RIGHT, expand=False, fill=X, padx=PADX, pady=PADY)
 
         self.tilt_spin_frame = Frame(self, bg=Colors.BG_COLOR)
 
@@ -123,6 +125,7 @@ class MapColumn(PanedWindow):
         # last packet number
         # last timestamp
 
+
     def set_status_text(self, text,
                         color:str = None,
                         bg: str = None):
@@ -135,9 +138,11 @@ class MapColumn(PanedWindow):
         if bg is not None:
             self.status_label.config(bg=bg)
             self.status_bar.config(bg=bg)
+            self.bytes_label.config(bg=bg)
         else:
             self.status_label.config(bg=Colors.BG_COLOR)
             self.status_bar.config(bg=Colors.BG_COLOR)
+            self.bytes_label.config(bg=Colors.BG_COLOR)
 
     def set_state(self, state: DecoderState):
         match state:
@@ -190,15 +195,16 @@ class MapColumn(PanedWindow):
         self.map_frame.reset()
 
 class MapFrame(PanedWindow):
-    def __init__(self, master):
-        Frame.__init__(self, master, bg="cyan")
+    def __init__(self, master, offline_map_var):
+        Frame.__init__(self, master,bg=Colors.BG_COLOR)
 
         self.lat_var = StringVar(master, 0.0, "gnssLat"),
         self.lon_var = StringVar(master, 0.0, "gnssLon"),
         self.alt_var = StringVar(master, 0.0, "gnssAlt"),
         self.sats_var = IntVar(master, 0, "gnssSatellites")
         self.fix_var = BooleanVar(master, False, "preGnssFix")
-        self.offline_maps_only_var = BooleanVar(master, False, "offline_maps_only")
+        self.offline_maps_only = offline_map_var
+        self.offline_maps_only.trace_add("write", self.set_offline_maps_only)
 
         self.sats_var.trace_add("write", self.update_num_sats)
         self.fix_var.trace_add("write", self.update_fix)
@@ -209,12 +215,12 @@ class MapFrame(PanedWindow):
         self.downloader = OfflineLoader(path=self.database_path,
                                         tile_server=TILE_SERVER_URL)
 
-        print(f"Online maps downloading enabled?: {self.offline_maps_only_var.get()}")
+        print(f"Online maps downloading enabled?: {self.offline_maps_only.get()}")
         print(f"Using offline maps database at: {self.database_path}")
 
         self.map_view = TkinterMapView(self,
                                        database_path=self.database_path,
-                                       use_database_only=self.offline_maps_only_var.get())
+                                       use_database_only=self.offline_maps_only.get())
         self.map_view.set_tile_server(TILE_SERVER_URL)
         self.map_view.pack(expand=True, fill=BOTH)
 
@@ -229,11 +235,25 @@ class MapFrame(PanedWindow):
         self.zoom_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text=self.map_view.zoom, bg=Colors.GRAY, fg=Colors.LIGHT_GRAY, anchor=E, padx=PADX, pady=PADY)
         self.zoom_label.place(relx=1, rely=1, x=-20, y=-20, anchor=SE)
 
+        self.online_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text=self.map_view.zoom, bg=Colors.GRAY, fg=Colors.DARK_RED, anchor=E, padx=PADX, pady=PADY)
+        self.online_label.place(relx=1, rely=0, x=20, y=-20, anchor=SW)
+
         self.map_view.canvas.bind("<ButtonRelease-1>", self.mouse_release)
         self.map_view.canvas.bind("<MouseWheel>", self.mouse_zoom)
 
         self.reset()
         self.__update_zoom_label__()
+
+
+    def set_offline_maps_only(self, *_):
+        offline_only = self.offline_maps_only.get()
+        self.map_view.use_database_only = offline_only
+
+        # hack to get maps to start loading when online is re-enabled
+        if not offline_only:
+            current_zoom = self.map_view.zoom
+            self.map_view.set_zoom(current_zoom+1)
+            self.map_view.set_zoom(current_zoom)
 
     def mouse_release(self, event):
         self.map_view.mouse_release(event)
@@ -257,11 +277,16 @@ class MapFrame(PanedWindow):
 
     def update_fix(self, *_):
         if self.fix_var.get():
-            self.fix_label.config(text=f"Good Fix")
-            self.fix_label.config(fg=Colors.DARK_GREEN)
+            self.fix_label.config(text=f"Good Fix", fg=Colors.DARK_GREEN)
         else:
-            self.fix_label.config(text=f"No Fix")
-            self.fix_label.config(fg=Colors.DARK_RED)
+            self.fix_label.config(text=f"No Fix", fg=Colors.DARK_RED)
+
+
+    def set_online(self, online: bool):
+        if online:
+            self.online_label.config(text=f"Online", fg=Colors.DARK_GREEN)
+        else:
+            self.online_label.config(text=f"Offline", fg=Colors.DARK_RED)
 
 
     def update(self):
@@ -326,15 +351,6 @@ class MapFrame(PanedWindow):
             print("Error downloading offline maps")
         else:
             self.map_view.set_position(*current_position)
-
-    def set_only_offline_maps(self, only_offline):
-        self.map_view.use_database_only = only_offline
-
-        # hack to get maps to start loading when online is re-enabled
-        if not only_offline:
-            current_zoom = self.map_view.zoom
-            self.map_view.set_zoom(current_zoom+1)
-            self.map_view.set_zoom(current_zoom)
 
     def load_offline_database(self, database_path):
         print(f"Setting offline map file to: {database_path}")

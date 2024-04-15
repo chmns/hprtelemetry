@@ -133,7 +133,6 @@ class TelemetryApp(Tk):
         self.offline_maps_only = BooleanVar(self, True, "offline_maps_only")
 
         self.map_menu.add_checkbutton(label="Only use offline maps",
-                                      command=self.toggle_offline_maps_only,
                                       variable=self.offline_maps_only)
 
         self.serial_menu = Menu(self.menubar)
@@ -499,8 +498,10 @@ class TelemetryApp(Tk):
             self.map_column.load_offline_database(filename)
         pass
 
-    def toggle_offline_maps_only(self):
-        self.offline_maps_only.set(not self.offline_maps_only.get())
+    # def toggle_offline_maps_only(self):
+    #     current = self.offline_maps_only.get()
+    #     print(f"Befor {current = }")
+
 
 
 if __name__ == "__main__":
