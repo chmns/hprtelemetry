@@ -1,4 +1,5 @@
 from tkinter import *
+from tkinter import Misc
 from tkintermapview import TkinterMapView, OfflineLoader
 from tkintermapview.utility_functions import osm_to_decimal
 from Styles import Fonts, Colors
@@ -30,12 +31,29 @@ PADY = 4
 DEFAULT_DATABASE_NAME = "offline_tiles.db"
 TILE_SERVER_URL = "http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}&s=Ga"
 
+class NumberLabel(Frame):
+    def __init__(self, master, name: str, textvariable: Variable, units: str,
+                 font: str = Fonts.MEDIUM_FONT_BOLD, fg: str = Colors.WHITE, bg: str = Colors.BLACK) -> None:
+
+        super().__init__(master, bg=bg)
+
+        self.name_label = Label(self, text=name, anchor=E, font=font, bg=Colors.BG_COLOR, fg=fg)
+        self.name_label.pack(side=LEFT, expand=True, fill=X)
+
+        self.value_label = Label(self, textvariable=textvariable, font=font, bg=Colors.BG_COLOR, fg=fg)
+        self.value_label.pack(side=LEFT, expand=False, fill=None)
+
+        self.units_label = Label(self, text=units, anchor=W, font=font, bg=Colors.BG_COLOR, fg=fg)
+        self.units_label.pack(side=LEFT, expand=True, fill=X)
+
 
 class MapColumn(PanedWindow):
     def __init__(self, master):
         PanedWindow.__init__(self, orient="vertical", background=Colors.BLACK)
 
         self.bytes_read = IntVar(master, 0, "bytes_read")
+        self.tilt = DoubleVar(master, 0.0, "offVert")
+        self.spin = DoubleVar(master, 0.0, "spin")
         self.event_name = StringVar(master, "", "eventName")
         self.name = StringVar(master, "", "name")
         self.callsign = StringVar(master, "", "callsign")
@@ -86,19 +104,41 @@ class MapColumn(PanedWindow):
                                                StringVar(master, ZERO_LON, "postGnssLon"),
                                                StringVar(master, ZERO_ALT, "postGnssAlt"))
 
-        # self.tilt_spin = TiltAndSpin(self.map_column, "offVert", "gyroZ")
-        # self.tilt_spin.grid(row=4, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-
-        # self.status = TelemetryStatus(self.map_column, "radioPacketNum", "time", "gnssSatellites")
-        # self.status.grid(row=4, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        # self.map_column.rowconfigure(4, weight=0)
-
         self.status_bar = Frame(self, bg=Colors.BG_COLOR)
-        self.status_bar.pack(side=BOTTOM, expand=False, fill=X, padx=PADX, pady=PADY)
+        self.status_bar.pack(side=BOTTOM, expand=False, fill=X)
 
         self.status_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, text="Disconnected", bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
-        self.status_label.pack(side=BOTTOM, expand=False, fill=X)
+        self.status_label.pack(side=BOTTOM, expand=False, fill=X, padx=PADX, pady=PADY)
 
+        self.tilt_spin_frame = Frame(self, bg=Colors.BG_COLOR)
+        self.tilt_spin_frame.pack(side=BOTTOM, expand=False, fill=X, padx=PADX, pady=PADY)
+
+        self.tilt = NumberLabel(self.tilt_spin_frame, name="Tilt:", textvariable=self.tilt, units="°")
+        self.tilt.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+
+        self.spin = NumberLabel(self.tilt_spin_frame, name="Spin:", textvariable=self.spin, units="°/sec")
+        self.spin.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+
+        # bytes read
+        # valid messages decoded
+        # last packet number
+        # last timestamp
+
+    def set_status_text(self, text,
+                        color:str = None,
+                        bg: str = None):
+
+        self.status_label.config(text=text)
+
+        if color is not None:
+            self.status_label.config(fg=color)
+
+        if bg is not None:
+            self.status_label.config(bg=bg)
+            self.status_bar.config(bg=bg)
+        else:
+            self.status_label.config(bg=Colors.BG_COLOR)
+            self.status_bar.config(bg=Colors.BG_COLOR)
 
     def set_state(self, state: DecoderState):
         match state:
@@ -109,15 +149,15 @@ class MapColumn(PanedWindow):
                 self.name_label.pack(after=self.telemetry_state_label, side=LEFT, expand=True, fill=X)
                 self.callsign_label.pack(after=self.name_label, side=LEFT, expand=False, fill=NONE, padx=PADX)
                 self.cont_label.pack(before=self.event_name_label, side=LEFT, expand=True, fill=X, padx=PADX)
-                self.cont_event_frame.pack(after=self.name_callsign_state_frame, side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
-                self.preflight_location.pack(after=self.map_frame, side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
+                self.cont_event_frame.pack(after=self.name_callsign_state_frame, side=TOP, expand=False, fill=X, padx=PADX)
+                self.preflight_location.pack(after=self.map_frame, side=TOP, expand=False, fill=X, padx=PADX)
 
             case DecoderState.INFLIGHT:
                 self.cont_label.pack_forget()
-                self.current_location.pack(after=self.preflight_location, side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
+                self.current_location.pack(after=self.preflight_location, side=TOP, expand=False, fill=X, padx=PADX)
 
             case DecoderState.POSTFLIGHT:
-                self.postflight_location.pack(after=self.current_location, side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
+                self.postflight_location.pack(after=self.current_location, side=TOP, expand=False, fill=X, padx=PADX)
 
             case DecoderState.MAXES:
                 pass
@@ -237,7 +277,7 @@ class MapFrame(PanedWindow):
             if self.path is None:
                 if len(self.path_list) > MIN_PATH_POINTS:
                     self.start_marker = self.map_view.set_marker(new_lat, new_lon, START_TEXT)
-                    self.path = self.map_view.set_path(self.path_list)
+                    self.path = self.map_view.set_path(self.path_list, width=2)
                 else:
                     self.path_list.append((new_lat, new_lon))
             else:
@@ -261,6 +301,8 @@ class MapFrame(PanedWindow):
         self.start_marker = None
         self.landing_marker = None
         self.launch_marker = None
+        self.update_num_sats()
+        self.update_fix()
 
     def download_current_map(self):
 
@@ -325,4 +367,4 @@ class LocationRow(Frame):
         self.alt.grid(row=0, column=3, sticky=(N,S), padx=PADX, pady=PADY)
 
         self.columnconfigure((0,3), weight=0)
-        self.columnconfigure((1,2), weight=1, uniform="b")
+        self.columnconfigure((1,2), weight=1)

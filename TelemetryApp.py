@@ -50,7 +50,7 @@ x.  Make pre/current/post only appear when registerd
 8.  Add download current area to map itself
 9.  Add log window
 10. Correct display of units (m/s, kmh etc)
-11. Show current map co-ords and zoom level on map itself
+x.  Show current map co-ords and zoom level on map itself
 12. Event colors: 18 to 21,26,28 red color. Range 8-5 green.
 """
 
@@ -247,19 +247,6 @@ class TelemetryApp(Tk):
         self.telemetry_state_name.set(f"{str(state).upper()}")
         self.map_column.set_state(state)
 
-    def set_status_text(self, text,
-                        color:str = None,
-                        bg: str = None):
-
-        self.map_column.status_label.config(text=text)
-
-        if color is not None:
-            self.map_column.status_label.config(fg=color)
-
-        if bg is not None:
-            self.map_column.status_label.config(bg=bg)
-        else:
-            self.map_column.status_label.config(bg=Colors.BG_COLOR)
 
     def on_closing(self):
         if self.confirm_stop():
@@ -381,7 +368,7 @@ class TelemetryApp(Tk):
         # stop serial decoder if it's running
         self.serial_reader.stop()
         # update status display to show we are now disconnected
-        self.set_status_text("Disconnected", Colors.LIGHT_GRAY)
+        self.map_column.set_status_text("Disconnected", Colors.LIGHT_GRAY)
 
         self.state = AppState.IDLE
 
@@ -443,13 +430,13 @@ class TelemetryApp(Tk):
                 if filename != "":
                     self.serial_reader.filename = filename
                     self.state = AppState.RECORDING_SERIAL
-                    self.set_status_text(f"Recording serial port {port}", Colors.WHITE, Colors.DARK_RED)
+                    self.map_column.set_status_text(f"Recording serial port {port}", Colors.WHITE, Colors.DARK_RED)
                 else:
                     return
             else:
                 print(f"Not saving telemetry from serial port {port} to file")
                 self.state = AppState.READING_SERIAL
-                self.set_status_text(f"Listening serial port {port} (Not Recording)", Colors.WHITE, "dark blue")
+                self.map_column.set_status_text(f"Listening to {port} (Not Recording)", Colors.WHITE, "dark blue")
 
             self.serial_reader.serial_port = port
             self.serial_reader.start()
@@ -465,7 +452,7 @@ class TelemetryApp(Tk):
             self.reset()
             self.file_reader.filename = filename
             self.state = AppState.READING_FILE
-            self.set_status_text(f"Playing: {filename.split('/')[-1]}", Colors.WHITE, Colors.DARK_GREEN)
+            self.map_column.set_status_text(f"Playing: {filename.split('/')[-1]}", Colors.WHITE, Colors.DARK_GREEN)
             self.file_reader.start()
             self.update()
 
@@ -489,7 +476,7 @@ class TelemetryApp(Tk):
             if not ok:
                 return
 
-            self.map_frame.download_current_map()
+            self.map_column.download_current_map()
 
         except Exception as e:
             messagebox.showerror("Downloading Error",
@@ -498,7 +485,7 @@ class TelemetryApp(Tk):
 
         else:
             messagebox.showinfo("Downloading Successful",
-                                f"Saved current location to database: {self.map_frame.database_path}")
+                                f"Saved current location to database: {self.map_column.database_path}")
 
         finally:
             self.download_overlay.destroy()
@@ -509,13 +496,11 @@ class TelemetryApp(Tk):
         filename = askopenfilename(filetypes =[('Map Database', '*.db'), ('Other Files', '*.*')])
         if filename is not None:
             print(f"Attempting to load map file: {filename}")
-            self.map_frame.load_offline_database(filename)
+            self.map_column.load_offline_database(filename)
         pass
 
     def toggle_offline_maps_only(self):
-        offline_maps_only = self.offline_maps_only.get()
-        self.map_frame.set_only_offline_maps(offline_maps_only)
-
+        self.offline_maps_only.set(not self.offline_maps_only.get())
 
 
 if __name__ == "__main__":
