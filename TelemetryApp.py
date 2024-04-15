@@ -230,8 +230,9 @@ class TelemetryApp(Tk):
         ------------------
         """
         self.bind('1', lambda _: self.test_serial_sender.send_single_packet(TelemetryTestSender.PRE_FLIGHT_TEST))
-        self.bind('2', lambda _: self.test_serial_sender.send_single_packet(TelemetryTestSender.IN_FLIGHT_TEST))
-        self.bind('3', lambda _: self.test_serial_sender.send_single_packet(TelemetryTestSender.POST_FLIGHT_TEST))
+        self.bind('2', lambda _: self.test_serial_sender.send_single_packet(TelemetryTestSender.PRE_FLIGHT_TEST_2))
+        self.bind('3', lambda _: self.test_serial_sender.send_single_packet(TelemetryTestSender.IN_FLIGHT_TEST))
+        self.bind('4', lambda _: self.test_serial_sender.send_single_packet(TelemetryTestSender.POST_FLIGHT_TEST))
 
         self.bind('q', lambda _: self.quit())
         self.bind('s', lambda _: print(self.serial_reader.available_ports()))

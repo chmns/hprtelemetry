@@ -86,8 +86,6 @@ class MapColumn(PanedWindow):
                                                StringVar(master, ZERO_LON, "postGnssLon"),
                                                StringVar(master, ZERO_ALT, "postGnssAlt"))
 
-
-        self.preflight_location.pack()
         # self.tilt_spin = TiltAndSpin(self.map_column, "offVert", "gyroZ")
         # self.tilt_spin.grid(row=4, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
@@ -178,15 +176,33 @@ class MapFrame(PanedWindow):
         self.map_view.set_tile_server(TILE_SERVER_URL)
         self.map_view.pack(expand=True, fill=BOTH)
 
-        self.sats_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text="", bg=Colors.GRAY, anchor=E, justify="left")
+        self.sats_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text="", bg=Colors.GRAY, anchor=E)
         self.sats_label.place(relx=1, x=-20, y=20, anchor=NE)
         self.update_num_sats()
 
-        self.fix_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text="", bg=Colors.GRAY, anchor=E, justify="left", padx=PADX, pady=PADY)
+        self.fix_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text="", bg=Colors.GRAY, anchor=E, padx=PADX, pady=PADY)
         self.fix_label.place(relx=1, x=-20, y=50, anchor=NE)
         self.update_fix()
 
+        self.zoom_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text=self.map_view.zoom, bg=Colors.GRAY, fg=Colors.LIGHT_GRAY, anchor=E, padx=PADX, pady=PADY)
+        self.zoom_label.place(relx=1, rely=1, x=-20, y=-20, anchor=SE)
+
+        self.map_view.canvas.bind("<ButtonRelease-1>", self.mouse_release)
+        self.map_view.canvas.bind("<MouseWheel>", self.mouse_zoom)
+
         self.reset()
+        self.__update_zoom_label__()
+
+    def mouse_release(self, event):
+        self.map_view.mouse_release(event)
+        self.__update_zoom_label__()
+
+    def mouse_zoom(self, event):
+        self.map_view.mouse_zoom(event)
+        self.__update_zoom_label__()
+
+    def __update_zoom_label__(self):
+        self.zoom_label.config(text=f"Zoom: {self.map_view.zoom:.1f}")
 
     def update_num_sats(self, *_):
         num_sats = self.sats_var.get()
