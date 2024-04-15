@@ -36,14 +36,11 @@ SASH_WIDTH = 10
 CELL_WIDTH = 220
 
 """
-Bugs:
-1. Graphs too big
-
 Work list:
 x.  Make pre/current/post only appear when registerd
-2.  Re-arrange tilt/spin, last packet/timestamp/satellites to be smaller
+x.  Re-arrange tilt/spin, last packet/timestamp/satellites to be smaller
 3.  Add reader for .tlm files
-4.  Correctly show bytes received and bytes per second received
+x.  Correctly show bytes received
 5.  Also save CSV backup file format
 6.  Show final value display (in addition to rolling max/min)
 7.  Add online/offline toggle to map itself
@@ -52,6 +49,7 @@ x.  Make pre/current/post only appear when registerd
 10. Correct display of units (m/s, kmh etc)
 x.  Show current map co-ords and zoom level on map itself
 12. Event colors: 18 to 21,26,28 red color. Range 8-5 green.
+13. Add online/offline/timeout
 """
 
 class AppState(Enum):
