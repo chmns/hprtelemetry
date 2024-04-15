@@ -30,6 +30,34 @@ DEFAULT_DATABASE_NAME = "offline_tiles.db"
 TILE_SERVER_URL = "http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}&s=Ga"
 
 class MapFrame(Frame):
+    def __init__(self,
+                 master,
+                 lat_var,
+                 lon_var,
+                 alt_var,
+                 offline_maps_only_var):
+        Frame.__init__(self, master, bg="cyan")
+
+        self.lat_var = lat_var
+        self.lon_var = lon_var
+        self.alt_var = alt_var
+
+        script_directory = os.path.dirname(os.path.abspath(__file__))
+        self.database_path = os.path.join(script_directory, DEFAULT_DATABASE_NAME)
+
+        self.downloader = OfflineLoader(path=self.database_path,
+                                        tile_server=TILE_SERVER_URL)
+
+        print(f"Online maps downloading enabled?: {offline_maps_only_var.get()}")
+        print(f"Using offline maps database at: {self.database_path}")
+
+        self.map_view = TkinterMapView(self,
+                                       database_path=self.database_path,
+                                       use_database_only=offline_maps_only_var.get())
+        self.map_view.set_tile_server(TILE_SERVER_URL)
+        self.map_view.pack(expand=True, fill=BOTH)
+
+        self.reset()
 
     def update(self):
         new_lat = self.lat_var.get()
@@ -59,7 +87,6 @@ class MapFrame(Frame):
         self.launch_marker = self.map_view.set_marker(launch_lat, launch_lon, LAUNCH_TEXT)
 
     def reset(self):
-        self.location_grid.reset()
         self.lat = DEFAULT_LAT
         self.lon = DEFAULT_LON
         self.map_view.set_position(self.lat, self.lon)
@@ -107,42 +134,8 @@ class MapFrame(Frame):
         print(f"Setting offline map file to: {database_path}")
 
         self.map_view = TkinterMapView(self, database_path = database_path)
-        self.map_view.grid(row=0, column=0, sticky=(N,E,S,W))
-        self.map_view.grid_propagate(True)
+        self.map_view.pack(expand=True, fill=BOTH)
 
-    def __init__(self, master, lat_var, lon_var, alt_var, offline_maps_only_var):
-        Frame.__init__(self, master)
-
-        self.lat_var = lat_var
-        self.lon_var = lon_var
-        self.alt_var = alt_var
-
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
-        self.rowconfigure(1, weight=0)
-
-        script_directory = os.path.dirname(os.path.abspath(__file__))
-        self.database_path = os.path.join(script_directory, DEFAULT_DATABASE_NAME)
-
-        self.downloader = OfflineLoader(path=self.database_path,
-                                        tile_server=TILE_SERVER_URL)
-
-        print(f"Online maps downloading enabled?: {offline_maps_only_var.get()}")
-        print(f"Using offline maps database at: {self.database_path}")
-
-        self.map_view = TkinterMapView(self,
-                                       database_path=self.database_path,
-                                       use_database_only=offline_maps_only_var.get())
-        self.map_view.set_tile_server(TILE_SERVER_URL)
-
-        self.map_view.grid(row=0, column=0, sticky=(N,E,S,W))
-        self.map_view.grid_propagate(True)
-
-        self.location_grid = LocationGrid(self)
-        self.location_grid.grid(row=1, column=0, sticky=(N,E,S,W))
-        self.location_grid.grid_propagate(True)
-
-        self.reset()
 
 class LocationGrid(Frame):
     def __init__(self, master):

@@ -182,14 +182,6 @@ class RadioTelemetryDecoder(TelemetryDecoder):
                 except:
                     pass # if [cont] doesn't exist in message then it will give exception, we ignore
 
-                # if we decoded a callsign then add it in parenthes after name
-                try:
-                    name = message["name"]
-                    callsign = message["callsign"]
-                    message["name"] = f"{name} ({callsign})"
-                except:
-                    pass
-
         return telemetry
 
     def __decode__(self, data_bytes) -> list | None:

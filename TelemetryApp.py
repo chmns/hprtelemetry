@@ -53,7 +53,7 @@ Bugs:
 1. Graphs too big
 
 Work list:
-1.  Make pre/current/post only appear when registerd
+x.  Make pre/current/post only appear when registerd
 2.  Re-arrange tilt/spin, last packet/timestamp/satellites to be smaller
 3.  Add reader for .tlm files
 4.  Correctly show bytes received and bytes per second received
@@ -110,6 +110,7 @@ class TelemetryApp(Tk):
         self.bytes_read = IntVar(self, 0, "bytes_read")
         self.event_name = StringVar(self, "", "eventName")
         self.name = StringVar(self, "", "name")
+        self.callsign = StringVar(self, "", "callsign")
         self.telemetry_state_name = StringVar(self, "", "telemetryStateName")
         self.cont_name = StringVar(self, "", "contName")
 
@@ -245,42 +246,44 @@ class TelemetryApp(Tk):
         ----------
         Right-side
         """
-        self.name_label = Label(self.map_column, textvariable=self.name, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=WHITE)
-        self.name_label.grid(row=0, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.map_column.rowconfigure(0, weight=0)
+        self.name_callsign_state_frame = Frame(self.map_column, bg=Colors.BG_COLOR)
+        self.name_callsign_state_frame.pack(side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
 
-        self.cont_label = Label(self.map_column, textvariable=self.cont_name, font=Fonts.MEDIUM_FONT, bg=Colors.BG_COLOR, fg=WHITE)
-        self.cont_label.grid(row=1, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.map_column.rowconfigure(1, weight=0)
+        self.telemetry_state_label = Label(self.name_callsign_state_frame, textvariable=self.telemetry_state_name, font=Fonts.MEDIUM_FONT, bg=Colors.BG_COLOR, fg=LIGHT_GRAY)
+        self.telemetry_state_label.pack(side=LEFT, expand=False, fill=NONE, padx=PADX)
 
-        self.event_name_label = Label(self.map_column, textvariable=self.event_name, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=WHITE)
-        self.event_name_label.grid(row=2, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        self.name_label = Label(self.name_callsign_state_frame, textvariable=self.name, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=WHITE)
+        self.name_label.pack(side=LEFT, expand=True, fill=X)
 
-        self.telemetry_state_label = Label(self.map_column, textvariable=self.telemetry_state_name, font=Fonts.MEDIUM_FONT, bg=Colors.BG_COLOR, fg=LIGHT_GRAY)
-        self.telemetry_state_label.grid(row=2, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.map_column.rowconfigure(2, weight=0)
+        self.callsign_label = Label(self.name_callsign_state_frame, textvariable=self.callsign, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=WHITE)
+        self.callsign_label.pack(side=LEFT, expand=False, fill=NONE, padx=PADX)
+
+
+        self.cont_event_frame = Frame(self.map_column, bg=Colors.BG_COLOR)
+        self.cont_event_frame.pack(side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
+
+        self.cont_label = Label(self.cont_event_frame, textvariable=self.cont_name, font=Fonts.MEDIUM_FONT, bg=Colors.BG_COLOR, fg=WHITE)
+
+        self.event_name_label = Label(self.cont_event_frame, textvariable=self.event_name, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=WHITE)
+        self.event_name_label.pack(side=LEFT, expand=True, fill=X)
+
 
         self.map_frame = MapFrame(self.map_column,
                                   DoubleVar(self, 0.0, "gnssLat"),
                                   DoubleVar(self, 0.0, "gnssLon"),
                                   DoubleVar(self, 0.0, "gnssAlt"),
                                   self.offline_maps_only)
-        self.map_frame.grid(row=3, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.map_column.rowconfigure(3, weight=2)
+        self.map_frame.pack(side=TOP, expand=True, fill=BOTH)
 
-        self.tilt_spin = TiltAndSpin(self.map_column, "offVert", "gyroZ")
-        self.tilt_spin.grid(row=4, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        # self.tilt_spin = TiltAndSpin(self.map_column, "offVert", "gyroZ")
+        # self.tilt_spin.grid(row=4, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
-        self.status = TelemetryStatus(self.map_column, "radioPacketNum", "time", "gnssSatellites")
-        self.status.grid(row=4, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.map_column.rowconfigure(4, weight=0)
+        # self.status = TelemetryStatus(self.map_column, "radioPacketNum", "time", "gnssSatellites")
+        # self.status.grid(row=4, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        # self.map_column.rowconfigure(4, weight=0)
 
         self.status_label = Label(self.map_column, font=Fonts.MEDIUM_FONT, text="Disconnected", bg=Colors.BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
-        self.status_label.grid(row=5, column=0, columnspan=2, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.map_column.rowconfigure(5, weight=0)
-
-        for i in range (2):
-            self.map_column.columnconfigure(i, weight=2, uniform="a")
+        self.status_label.pack(side=BOTTOM, expand=False, fill=X)
 
 
         # Must be after setup because it affects the grid
@@ -307,9 +310,9 @@ class TelemetryApp(Tk):
         self.telemetry_state = state
         self.telemetry_state_name.set(f"{str(state).upper()}")
         if state == DecoderState.PREFLIGHT:
-            self.cont_label.grid()
+            self.cont_label.pack(side=LEFT, expand=True, fill=X, before=self.event_name_label)
         else:
-            self.cont_label.grid_remove()
+            self.cont_label.pack_forget()
 
     def set_status_text(self, text,
                         color:str = None,
