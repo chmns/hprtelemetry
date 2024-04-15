@@ -29,13 +29,13 @@ class ErrorPacket(object):
 
 class PreFlightPacket(RadioPacket):
     keys = ["event",          # uint8_t   event
-            "gnssFix",        # uint8_t   gnss.fix
+            "preGnssFix",        # uint8_t   gnss.fix
             "cont",           # uint8_t   cont.reportCode
             "name",           # char[20]  rocketName
             "baroAlt",        # int16_t   baseAlt
-            "gnssAlt",        # int16_t   GPSalt
-            "gnssLat",        # float     GPS.location.lat
-            "gnssLon",        # float     GPS.location.lng
+            "preGnssAlt",        # int16_t   GPSalt
+            "preGnssLat",     # float     GPS.location.lat
+            "preGnssLon",     # float     GPS.location.lng
             "gnssSatellites", # uint16_t  satNum
             "callsign"]       # char[6]   callsign
 
@@ -62,16 +62,16 @@ class InFlightMetaData(RadioPacket):
     format = f"{ENDIANNESS}HHff6s"
 
 class PostFlightPacket(RadioPacket):
-    keys = ["event",      # uint8_t  event
-            "maxAlt",     # uint16_t maxAlt
-            "maxVel",     # uint16_t maxVel
-            "maxG",       # uint16_t maxG
-            "maxGnssAlt", # uint16_t maxGPSalt
-            "gnssFix",    # uint8_t  gnss.fix
-            "gnssAlt",    # uint16_t GPSalt
-            "gnssLat",    # float    GPS.location.lat
-            "gnssLon",    # float    GPS.location.lng
-            "callsign"]   # char[6] callsign
+    keys = ["event",        # uint8_t  event
+            "maxAlt",       # uint16_t maxAlt
+            "maxVel",       # uint16_t maxVel
+            "maxG",         # uint16_t maxG
+            "maxGnssAlt",   # uint16_t maxGPSalt
+            "postGnssFix",  # uint8_t  gnss.fix
+            "postGnssAlt",  # uint16_t GPSalt
+            "postGnssLat",  # float    GPS.location.lat
+            "postGnssLon",  # float    GPS.location.lng
+            "callsign"]     # char[6] callsign
 
     format = f"{ENDIANNESS}B4HBHff6s"
 

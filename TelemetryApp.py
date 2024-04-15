@@ -53,16 +53,18 @@ Bugs:
 1. Graphs too big
 
 Work list:
-1.  Add reader for .tlm files
-2.  Correctly show bytes received and bytes per second received
-3.  Also save CSV backup file format
-4.  Show final value display (in addition to rolling max/min)
-5.  Add online/offline toggle to map itself
-6.  Add download current area to map itself
-7.  Add log window
-8.  Correct display of units (m/s, kmh etc)
-9.  Show current map co-ords and zoom level on map itself
-10. Event colors: 18 to 21,26,28 red color. Range 8-5 green.
+1.  Make pre/current/post only appear when registerd
+2.  Re-arrange tilt/spin, last packet/timestamp/satellites to be smaller
+3.  Add reader for .tlm files
+4.  Correctly show bytes received and bytes per second received
+5.  Also save CSV backup file format
+6.  Show final value display (in addition to rolling max/min)
+7.  Add online/offline toggle to map itself
+8.  Add download current area to map itself
+9.  Add log window
+10. Correct display of units (m/s, kmh etc)
+11. Show current map co-ords and zoom level on map itself
+12. Event colors: 18 to 21,26,28 red color. Range 8-5 green.
 """
 
 class AppState(Enum):

@@ -148,63 +148,65 @@ class LocationGrid(Frame):
     def __init__(self, master):
         Frame.__init__(self, master, bg="black")
 
-        self.launch_latitude  = StringVar(master, "0.0", "launch_latitude")
-        self.launch_longitude = StringVar(master, "0.0", "launch_longitude")
-        self.launch_altitude  = StringVar(master, "0", "launch_altitude")
-        self.gnss_lat = StringVar(master, DEFAULT_LAT, "gnssLat")
-        self.gnss_lon = StringVar(master, DEFAULT_LON, "gnssLon")
-        self.gnss_alt = StringVar(master, "0", "gnssAlt")
-        self.landing_latitude  = StringVar(master, "0.0", "landing_latitude")
-        self.landing_longitude = StringVar(master, "0.0", "landing_longitude")
-        self.landing_altitude  = StringVar(master, "0", "landing_altitude")
+        self.preLatitude   = StringVar(master, ZERO_LAT, "preGnssLat")
+        self.preLongitude  = StringVar(master, ZERO_LON, "preGnssLon")
+        self.preAltitude   = StringVar(master, ZERO_ALT, "preGnssAlt")
+        self.curLatitude   = StringVar(master, DEFAULT_LAT, "gnssLat")
+        self.curLongitude  = StringVar(master, DEFAULT_LON, "gnssLon")
+        self.curAltitude   = StringVar(master, ZERO_ALT, "gnssAlt")
+        self.postLatitude  = StringVar(master, ZERO_LAT, "postGnssLat")
+        self.postLongitude = StringVar(master, ZERO_LON, "postGnssLon")
+        self.postAltitude  = StringVar(master, ZERO_ALT, "postGnssAlt")
 
-        self.variables = [self.launch_latitude,
-                          self.launch_longitude,
-                          self.launch_altitude,
-                          self.gnss_lat,
-                          self.gnss_lon,
-                          self.gnss_alt,
-                          self.landing_latitude,
-                          self.landing_longitude,
-                          self.landing_altitude]
 
         self.pre = LocationRow(self,
                                PRELIGHT_TEXT,
-                               self.launch_latitude,
-                               self.launch_longitude,
-                               self.launch_altitude)
+                               self.preLatitude,
+                               self.preLongitude,
+                               self.preAltitude)
         self.pre.grid(row=0, column=0, sticky=(E,W))
         self.pre.grid_propagate(True)
 
         self.current = LocationRow(self,
                                    CURRENT_TEXT,
-                                   self.gnss_lat,
-                                   self.gnss_lon,
-                                   self.gnss_alt)
+                                   self.curLatitude,
+                                   self.curLongitude,
+                                   self.curAltitude)
         self.current.grid(row=1, column=0, sticky=(E,W), pady=PADY)
         self.current.grid_propagate(True)
 
         self.post = LocationRow(self,
                                 POSTFLIGHT_TEXT,
-                                self.landing_latitude,
-                                self.landing_longitude,
-                                self.landing_altitude)
+                                self.postLatitude,
+                                self.postLongitude,
+                                self.postAltitude)
         self.post.grid(row=2, column=0, sticky=(E,W))
         self.post.grid_propagate(True)
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure((0, 1, 2), weight=0)
 
+        self.preLatitude.trace_add("write", lambda *_ : self.pre.grid())
+        self.curLatitude.trace_add("write", lambda *_ : self.current.grid())
+        self.postLatitude.trace_add("write", lambda *_ : self.post.grid())
+
+
     def reset(self):
-        self.launch_latitude.set(ZERO_LAT)
-        self.launch_longitude.set(ZERO_LON)
-        self.launch_altitude.set(ZERO_ALT)
-        self.gnss_lat.set(DEFAULT_LAT)
-        self.gnss_lon.set(DEFAULT_LON)
-        self.gnss_alt.set(ZERO_ALT)
-        self.landing_latitude.set(ZERO_LAT)
-        self.landing_longitude.set(ZERO_LON)
-        self.landing_altitude.set(ZERO_ALT)
+        self.preLatitude.set(ZERO_LAT)
+        self.preLongitude.set(ZERO_LON)
+        self.preAltitude.set(ZERO_ALT)
+
+        self.curLatitude.set(DEFAULT_LAT)
+        self.curLongitude.set(DEFAULT_LON)
+        self.curAltitude.set(ZERO_ALT)
+
+        self.postLatitude.set(ZERO_LAT)
+        self.postLongitude.set(ZERO_LON)
+        self.postAltitude.set(ZERO_ALT)
+
+        self.pre.grid_remove()
+        self.current.grid_remove()
+        self.post.grid_remove()
 
 class LocationRow(Frame):
     def __init__(self,
