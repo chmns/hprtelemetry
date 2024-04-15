@@ -84,7 +84,7 @@ class GraphFrame(Frame):
         self.relief = RAISED
         self.borderwidth = 2
 
-        self.figure = Figure(figsize=(4,4), dpi=200)
+        self.figure = Figure(figsize=(4,4), dpi=150, constrained_layout=True)
         self.subplot = self.figure.add_subplot()
         self.subplot.set_autoscaley_on(True)
 

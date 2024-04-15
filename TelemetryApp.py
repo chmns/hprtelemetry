@@ -99,6 +99,8 @@ class TelemetryApp(Tk):
         self.file_reader = SDCardFileReader(self.message_queue)
         self.file_reader.name = "file_reader"
 
+        self.offline_maps_only = BooleanVar(self, True, "offline_maps_only")
+
         self.telemetry_state_name = StringVar(self, "", "telemetryStateName")
 
         self.test_serial_sender = TelemetryTestSender() # for test data only
@@ -130,7 +132,6 @@ class TelemetryApp(Tk):
         self.map_menu = Menu(self.menubar)
         self.map_menu.add_command(label="Download current map", command=self.download_current_map)
         self.map_menu.add_command(label="Set offline map path", command=self.set_offline_path)
-        self.offline_maps_only = BooleanVar(self, True, "offline_maps_only")
 
         self.map_menu.add_checkbutton(label="Only use offline maps",
                                       variable=self.offline_maps_only)
@@ -467,7 +468,7 @@ class TelemetryApp(Tk):
 
         try:
             self.download_overlay = Frame(self.window, background="#0f0f0f")
-            self.download_overlay.pack(expand=True, fill=BOTH)
+            self.download_overlay.place(relwidth=1, relheight=1)
 
             ok = messagebox.askokcancel("Download current map",
                                         "This will currently displayed location at all zoom levels. Depending on internet connection this require take several minutes.\n\nDuring download the app will be unresponsive.\n\nAre you sure you wish to continue?")
@@ -493,14 +494,10 @@ class TelemetryApp(Tk):
 
     def set_offline_path(self):
         filename = askopenfilename(filetypes =[('Map Database', '*.db'), ('Other Files', '*.*')])
-        if filename is not None:
+        if filename is not None and filename is not "":
             print(f"Attempting to load map file: {filename}")
             self.map_column.load_offline_database(filename)
         pass
-
-    # def toggle_offline_maps_only(self):
-    #     current = self.offline_maps_only.get()
-    #     print(f"Befor {current = }")
 
 
 

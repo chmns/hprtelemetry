@@ -1,5 +1,4 @@
 from tkinter import *
-from tkinter import Misc
 from tkintermapview import TkinterMapView, OfflineLoader
 from tkintermapview.utility_functions import osm_to_decimal
 from Styles import Fonts, Colors
@@ -8,8 +7,8 @@ import os # for maps db
 
 DEFAULT_LAT = 44.7916443
 DEFAULT_LON = -0.5995578
-OFFLINE_ZOOM_MIN = 0
-OFFLINE_ZOOM_MAX = 14
+OFFLINE_ZOOM_MIN = 5
+OFFLINE_ZOOM_MAX = 19
 MIN_PATH_POINTS = 2
 DEFAULT_ZOOM = 10
 
@@ -81,7 +80,7 @@ class MapColumn(PanedWindow):
         self.event_name_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
 
-        self.map_frame = MapFrame(self, BooleanVar(master, name="offline_maps_only"))
+        self.map_frame = MapFrame(self, master)
         self.map_frame.pack(side=TOP, expand=True, fill=BOTH)
 
 
@@ -93,9 +92,9 @@ class MapColumn(PanedWindow):
 
         self.current_location = LocationRow(self,
                                             CURRENT_TEXT,
-                                            StringVar(master, ZERO_LAT, "gnssLat"),
-                                            StringVar(master, ZERO_LON, "gnssLon"),
-                                            StringVar(master, ZERO_ALT, "gnssAlt"))
+                                            StringVar(master, DEFAULT_LAT, "gnssLat"),
+                                            StringVar(master, DEFAULT_LON, "gnssLon"),
+                                            StringVar(master, ZERO_ALT,    "gnssAlt"))
 
         self.postflight_location = LocationRow(self,
                                                POSTFLIGHT_TEXT,
@@ -125,6 +124,11 @@ class MapColumn(PanedWindow):
         # last packet number
         # last timestamp
 
+    def download_current_map(self):
+        self.map_frame.download_current_map()
+
+    def load_offline_database(self, database_path):
+        self.map_frame.load_offline_database(database_path)
 
     def set_status_text(self, text,
                         color:str = None,
@@ -195,19 +199,25 @@ class MapColumn(PanedWindow):
         self.map_frame.reset()
 
 class MapFrame(PanedWindow):
-    def __init__(self, master, offline_map_var):
+    def __init__(self, master, window):
         Frame.__init__(self, master,bg=Colors.BG_COLOR)
 
-        self.lat_var = StringVar(master, 0.0, "gnssLat"),
-        self.lon_var = StringVar(master, 0.0, "gnssLon"),
-        self.alt_var = StringVar(master, 0.0, "gnssAlt"),
-        self.sats_var = IntVar(master, 0, "gnssSatellites")
-        self.fix_var = BooleanVar(master, False, "preGnssFix")
-        self.offline_maps_only = offline_map_var
-        self.offline_maps_only.trace_add("write", self.set_offline_maps_only)
+        self.lat_var = StringVar(window, name="gnssLat")
+        self.lat_var.trace_add("write", self.update_location)
 
+        self.lon_var = StringVar(window, name="gnssLon")
+        self.lon_var.trace_add("write", self.update_location)
+
+        self.alt_var = StringVar(window, name="gnssAlt")
+
+        self.sats_var = IntVar(window, 0, "gnssSatellites")
         self.sats_var.trace_add("write", self.update_num_sats)
+
+        self.fix_var = BooleanVar(window, False, "preGnssFix")
         self.fix_var.trace_add("write", self.update_fix)
+
+        self.offline_maps_only = BooleanVar(window, name="offline_maps_only")
+        self.offline_maps_only.trace_add("write", self.set_offline_maps_only)
 
         script_directory = os.path.dirname(os.path.abspath(__file__))
         self.database_path = os.path.join(script_directory, DEFAULT_DATABASE_NAME)
@@ -281,34 +291,31 @@ class MapFrame(PanedWindow):
         else:
             self.fix_label.config(text=f"No Fix", fg=Colors.DARK_RED)
 
-
     def set_online(self, online: bool):
         if online:
             self.online_label.config(text=f"Online", fg=Colors.DARK_GREEN)
         else:
             self.online_label.config(text=f"Offline", fg=Colors.DARK_RED)
 
-
-    def update(self):
+    def update_location(self, *_):
         new_lat = self.lat_var.get()
         new_lon = self.lon_var.get()
 
-        if new_lat != self.lat or new_lon != self.lon:
-            self.lat = new_lat
-            self.lon = new_lon
-            self.map_view.set_position(new_lat, new_lon)
+        print(f"{new_lat = }, {new_lon = }")
 
-            # hacky way to do it but can't get the method in documentation
-            # working. need to have at least 2 points before creating path
-            # and then after that you append to it, rather than setting it
-            if self.path is None:
-                if len(self.path_list) > MIN_PATH_POINTS:
-                    self.start_marker = self.map_view.set_marker(new_lat, new_lon, START_TEXT)
-                    self.path = self.map_view.set_path(self.path_list, width=2)
-                else:
-                    self.path_list.append((new_lat, new_lon))
+        self.map_view.set_position(float(new_lat), float(new_lon))
+
+        # hacky way to do it but can't get the method in documentation
+        # working. need to have at least 2 points before creating path
+        # and then after that you append to it, rather than setting it
+        if self.path is None:
+            if len(self.path_list) > MIN_PATH_POINTS:
+                self.start_marker = self.map_view.set_marker(new_lat, new_lon, START_TEXT)
+                self.path = self.map_view.set_path(self.path_list, width=2)
             else:
-                self.path.add_position(new_lat, new_lon)
+                self.path_list.append((new_lat, new_lon))
+        else:
+            self.path.add_position(new_lat, new_lon)
 
     def set_landing_point(self, landing_lat, landing_lon):
         self.landing_marker = self.map_view.set_marker(landing_lat, landing_lon, LANDING_TEXT)
