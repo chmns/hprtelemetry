@@ -64,11 +64,7 @@ class MapColumn(PanedWindow):
         self.event_name_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
 
-        self.map_frame = MapFrame(self,
-                                  DoubleVar(master, 0.0, "gnssLat"),
-                                  DoubleVar(master, 0.0, "gnssLon"),
-                                  DoubleVar(master, 0.0, "gnssAlt"),
-                                  self.offline_maps_only)
+        self.map_frame = MapFrame(self)
         self.map_frame.pack(side=TOP, expand=True, fill=BOTH)
 
 
@@ -154,17 +150,18 @@ class MapColumn(PanedWindow):
         self.map_frame.reset()
 
 class MapFrame(PanedWindow):
-    def __init__(self,
-                 master,
-                 lat_var,
-                 lon_var,
-                 alt_var,
-                 offline_maps_only_var):
+    def __init__(self, master):
         Frame.__init__(self, master, bg="cyan")
 
-        self.lat_var = lat_var
-        self.lon_var = lon_var
-        self.alt_var = alt_var
+        self.lat_var = StringVar(master, 0.0, "gnssLat"),
+        self.lon_var = StringVar(master, 0.0, "gnssLon"),
+        self.alt_var = StringVar(master, 0.0, "gnssAlt"),
+        self.sats_var = IntVar(master, 0, "gnssSatellites")
+        self.fix_var = BooleanVar(master, False, "preGnssFix")
+        self.offline_maps_only_var = BooleanVar(master, False, "offline_maps_only")
+
+        self.sats_var.trace_add("write", self.update_num_sats)
+        self.fix_var.trace_add("write", self.update_fix)
 
         script_directory = os.path.dirname(os.path.abspath(__file__))
         self.database_path = os.path.join(script_directory, DEFAULT_DATABASE_NAME)
@@ -172,22 +169,41 @@ class MapFrame(PanedWindow):
         self.downloader = OfflineLoader(path=self.database_path,
                                         tile_server=TILE_SERVER_URL)
 
-        print(f"Online maps downloading enabled?: {offline_maps_only_var.get()}")
+        print(f"Online maps downloading enabled?: {self.offline_maps_only_var.get()}")
         print(f"Using offline maps database at: {self.database_path}")
 
         self.map_view = TkinterMapView(self,
                                        database_path=self.database_path,
-                                       use_database_only=offline_maps_only_var.get())
+                                       use_database_only=self.offline_maps_only_var.get())
         self.map_view.set_tile_server(TILE_SERVER_URL)
         self.map_view.pack(expand=True, fill=BOTH)
 
-        self.sats_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text="# Sats", bg=Colors.GRAY, fg=Colors.WHITE, anchor=E, justify="left")
+        self.sats_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text="", bg=Colors.GRAY, anchor=E, justify="left")
         self.sats_label.place(relx=1, x=-20, y=20, anchor=NE)
+        self.update_num_sats()
 
-        self.fix_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text="Good Fix", bg=Colors.GRAY, fg=Colors.DARK_GREEN, anchor=E, justify="left")
+        self.fix_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text="", bg=Colors.GRAY, anchor=E, justify="left", padx=PADX, pady=PADY)
         self.fix_label.place(relx=1, x=-20, y=50, anchor=NE)
+        self.update_fix()
 
         self.reset()
+
+    def update_num_sats(self, *_):
+        num_sats = self.sats_var.get()
+        self.sats_label.config(text=f"{num_sats} Satellites")
+
+        if num_sats > 0:
+            self.sats_label.config(fg=Colors.WHITE)
+        else:
+            self.sats_label.config(fg=Colors.LIGHT_GRAY)
+
+    def update_fix(self, *_):
+        if self.fix_var.get():
+            self.fix_label.config(text=f"Good Fix")
+            self.fix_label.config(fg=Colors.DARK_GREEN)
+        else:
+            self.fix_label.config(text=f"No Fix")
+            self.fix_label.config(fg=Colors.DARK_RED)
 
 
     def update(self):

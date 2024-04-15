@@ -29,17 +29,17 @@ class ErrorPacket(object):
 
 class PreFlightPacket(RadioPacket):
     keys = ["event",          # uint8_t   event
-            "preGnssFix",        # uint8_t   gnss.fix
+            "preGnssFix",     # uint8_t   gnss.fix # interpret as bool
             "cont",           # uint8_t   cont.reportCode
             "name",           # char[20]  rocketName
             "baroAlt",        # int16_t   baseAlt
-            "preGnssAlt",        # int16_t   GPSalt
+            "preGnssAlt",     # int16_t   GPSalt
             "preGnssLat",     # float     GPS.location.lat
             "preGnssLon",     # float     GPS.location.lng
             "gnssSatellites", # uint16_t  satNum
             "callsign"]       # char[6]   callsign
 
-    format = f"{ENDIANNESS}BBB20shhffH6s"
+    format = f"{ENDIANNESS}B?B20shhffH6s"
 
 class InFlightData(RadioPacket):
     keys = ["event",     # uint8_t  event
