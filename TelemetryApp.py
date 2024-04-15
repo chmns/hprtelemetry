@@ -33,19 +33,6 @@ PADY = 4
 
 SASH_WIDTH = 10
 
-ALTITUDE_COLOR = "#8BD3E6"
-VELOCITY_COLOR = "#FF6D6A"
-ACCELERATION_COLOR = "#EFBE7D"
-LIGHT_GRAY = "#AAAAAA"
-DARK_RED = "#AA3333"
-DARK_GREEN = "#33AA33"
-WHITE = "#EEEEEE"
-
-DEFAULT_COORD = "0.0000000"
-PREFLIGHT_COORDS_PREFIX = "Pre: "
-CURRENT_COORDS_PREFIX = "Curr:"
-POSTFLIGHT_COORDS_PREFIX = "Post:"
-
 CELL_WIDTH = 220
 
 """
@@ -107,18 +94,12 @@ class TelemetryApp(Tk):
         for var in self.telemetry_vars:
             self.setvar(var)
 
-        self.bytes_read = IntVar(self, 0, "bytes_read")
-        self.event_name = StringVar(self, "", "eventName")
-        self.name = StringVar(self, "", "name")
-        self.callsign = StringVar(self, "", "callsign")
-        self.telemetry_state_name = StringVar(self, "", "telemetryStateName")
-        self.cont_name = StringVar(self, "", "contName")
-
         self.serial_reader = RadioTelemetryReader(self.message_queue)
         self.serial_reader.name = "serial_reader"
         self.file_reader = SDCardFileReader(self.message_queue)
         self.file_reader.name = "file_reader"
 
+        self.telemetry_state_name = StringVar(self, "", "telemetryStateName")
 
         self.test_serial_sender = TelemetryTestSender() # for test data only
 
@@ -171,7 +152,7 @@ class TelemetryApp(Tk):
         self.window.configure(sashwidth=SASH_WIDTH)
         self.readouts = Frame(self.window, width=CELL_WIDTH*2, background=Colors.BG_COLOR)
         self.graphs = Frame(self.window, width=400, background="black")
-        self.map_column = PanedWindow(self.window, orient="vertical", background="black")
+        self.map_column = MapColumn(self.window)
 
         self.window.add(self.readouts)
         self.window.add(self.graphs, stretch="always")
@@ -190,15 +171,15 @@ class TelemetryApp(Tk):
         ---------------
         Left side
         """
-        self.altitude = ReadOut(self.readouts, "Altitude", "fusionAlt", "m", "ft", ReadOut.metresToFeet, color=ALTITUDE_COLOR)
+        self.altitude = ReadOut(self.readouts, "Altitude", "fusionAlt", "m", "ft", ReadOut.metresToFeet, color=Colors.ALTITUDE_COLOR)
         self.altitude.grid(row=0, column=0, padx=PADX, pady=PADY, sticky=(N,E,W,S))
         self.altitude.config(width = CELL_WIDTH)
 
-        self.velocity = ReadOut(self.readouts, "Velocity", "fusionVel", "m/s", "mi/h", ReadOut.msToMph, color=VELOCITY_COLOR)
+        self.velocity = ReadOut(self.readouts, "Velocity", "fusionVel", "m/s", "mi/h", ReadOut.msToMph, color=Colors.VELOCITY_COLOR)
         self.velocity.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,S))
         self.velocity.config(width = CELL_WIDTH)
 
-        self.acceleration = ReadOut(self.readouts, "Accel", "accelZ", "m/s/s", "G", ReadOut.mssToG, color=ACCELERATION_COLOR)
+        self.acceleration = ReadOut(self.readouts, "Accel", "accelZ", "m/s/s", "G", ReadOut.mssToG, color=Colors.ACCELERATION_COLOR)
         self.acceleration.grid(row=2, column=0, padx=PADX, pady=PADY, sticky=(N,S))
         self.acceleration.config(width = CELL_WIDTH)
 
@@ -217,7 +198,7 @@ class TelemetryApp(Tk):
                                          DoubleVar(self, 0.0, "time"),
                                          DoubleVar(self, 0.0, "fusionAlt"),
                                          None,
-                                         ALTITUDE_COLOR)
+                                         Colors.ALTITUDE_COLOR)
         self.altitude_graph.grid(row=0, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
         self.velocity_graph = GraphFrame(self.graphs,
@@ -225,7 +206,7 @@ class TelemetryApp(Tk):
                                          DoubleVar(self, 0.0, "time"),
                                          DoubleVar(self, 0.0, "fusionVel"),
                                          None,
-                                         VELOCITY_COLOR)
+                                         Colors.VELOCITY_COLOR)
         self.velocity_graph.grid(row=1, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
 
         self.acceleration_graph = GraphFrame(self.graphs,
@@ -233,58 +214,12 @@ class TelemetryApp(Tk):
                                              DoubleVar(self, 0.0, "time"),
                                              DoubleVar(self, 0.0, "accelZ"),
                                              (-20.0, 80.0),
-                                             ACCELERATION_COLOR)
+                                             Colors.ACCELERATION_COLOR)
         self.acceleration_graph.grid(row=2, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.graphs.columnconfigure(0, weight=1)
 
         for i in range (NUM_ROWS):
             self.graphs.rowconfigure(i, weight=1)
-
-
-        """
-        Map Column
-        ----------
-        Right-side
-        """
-        self.name_callsign_state_frame = Frame(self.map_column, bg=Colors.BG_COLOR)
-        self.name_callsign_state_frame.pack(side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
-
-        self.telemetry_state_label = Label(self.name_callsign_state_frame, textvariable=self.telemetry_state_name, font=Fonts.MEDIUM_FONT, bg=Colors.BG_COLOR, fg=LIGHT_GRAY)
-        self.telemetry_state_label.pack(side=LEFT, expand=False, fill=NONE, padx=PADX)
-
-        self.name_label = Label(self.name_callsign_state_frame, textvariable=self.name, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=WHITE)
-        self.name_label.pack(side=LEFT, expand=True, fill=X)
-
-        self.callsign_label = Label(self.name_callsign_state_frame, textvariable=self.callsign, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=WHITE)
-        self.callsign_label.pack(side=LEFT, expand=False, fill=NONE, padx=PADX)
-
-
-        self.cont_event_frame = Frame(self.map_column, bg=Colors.BG_COLOR)
-        self.cont_event_frame.pack(side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
-
-        self.cont_label = Label(self.cont_event_frame, textvariable=self.cont_name, font=Fonts.MEDIUM_FONT, bg=Colors.BG_COLOR, fg=WHITE)
-
-        self.event_name_label = Label(self.cont_event_frame, textvariable=self.event_name, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=WHITE)
-        self.event_name_label.pack(side=LEFT, expand=True, fill=X)
-
-
-        self.map_frame = MapFrame(self.map_column,
-                                  DoubleVar(self, 0.0, "gnssLat"),
-                                  DoubleVar(self, 0.0, "gnssLon"),
-                                  DoubleVar(self, 0.0, "gnssAlt"),
-                                  self.offline_maps_only)
-        self.map_frame.pack(side=TOP, expand=True, fill=BOTH)
-
-        # self.tilt_spin = TiltAndSpin(self.map_column, "offVert", "gyroZ")
-        # self.tilt_spin.grid(row=4, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-
-        # self.status = TelemetryStatus(self.map_column, "radioPacketNum", "time", "gnssSatellites")
-        # self.status.grid(row=4, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        # self.map_column.rowconfigure(4, weight=0)
-
-        self.status_label = Label(self.map_column, font=Fonts.MEDIUM_FONT, text="Disconnected", bg=Colors.BG_COLOR, fg=LIGHT_GRAY, anchor=E, justify="left")
-        self.status_label.pack(side=BOTTOM, expand=False, fill=X)
-
 
         # Must be after setup because it affects the grid
         self.set_telemetry_state(DecoderState.OFFLINE)
@@ -309,24 +244,21 @@ class TelemetryApp(Tk):
     def set_telemetry_state(self, state: DecoderState) -> None:
         self.telemetry_state = state
         self.telemetry_state_name.set(f"{str(state).upper()}")
-        if state == DecoderState.PREFLIGHT:
-            self.cont_label.pack(side=LEFT, expand=True, fill=X, before=self.event_name_label)
-        else:
-            self.cont_label.pack_forget()
+        self.map_column.set_state(state)
 
     def set_status_text(self, text,
                         color:str = None,
                         bg: str = None):
 
-        self.status_label.config(text=text)
+        self.map_column.status_label.config(text=text)
 
         if color is not None:
-            self.status_label.config(fg=color)
+            self.map_column.status_label.config(fg=color)
 
         if bg is not None:
-            self.status_label.config(bg=bg)
+            self.map_column.status_label.config(bg=bg)
         else:
-            self.status_label.config(bg=Colors.BG_COLOR)
+            self.map_column.status_label.config(bg=Colors.BG_COLOR)
 
     def on_closing(self):
         if self.confirm_stop():
@@ -408,18 +340,9 @@ class TelemetryApp(Tk):
 
         match state:
             case DecoderState.INFLIGHT:
-                self.map_frame.update()
                 self.altitude_graph.render()
                 self.acceleration_graph.render()
                 self.velocity_graph.render()
-            case DecoderState.LAUNCH:
-                self.setvar("launch_time", telemetry["UTC_time"])
-                self.map_frame.set_launch_point(float(self.getvar("launch_latitude")),
-                                                float(self.getvar("launch_longitude")))
-            case DecoderState.LAND:
-                self.setvar("landing_time", telemetry["UTC_time"])
-                self.map_frame.set_landing_point(float(self.getvar("landing_latitude")),
-                                                 float(self.getvar("landing_longitude")))
 
     def confirm_stop(self) -> bool:
         """
@@ -457,7 +380,7 @@ class TelemetryApp(Tk):
         # stop serial decoder if it's running
         self.serial_reader.stop()
         # update status display to show we are now disconnected
-        self.set_status_text("Disconnected", LIGHT_GRAY)
+        self.set_status_text("Disconnected", Colors.LIGHT_GRAY)
 
         self.state = AppState.IDLE
 
@@ -473,10 +396,11 @@ class TelemetryApp(Tk):
         for var in self.telemetry_vars:
             self.setvar(var, "0")
 
+        self.set_telemetry_state(DecoderState.OFFLINE)
+
         # clear app variables and graphs:
         self.setvar("name", "")
-        self.bytes_read.set(0)
-        self.map_frame.reset()
+        self.map_column.reset()
         self.altitude_graph.reset()
         self.velocity_graph.reset()
         self.acceleration_graph.reset()
@@ -518,13 +442,13 @@ class TelemetryApp(Tk):
                 if filename != "":
                     self.serial_reader.filename = filename
                     self.state = AppState.RECORDING_SERIAL
-                    self.set_status_text(f"Recording serial port {port}", WHITE, DARK_RED)
+                    self.set_status_text(f"Recording serial port {port}", Colors.WHITE, Colors.DARK_RED)
                 else:
                     return
             else:
                 print(f"Not saving telemetry from serial port {port} to file")
                 self.state = AppState.READING_SERIAL
-                self.set_status_text(f"Listening serial port {port} (Not Recording)", WHITE, "dark blue")
+                self.set_status_text(f"Listening serial port {port} (Not Recording)", Colors.WHITE, "dark blue")
 
             self.serial_reader.serial_port = port
             self.serial_reader.start()
@@ -540,7 +464,7 @@ class TelemetryApp(Tk):
             self.reset()
             self.file_reader.filename = filename
             self.state = AppState.READING_FILE
-            self.set_status_text(f"Playing: {filename.split('/')[-1]}", WHITE, DARK_GREEN)
+            self.set_status_text(f"Playing: {filename.split('/')[-1]}", Colors.WHITE, Colors.DARK_GREEN)
             self.file_reader.start()
             self.update()
 

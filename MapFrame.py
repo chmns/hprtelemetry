@@ -1,7 +1,8 @@
 from tkinter import *
 from tkintermapview import TkinterMapView, OfflineLoader
 from tkintermapview.utility_functions import osm_to_decimal
-from Styles import Fonts
+from Styles import Fonts, Colors
+from TelemetryDecoder import DecoderState
 import os # for maps db
 
 DEFAULT_LAT = 44.7916443
@@ -29,7 +30,130 @@ PADY = 4
 DEFAULT_DATABASE_NAME = "offline_tiles.db"
 TILE_SERVER_URL = "http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}&s=Ga"
 
-class MapFrame(Frame):
+
+class MapColumn(PanedWindow):
+    def __init__(self, master):
+        PanedWindow.__init__(self, orient="vertical", background=Colors.BLACK)
+
+        self.bytes_read = IntVar(master, 0, "bytes_read")
+        self.event_name = StringVar(master, "", "eventName")
+        self.name = StringVar(master, "", "name")
+        self.callsign = StringVar(master, "", "callsign")
+        self.telemetry_state_name = StringVar(master, "", "telemetryStateName")
+        self.cont_name = StringVar(master, "", "contName")
+        self.offline_maps_only = BooleanVar(master, True, "offline_maps_only")
+
+        self.name_callsign_state_frame = Frame(self, bg=Colors.BG_COLOR)
+        self.name_callsign_state_frame.pack(side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
+
+        self.telemetry_state_label = Label(self.name_callsign_state_frame, textvariable=self.telemetry_state_name, font=Fonts.MEDIUM_FONT, bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY)
+        self.telemetry_state_label.pack(side=LEFT, expand=False, fill=NONE, padx=PADX)
+
+        self.name_label = Label(self.name_callsign_state_frame, textvariable=self.name, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=Colors.WHITE)
+        self.name_label.pack(side=LEFT, expand=True, fill=X)
+
+        self.callsign_label = Label(self.name_callsign_state_frame, textvariable=self.callsign, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=Colors.WHITE)
+
+
+        self.cont_event_frame = Frame(self, bg=Colors.BG_COLOR)
+        self.cont_event_frame.pack(side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
+
+        self.cont_label = Label(self.cont_event_frame, textvariable=self.cont_name, font=Fonts.MEDIUM_FONT, bg=Colors.BG_COLOR, fg=Colors.WHITE)
+
+        self.event_name_label = Label(self.cont_event_frame, textvariable=self.event_name, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=Colors.WHITE)
+        self.event_name_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+
+
+        self.map_frame = MapFrame(self,
+                                  DoubleVar(master, 0.0, "gnssLat"),
+                                  DoubleVar(master, 0.0, "gnssLon"),
+                                  DoubleVar(master, 0.0, "gnssAlt"),
+                                  self.offline_maps_only)
+        self.map_frame.pack(side=TOP, expand=True, fill=BOTH)
+
+
+        self.preflight_location = LocationRow(self,
+                                              PRELIGHT_TEXT,
+                                              StringVar(master, ZERO_LAT, "preGnssLat"),
+                                              StringVar(master, ZERO_LON, "preGnssLon"),
+                                              StringVar(master, ZERO_ALT, "preGnssAlt"))
+
+        self.current_location = LocationRow(self,
+                                            CURRENT_TEXT,
+                                            StringVar(master, ZERO_LAT, "gnssLat"),
+                                            StringVar(master, ZERO_LON, "gnssLon"),
+                                            StringVar(master, ZERO_ALT, "gnssAlt"))
+
+        self.postflight_location = LocationRow(self,
+                                               POSTFLIGHT_TEXT,
+                                               StringVar(master, ZERO_LAT, "postGnssLat"),
+                                               StringVar(master, ZERO_LON, "postGnssLon"),
+                                               StringVar(master, ZERO_ALT, "postGnssAlt"))
+
+
+        self.preflight_location.pack()
+        # self.tilt_spin = TiltAndSpin(self.map_column, "offVert", "gyroZ")
+        # self.tilt_spin.grid(row=4, column=0, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+
+        # self.status = TelemetryStatus(self.map_column, "radioPacketNum", "time", "gnssSatellites")
+        # self.status.grid(row=4, column=1, padx=PADX, pady=PADY, sticky=(N,E,S,W))
+        # self.map_column.rowconfigure(4, weight=0)
+
+        self.status_bar = Frame(self, bg=Colors.BG_COLOR)
+        self.status_bar.pack(side=BOTTOM, expand=False, fill=X, padx=PADX, pady=PADY)
+
+        self.status_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, text="Disconnected", bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
+        self.status_label.pack(side=BOTTOM, expand=False, fill=X)
+
+
+    def set_state(self, state: DecoderState):
+        match state:
+            case DecoderState.OFFLINE:  # Default sate
+                self.__reset__pack__()
+
+            case DecoderState.PREFLIGHT:
+                self.name_label.pack(after=self.telemetry_state_label, side=LEFT, expand=True, fill=X)
+                self.callsign_label.pack(after=self.name_label, side=LEFT, expand=False, fill=NONE, padx=PADX)
+                self.cont_label.pack(before=self.event_name_label, side=LEFT, expand=True, fill=X, padx=PADX)
+                self.cont_event_frame.pack(after=self.name_callsign_state_frame, side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
+                self.preflight_location.pack(after=self.map_frame, side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
+
+            case DecoderState.INFLIGHT:
+                self.cont_label.pack_forget()
+                self.current_location.pack(after=self.preflight_location, side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
+
+            case DecoderState.POSTFLIGHT:
+                self.postflight_location.pack(after=self.current_location, side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
+
+            case DecoderState.MAXES:
+                pass
+
+            case DecoderState.LAUNCH:
+                self.setvar("launch_time", "0.0")
+                self.map_frame.set_launch_point(float(self.getvar("launch_latitude")),
+                                                float(self.getvar("launch_longitude")))
+            case DecoderState.LAND:
+                self.setvar("landing_time", "0.0")
+                self.map_frame.set_landing_point(float(self.getvar("landing_latitude")),
+                                                 float(self.getvar("landing_longitude")))
+
+            case DecoderState.ERROR:
+                pass
+
+    def __reset__pack__(self):
+        self.name_label.pack_forget()
+        self.callsign_label.pack_forget()
+        self.cont_event_frame.pack_forget()
+        self.preflight_location.pack_forget()
+        self.current_location.pack_forget()
+        self.postflight_location.pack_forget()
+
+    def reset(self):
+        self.__reset__pack__()
+        self.bytes_read.set(0)
+        self.map_frame.reset()
+
+class MapFrame(PanedWindow):
     def __init__(self,
                  master,
                  lat_var,
@@ -56,6 +180,9 @@ class MapFrame(Frame):
                                        use_database_only=offline_maps_only_var.get())
         self.map_view.set_tile_server(TILE_SERVER_URL)
         self.map_view.pack(expand=True, fill=BOTH)
+
+        self.sats_label = Label(self.map_view, font=Fonts.MEDIUM_FONT, text="# Sats", bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
+        self.sats_label.place(anchor=CENTER)
 
         self.reset()
 
@@ -137,77 +264,13 @@ class MapFrame(Frame):
         self.map_view.pack(expand=True, fill=BOTH)
 
 
-class LocationGrid(Frame):
-    def __init__(self, master):
-        Frame.__init__(self, master, bg="black")
-
-        self.preLatitude   = StringVar(master, ZERO_LAT, "preGnssLat")
-        self.preLongitude  = StringVar(master, ZERO_LON, "preGnssLon")
-        self.preAltitude   = StringVar(master, ZERO_ALT, "preGnssAlt")
-        self.curLatitude   = StringVar(master, DEFAULT_LAT, "gnssLat")
-        self.curLongitude  = StringVar(master, DEFAULT_LON, "gnssLon")
-        self.curAltitude   = StringVar(master, ZERO_ALT, "gnssAlt")
-        self.postLatitude  = StringVar(master, ZERO_LAT, "postGnssLat")
-        self.postLongitude = StringVar(master, ZERO_LON, "postGnssLon")
-        self.postAltitude  = StringVar(master, ZERO_ALT, "postGnssAlt")
-
-
-        self.pre = LocationRow(self,
-                               PRELIGHT_TEXT,
-                               self.preLatitude,
-                               self.preLongitude,
-                               self.preAltitude)
-        self.pre.grid(row=0, column=0, sticky=(E,W))
-        self.pre.grid_propagate(True)
-
-        self.current = LocationRow(self,
-                                   CURRENT_TEXT,
-                                   self.curLatitude,
-                                   self.curLongitude,
-                                   self.curAltitude)
-        self.current.grid(row=1, column=0, sticky=(E,W), pady=PADY)
-        self.current.grid_propagate(True)
-
-        self.post = LocationRow(self,
-                                POSTFLIGHT_TEXT,
-                                self.postLatitude,
-                                self.postLongitude,
-                                self.postAltitude)
-        self.post.grid(row=2, column=0, sticky=(E,W))
-        self.post.grid_propagate(True)
-
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure((0, 1, 2), weight=0)
-
-        self.preLatitude.trace_add("write", lambda *_ : self.pre.grid())
-        self.curLatitude.trace_add("write", lambda *_ : self.current.grid())
-        self.postLatitude.trace_add("write", lambda *_ : self.post.grid())
-
-
-    def reset(self):
-        self.preLatitude.set(ZERO_LAT)
-        self.preLongitude.set(ZERO_LON)
-        self.preAltitude.set(ZERO_ALT)
-
-        self.curLatitude.set(DEFAULT_LAT)
-        self.curLongitude.set(DEFAULT_LON)
-        self.curAltitude.set(ZERO_ALT)
-
-        self.postLatitude.set(ZERO_LAT)
-        self.postLongitude.set(ZERO_LON)
-        self.postAltitude.set(ZERO_ALT)
-
-        self.pre.grid_remove()
-        self.current.grid_remove()
-        self.post.grid_remove()
-
 class LocationRow(Frame):
     def __init__(self,
                  master,
                  name,
                  lat_var,
                  lon_var,
-                 alt_time_var,
+                 alt_var,
                  fg:  str = "#FFFFFF",
                  bg: str = "#0F0F0F"):
 
@@ -222,7 +285,7 @@ class LocationRow(Frame):
         self.lon = Label(self, textvariable=lon_var, bg=bg, fg=fg, font=Fonts.MONO_FONT, justify="center")
         self.lon.grid(row=0, column=2, sticky=(N,E,W,S), padx=PADX, pady=PADY)
 
-        self.alt = Label(self, width=5, textvariable=alt_time_var, bg=bg, fg=fg, font=Fonts.MONO_FONT, justify="center")
+        self.alt = Label(self, width=5, textvariable=alt_var, bg=bg, fg=fg, font=Fonts.MONO_FONT, justify="center")
         self.alt.grid(row=0, column=3, sticky=(N,S), padx=PADX, pady=PADY)
 
         self.columnconfigure((0,3), weight=0)
