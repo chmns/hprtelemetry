@@ -17,9 +17,9 @@ START_TEXT = "Start"
 LAUNCH_TEXT = "Landing"
 LANDING_TEXT = "Launch"
 
-PRELIGHT_TEXT =   " Pre:"
-CURRENT_TEXT =    " Now:"
-POSTFLIGHT_TEXT = "Post:"
+PRELIGHT_TEXT =   "   Pre:"
+CURRENT_TEXT =    "Flight:"
+POSTFLIGHT_TEXT = "  Post:"
 
 ZERO_LAT = "0.000000"
 ZERO_LON = "0.000000"
@@ -111,7 +111,6 @@ class MapColumn(PanedWindow):
         self.status_label.pack(side=BOTTOM, expand=False, fill=X, padx=PADX, pady=PADY)
 
         self.tilt_spin_frame = Frame(self, bg=Colors.BG_COLOR)
-        self.tilt_spin_frame.pack(side=BOTTOM, expand=False, fill=X, padx=PADX, pady=PADY)
 
         self.tilt = NumberLabel(self.tilt_spin_frame, name="Tilt:", textvariable=self.tilt, units="°")
         self.tilt.pack(side=LEFT, expand=True, fill=X, padx=PADX)
@@ -155,6 +154,7 @@ class MapColumn(PanedWindow):
             case DecoderState.INFLIGHT:
                 self.cont_label.pack_forget()
                 self.current_location.pack(after=self.preflight_location, side=TOP, expand=False, fill=X, padx=PADX)
+                self.tilt_spin_frame.pack(side=BOTTOM, expand=False, fill=X, padx=PADX, pady=PADY)
 
             case DecoderState.POSTFLIGHT:
                 self.postflight_location.pack(after=self.current_location, side=TOP, expand=False, fill=X, padx=PADX)
@@ -181,6 +181,8 @@ class MapColumn(PanedWindow):
         self.preflight_location.pack_forget()
         self.current_location.pack_forget()
         self.postflight_location.pack_forget()
+        self.tilt_spin_frame.pack_forget()
+
 
     def reset(self):
         self.__reset__pack__()
@@ -305,7 +307,6 @@ class MapFrame(PanedWindow):
         self.update_fix()
 
     def download_current_map(self):
-
         current_zoom = self.map_view.zoom
         current_position = self.map_view.get_position()
         top_left_position = osm_to_decimal(*self.map_view.upper_left_tile_pos, current_zoom)
@@ -354,7 +355,7 @@ class LocationRow(Frame):
 
         Frame.__init__(self, master, bg=bg)
 
-        self.name = Label(self, text=name, width=6, bg=bg, fg=fg, font=Fonts.MONO_FONT, justify="right")
+        self.name = Label(self, text=name, width=7, bg=bg, fg=fg, font=Fonts.MONO_FONT, justify="right")
         self.name.grid(row=0, column=0, sticky=(N,S), padx=PADX, pady=PADY)
 
         self.lat = Label(self, textvariable=lat_var, bg=bg, fg=fg, font=Fonts.MONO_FONT, justify="center")
