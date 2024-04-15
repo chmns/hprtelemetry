@@ -181,10 +181,14 @@ class MapFrame(PanedWindow):
         self.map_view.set_tile_server(TILE_SERVER_URL)
         self.map_view.pack(expand=True, fill=BOTH)
 
-        self.sats_label = Label(self.map_view, font=Fonts.MEDIUM_FONT, text="# Sats", bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
-        self.sats_label.place(anchor=CENTER)
+        self.sats_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text="# Sats", bg=Colors.GRAY, fg=Colors.WHITE, anchor=E, justify="left")
+        self.sats_label.place(relx=1, x=-20, y=20, anchor=NE)
+
+        self.fix_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text="Good Fix", bg=Colors.GRAY, fg=Colors.DARK_GREEN, anchor=E, justify="left")
+        self.fix_label.place(relx=1, x=-20, y=50, anchor=NE)
 
         self.reset()
+
 
     def update(self):
         new_lat = self.lat_var.get()

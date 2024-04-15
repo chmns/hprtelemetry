@@ -13,6 +13,7 @@ class Colors(StrEnum):
     FG_COLOR = "#eeeeee"
     BLACK = "#000000"
     WHITE = "#ffffff"
+    GRAY = "#333333"
     LIGHT_GRAY = "#aaaaaa"
 
     ALTITUDE_COLOR = "#8BD3E6"
