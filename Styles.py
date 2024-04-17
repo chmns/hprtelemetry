@@ -7,6 +7,7 @@ class Fonts(StrEnum):
     LARGE_FONT = "Arial 32"
     LARGE_FONT_BOLD = "Arial 32 bold"
     MONO_FONT = "Courier 16 bold"
+    SMALL_MONO_FONT = "Courier 12 bold"
 
 class Colors(StrEnum):
     BG_COLOR = "#0f0f0f"

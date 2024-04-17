@@ -27,6 +27,7 @@ style.use('dark_background')
 FAST_UPDATE_INTERVAL = 10
 GRAPH_UPDATE_INTERVAL = 200 # time between updating graphs
 RECENT_PACKET_TIMEOUT = 1000 # ms after receiving last message that we show red marker to user
+TIME_SINCE_FORMAT = "{:.2f}"
 
 NUM_COLS = 6
 NUM_ROWS = 3
@@ -250,6 +251,7 @@ class TelemetryApp(Tk):
         self.focus()
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.reset()
 
     def set_telemetry_state(self, state: DecoderState) -> None:
         self.telemetry_state = state
@@ -263,7 +265,7 @@ class TelemetryApp(Tk):
             self.quit()
 
     def update(self):
-        self.time_since_last_packet.set("{:.3f}".format((monotonic() - self.last_packet_local_timestamp)))
+        self.time_since_last_packet.set(TIME_SINCE_FORMAT.format((monotonic() - self.last_packet_local_timestamp)))
 
         try:
             while True:
@@ -337,6 +339,7 @@ class TelemetryApp(Tk):
         return okcancel
 
     def start(self):
+        self.last_packet_local_timestamp = monotonic()
         self.update()
         self.update_graph()
 
@@ -371,6 +374,7 @@ class TelemetryApp(Tk):
             self.setvar(var, "0")
 
         self.set_telemetry_state(DecoderState.OFFLINE)
+        self.time_since_last_packet.set(TIME_SINCE_FORMAT.format(float(0)))
 
         # clear app variables and graphs:
         self.setvar("name", "")

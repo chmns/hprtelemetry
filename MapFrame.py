@@ -60,7 +60,7 @@ class MapColumn(PanedWindow):
         self.cont_name = StringVar(master, "", "contName")
         self.currently_receiving = BooleanVar(master, name="currently_receiving")
         self.currently_receiving.trace_add("write", self.update_status_indicator)
-        self.last_packet_local_timestamp = DoubleVar(master, name="time_since_last_packet")
+        self.time_since_last_packet = DoubleVar(master, name="time_since_last_packet")
 
         self.name_callsign_state_frame = Frame(self, bg=Colors.BG_COLOR)
         self.name_callsign_state_frame.pack(side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
@@ -111,14 +111,11 @@ class MapColumn(PanedWindow):
         self.bytes_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, textvariable=self.total_bytes_read, bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
         self.bytes_label.pack(side=LEFT, expand=False, fill=X, padx=PADX, pady=PADY)
 
-        self.last_packet_time_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, textvariable=self.last_packet_local_timestamp, bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
-        self.last_packet_time_label.pack(side=LEFT, expand=False, fill=X, padx=PADX, pady=PADY)
-
-        self.status_indicator = Frame(self.status_bar, bg=Colors.BRIGHT_RED, width=20)
-        self.status_indicator.pack(side=RIGHT, fill=Y, padx=PADX*2, pady=PADY*2)
+        self.last_packet_indicator = Label(self.status_bar, textvariable=self.time_since_last_packet, font=Fonts.SMALL_MONO_FONT, bg=Colors.BRIGHT_RED, fg=Colors.WHITE)
+        self.last_packet_indicator.pack(side=RIGHT, fill=X, ipadx=PADX*2, padx=PADX*2, pady=PADY*2)
 
         self.status_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, text="Disconnected", bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
-        self.status_label.pack(side=RIGHT, expand=False, fill=X, padx=PADX, pady=PADY)
+        self.status_label.pack(side=RIGHT, fill=Y, padx=PADX, pady=PADY)
 
         self.tilt_spin_frame = Frame(self, bg=Colors.BG_COLOR)
 
@@ -131,7 +128,6 @@ class MapColumn(PanedWindow):
         # bytes read
         # valid messages decoded
         # last packet number
-        # last timestamp
 
     def download_current_map(self):
         self.map_frame.download_current_map()
@@ -194,9 +190,9 @@ class MapColumn(PanedWindow):
 
     def update_status_indicator(self, *_):
         if self.currently_receiving.get():
-            self.status_indicator.config(bg=Colors.BRIGHT_GREEN)
+            self.last_packet_indicator.config(bg=Colors.BRIGHT_GREEN, fg=Colors.GRAY)
         else:
-            self.status_indicator.config(bg=Colors.BRIGHT_RED)
+            self.last_packet_indicator.config(bg=Colors.BRIGHT_RED, fg=Colors.WHITE)
 
 
     def __reset__pack__(self):
