@@ -25,7 +25,7 @@ import queue
 style.use('dark_background')
 
 FAST_UPDATE_INTERVAL = 10
-GRAPH_UPDATE_INTERVAL = 200 # time between updating graphs
+GRAPH_UPDATE_INTERVAL = 100 # time between updating graphs
 RECENT_PACKET_TIMEOUT = 1000 # ms after receiving last message that we show red marker to user
 TIME_SINCE_FORMAT = "{:.2f}"
 
@@ -106,7 +106,8 @@ class TelemetryApp(Tk):
         self.last_packet_local_timestamp = 0.0
 
         self.offline_maps_only = BooleanVar(self, True, "offline_maps_only")
-        self.telemetry_state_name = StringVar(self, "", "telemetryStateName")
+        self.telemetry_state = DecoderState.OFFLINE
+        self.telemetry_state_name = StringVar(self, str(self.telemetry_state), "telemetryStateName")
         self.currently_receiving = BooleanVar(self, False, "currently_receiving")
         self.time_since_last_packet = StringVar(self, "0.0", "time_since_last_packet") # must be string for formating
         self.total_bytes_read = StringVar(self, "0B", "total_bytes_read")
@@ -253,9 +254,11 @@ class TelemetryApp(Tk):
         self.reset()
 
     def set_telemetry_state(self, state: DecoderState) -> None:
-        self.telemetry_state = state
-        self.telemetry_state_name.set(f"{str(state).upper()}")
-        self.map_column.set_state(state)
+        if state != self.telemetry_state:
+            print(f"Changing state to {str(state)}")
+            self.telemetry_state = state
+            self.telemetry_state_name.set(f"{str(state).upper()}")
+            self.map_column.set_state(state)
 
 
     def on_closing(self):
@@ -271,16 +274,22 @@ class TelemetryApp(Tk):
                 message = self.message_queue.get(block=False)
                 self.reset_packet_timer()
                 self.message_callback(message)
+                self.altitude_graph.update()
+                self.acceleration_graph.update()
+                self.velocity_graph.update()
         except queue.Empty:
             pass
         finally:
-            self.fast_update_timer = self.after(FAST_UPDATE_INTERVAL, self.update)
+            if self.file_reader.running.is_set() or self.serial_reader.running.is_set():
+                self.fast_update_timer = self.after(FAST_UPDATE_INTERVAL, self.update)
+            else:
+                self.stop()
 
 
     def update_graph(self):
-        self.altitude_graph.update()
-        self.acceleration_graph.update()
-        self.velocity_graph.update()
+        self.altitude_graph.render()
+        self.acceleration_graph.render()
+        self.velocity_graph.render()
 
         self.slow_update_timer = self.after(GRAPH_UPDATE_INTERVAL, self.update_graph)
 
