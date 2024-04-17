@@ -50,7 +50,7 @@ class MapColumn(PanedWindow):
     def __init__(self, master):
         PanedWindow.__init__(self, orient="vertical", background=Colors.BLACK)
 
-        self.bytes_read = IntVar(master, 0, "bytes_read")
+        self.total_bytes_read = IntVar(master, name="total_bytes_read")
         self.tilt = DoubleVar(master, 0.0, "offVert")
         self.spin = DoubleVar(master, 0.0, "gyroZ")
         self.event_name = StringVar(master, "", "eventName")
@@ -58,8 +58,9 @@ class MapColumn(PanedWindow):
         self.callsign = StringVar(master, "", "callsign")
         self.telemetry_state_name = StringVar(master, "", "telemetryStateName")
         self.cont_name = StringVar(master, "", "contName")
-        self.recent_packet = BooleanVar(master, name="recent_packet")
-        self.recent_packet.trace_add("write", self.update_status_indicator)
+        self.currently_receiving = BooleanVar(master, name="currently_receiving")
+        self.currently_receiving.trace_add("write", self.update_status_indicator)
+        self.last_packet_local_timestamp = DoubleVar(master, name="time_since_last_packet")
 
         self.name_callsign_state_frame = Frame(self, bg=Colors.BG_COLOR)
         self.name_callsign_state_frame.pack(side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
@@ -107,8 +108,11 @@ class MapColumn(PanedWindow):
         self.status_bar = Frame(self, bg=Colors.BG_COLOR)
         self.status_bar.pack(side=BOTTOM, expand=False, fill=X)
 
-        self.bytes_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, textvariable=self.bytes_read, bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
+        self.bytes_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, textvariable=self.total_bytes_read, bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
         self.bytes_label.pack(side=LEFT, expand=False, fill=X, padx=PADX, pady=PADY)
+
+        self.last_packet_time_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, textvariable=self.last_packet_local_timestamp, bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
+        self.last_packet_time_label.pack(side=LEFT, expand=False, fill=X, padx=PADX, pady=PADY)
 
         self.status_indicator = Frame(self.status_bar, bg=Colors.BRIGHT_RED, width=20)
         self.status_indicator.pack(side=RIGHT, fill=Y, padx=PADX*2, pady=PADY*2)
@@ -189,7 +193,7 @@ class MapColumn(PanedWindow):
                 pass
 
     def update_status_indicator(self, *_):
-        if self.recent_packet.get():
+        if self.currently_receiving.get():
             self.status_indicator.config(bg=Colors.BRIGHT_GREEN)
         else:
             self.status_indicator.config(bg=Colors.BRIGHT_RED)
@@ -207,7 +211,7 @@ class MapColumn(PanedWindow):
 
     def reset(self):
         self.__reset__pack__()
-        self.bytes_read.set(0)
+        self.total_bytes_read.set(0)
         self.map_frame.reset()
 
 class MapFrame(PanedWindow):

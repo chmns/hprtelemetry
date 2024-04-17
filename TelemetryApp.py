@@ -10,22 +10,23 @@ MFL
 
 from tkinter import *
 from GraphFrame import GraphFrame
-from TelemetryControls import TelemetryStatus, TiltAndSpin, ReadOut
+from TelemetryControls import ReadOut
 from MapFrame import *
 from tkinter.filedialog import askopenfilename, asksaveasfilename
 from tkinter import messagebox
 from Styles import Fonts, Colors
+from time import monotonic
 from TelemetryDecoder import DecoderState
-from TelemetryReader import SDCardFileReader, RadioTelemetryReader
+from TelemetryReader import SDCardFileReader, RadioTelemetryReader, Message
 from TelemetrySender import TelemetryTestSender
 from enum import Enum
 from matplotlib import style
 import queue
-from pathlib import Path
 style.use('dark_background')
 
-UPDATE_DELAY = 50 # ms between frames
-RECENT_PACKET_TIMEOUT = 1000
+FAST_UPDATE_INTERVAL = 10
+GRAPH_UPDATE_INTERVAL = 200 # time between updating graphs
+RECENT_PACKET_TIMEOUT = 1000 # ms after receiving last message that we show red marker to user
 
 NUM_COLS = 6
 NUM_ROWS = 3
@@ -98,10 +99,18 @@ class TelemetryApp(Tk):
         self.file_reader = SDCardFileReader(self.message_queue)
         self.file_reader.name = "file_reader"
 
+        self.fast_update_timer = None # used to store tk.after ID for text updating
+        self.slow_update_timer = None # used to store tk after ID for graph updating
+        self.currently_receiving_timer = None # used for storing tk.after ID for
+
+        self.last_packet_local_timestamp = 0.0
+
         self.offline_maps_only = BooleanVar(self, True, "offline_maps_only")
         self.telemetry_state_name = StringVar(self, "", "telemetryStateName")
-        self.recent_packet = BooleanVar(self, False, "recent_packet")
-        self.recent_packet_timer = None # used for storing tk.after object
+        self.currently_receiving = BooleanVar(self, False, "currently_receiving")
+        self.time_since_last_packet = StringVar(self, "0.0", "time_since_last_packet") # must be string for formating
+        self.total_bytes_read = IntVar(self, 0, "total_bytes_read")
+        self.total_messages_decoded = IntVar(self, 0, "total_messages_decoded")
 
         self.test_serial_sender = TelemetryTestSender() # for test data only
 
@@ -254,90 +263,48 @@ class TelemetryApp(Tk):
             self.quit()
 
     def update(self):
-        telemetry_buffer = {}
-
-        """
-        matplotlib is relatively expensive to update so we can not redraw it
-        every time a message comes, because on SD card data it is very often
-        we could change the rendering to use blitting in future but for now
-        we use this system: we only update occasionally (10x per second), and
-        use the last received telemetry values.
-        some values are 'priority' values, like time and packet number, so they
-        are always updated.
-        """
+        self.time_since_last_packet.set("{:.3f}".format((monotonic() - self.last_packet_local_timestamp)))
 
         try:
             while True:
                 message = self.message_queue.get(block=False)
-
-                if message is not None:
-                    self.recent_packet.set(True)
-
-                    if self.recent_packet_timer is not None:
-                        self.after_cancel(self.recent_packet_timer)
-
-                    self.recent_packet_timer = self.after(RECENT_PACKET_TIMEOUT, lambda: self.recent_packet.set(False))
-
-                    (telemetry, state) = message
-                    # it state changed (launch -> flight, flight -> landed etc)
-                    # then we must decode whole message
-                    if state is not self.telemetry_state:
-                        self.message_callback(message)
-                        self.set_telemetry_state(state)
-
-                    # else we just collate the new telemetry values and update the
-                    # most important ones:
-                    else:
-                        self.priority_message_callback(message)
-                        # combine dicts, updating with new values
-                        telemetry_buffer |= telemetry
-
+                self.reset_packet_timer()
+                self.message_callback(message)
         except queue.Empty:
-            if telemetry_buffer is not {}:
-                self.message_callback((telemetry_buffer, self.telemetry_state))
-
+            pass
         finally:
-            if self.file_reader.running.is_set() or self.serial_reader.running.is_set():
-                self.after(UPDATE_DELAY, self.update)
-            else:
-                self.stop()
+            self.fast_update_timer = self.after(FAST_UPDATE_INTERVAL, self.update)
 
-    def priority_message_callback(self, message):
-        (telemetry, _) = message
 
-        if isinstance(telemetry, dict):
-            for priority_var in self.priority_vars:
-                if priority_var in telemetry.keys():
-                    self.setvar(priority_var, telemetry[priority_var])
+    def update_graph(self):
+        self.altitude_graph.update()
+        self.acceleration_graph.update()
+        self.velocity_graph.update()
 
-                self.altitude_graph.update()
-                self.acceleration_graph.update()
-                self.velocity_graph.update()
+        self.slow_update_timer = self.after(GRAPH_UPDATE_INTERVAL, self.update_graph)
+
 
     def message_callback(self, message):
         """
         decodes FC-style message into app variables and triggers graphs + map to update
-
-        todo: instead of reading all variables every time, only read the latest value
-              (except for graphed data that should be loaded in bulk across to graphs)
         """
-        (telemetry, state) = message
+        self.set_telemetry_state(message.decoder_state)
+        self.total_bytes_read.set(message.total_bytes)
+        self.total_messages_decoded.set(message.total_messages)
+        self.last_packet_local_timestamp = message.local_time
 
-        if isinstance(telemetry, dict):
-            for (key, value) in telemetry.items():
-                self.setvar(key, value)
+        for (key, value) in message.telemetry.items():
+            self.setvar(key, value)
 
-                # # horrible hack to fix that the name is coming as its own message
-                # # in FLIGHT DecoderState
-                # # todo: replace this
-                # if key == "name":
-                #     return
 
-        match state:
-            case DecoderState.INFLIGHT:
-                self.altitude_graph.render()
-                self.acceleration_graph.render()
-                self.velocity_graph.render()
+    def reset_packet_timer(self):
+        self.currently_receiving.set(True)
+
+        if self.currently_receiving_timer is not None:
+            self.after_cancel(self.currently_receiving_timer)
+
+        self.currently_receiving_timer = self.after(RECENT_PACKET_TIMEOUT, lambda: self.currently_receiving.set(False))
+
 
     def confirm_stop(self) -> bool:
         """
@@ -369,7 +336,19 @@ class TelemetryApp(Tk):
 
         return okcancel
 
+    def start(self):
+        self.update()
+        self.update_graph()
+
     def stop(self):
+        if self.fast_update_timer is not None:
+            self.after_cancel(self.fast_update_timer)
+            self.fast_update_timer = None
+
+        if self.slow_update_timer is not None:
+            self.after_cancel(self.slow_update_timer)
+            self.slow_update_timer = None
+
         # stop file decoder if it's running
         self.file_reader.stop()
         # stop serial decoder if it's running
@@ -447,7 +426,7 @@ class TelemetryApp(Tk):
 
             self.serial_reader.serial_port = port
             self.serial_reader.start()
-            self.update()
+            self.start()
 
     def open_telemetry_file(self):
         if self.confirm_stop():
@@ -461,7 +440,7 @@ class TelemetryApp(Tk):
             self.state = AppState.READING_FILE
             self.map_column.set_status_text(f"Playing: {filename.split('/')[-1]}", Colors.WHITE, Colors.DARK_GREEN)
             self.file_reader.start()
-            self.update()
+            self.start()
 
     def open_telemetry_test_file(self):
         filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'), ('Other Telemetry Files', '*.*')])

@@ -5,8 +5,11 @@ import queue
 import sys
 import glob
 import serial
+from time import monotonic
+from collections import namedtuple
 from TelemetryDecoder import SDCardTelemetryDecoder, RadioTelemetryDecoder
 
+Message = namedtuple("message", ["telemetry", "decoder_state", "local_time", "total_bytes", "total_messages"])
 
 class TelemetryReader(object):
     """
@@ -117,23 +120,26 @@ class TelemetrySerialReader(TelemetryReader):
                 except Exception as error:
                     print(f"Couldn't write backup data to file {self.filename}\n{str(error)}")
 
-            telemetry_dict = {"bytes_read" : self.bytes_received} # always report when we receive data, even if we can't decode it
-
-            received_telemetry = None
+            # We still send message to UI even if no telemetry is decoded from packet (maybe is corrupt)
+            # So start with empty dict
+            received_telemetry = {}
+            received_telemetry_messages = []
 
             try:
-                received_telemetry = self.decoder.decode(telemetry_bytes)
+                received_telemetry_messages = self.decoder.decode(telemetry_bytes)
             except Exception as error:
                 print(f"Error decoding data from: {self.serial_port}\n{str(error)}")
 
-            if received_telemetry is not None:
-                for received_telemetry_dict in received_telemetry:
+            if received_telemetry_messages is not None:
+                for message in received_telemetry_messages:
                     self.messages_decoded += 1
-                    telemetry_dict |= received_telemetry_dict
+                    received_telemetry |= message
 
-            telemetry_dict["messages_decoded"] = self.messages_decoded # keep track of how many good messages we got so far
-
-            message_queue.put((telemetry_dict, self.decoder.state))
+            message_queue.put(Message(received_telemetry,
+                                      self.decoder.state,
+                                      monotonic(),
+                                      self.bytes_received,
+                                      self.messages_decoded))
 
         if file is not None:
             file.close()
