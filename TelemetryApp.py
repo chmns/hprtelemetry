@@ -290,7 +290,7 @@ class TelemetryApp(Tk):
         decodes FC-style message into app variables and triggers graphs + map to update
         """
         self.set_telemetry_state(message.decoder_state)
-        self.total_bytes_read.set(self.format_bytes(message.total_bytes*100))
+        self.total_bytes_read.set(self.format_bytes(message.total_bytes))
         self.total_messages_decoded.set(message.total_messages)
         self.last_packet_local_timestamp = message.local_time
 
