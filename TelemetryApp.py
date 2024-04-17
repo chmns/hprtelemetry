@@ -51,7 +51,7 @@ x.  Correctly show bytes received
 10. Add min to readout
 x.  Show current map zoom level on map itself
 12. Event colors: 18 to 21,26,28 red color. Range 8-5 green.
-x. Add online/offline/timeout
+x.  Add online/offline/timeout
 """
 
 class AppState(Enum):
@@ -61,7 +61,6 @@ class AppState(Enum):
     RECORDING_SERIAL = 3
 
 class TelemetryApp(Tk):
-
     def __init__(self,
                  screenName: str | None = None,
                  baseName: str | None = None,

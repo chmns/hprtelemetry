@@ -82,11 +82,6 @@ class MapColumn(PanedWindow):
         self.event_name_label = Label(self.cont_event_frame, textvariable=self.event_name, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=Colors.WHITE)
         self.event_name_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
-
-        self.map_frame = MapFrame(self, master)
-        self.map_frame.pack(side=TOP, expand=True, fill=BOTH)
-
-
         self.preflight_location = LocationRow(self,
                                               PRELIGHT_TEXT,
                                               StringVar(master, ZERO_LAT, "preGnssLat"),
@@ -104,6 +99,21 @@ class MapColumn(PanedWindow):
                                                StringVar(master, ZERO_LAT, "postGnssLat"),
                                                StringVar(master, ZERO_LON, "postGnssLon"),
                                                StringVar(master, ZERO_ALT, "postGnssAlt"))
+
+        self.launch_location = LocationRow(self,
+                                           LAUNCH_TEXT,
+                                           StringVar(master, ZERO_LAT, "launch_latitude"),
+                                           StringVar(master, ZERO_LON, "launch_longitude"),
+                                           StringVar(master, ZERO_ALT, "launch_time"))
+
+        self.landing_location = LocationRow(self,
+                                            LANDING_TEXT,
+                                            StringVar(master, ZERO_LAT, "landing_latitude"),
+                                            StringVar(master, ZERO_LON, "landing_longitude"),
+                                            StringVar(master, ZERO_ALT, "landing_time"))
+
+        self.map_frame = MapFrame(self, master)
+        self.map_frame.pack(side=TOP, expand=True, fill=BOTH)
 
         self.status_bar = Frame(self, bg=Colors.BG_COLOR)
         self.status_bar.pack(side=BOTTOM, expand=False, fill=X)
@@ -154,6 +164,11 @@ class MapColumn(PanedWindow):
             self.bytes_label.config(bg=Colors.BG_COLOR)
 
     def set_state(self, state: DecoderState):
+        if state == DecoderState.OFFLINE:
+            self.map_frame.enabled = False
+        else:
+            self.map_frame.enabled = True
+
         match state:
             case DecoderState.OFFLINE:  # Default sate
                 self.__reset__pack__()
@@ -167,11 +182,24 @@ class MapColumn(PanedWindow):
 
             case DecoderState.INFLIGHT:
                 self.cont_label.pack_forget()
-                self.current_location.pack(after=self.preflight_location, side=TOP, expand=False, fill=X, padx=PADX)
-                self.tilt_spin_frame.pack(side=BOTTOM, expand=False, fill=X, padx=PADX, pady=PADY)
+                try:
+                    self.current_location.pack(after=self.preflight_location)
+                except Exception:
+                    try:
+                        self.current_location.pack(after=self.launch_location)
+                    except Exception:
+                        self.current_location.pack(after=self.map_frame)
+                finally:
+                    self.current_location.pack(side=TOP, expand=False, fill=X, padx=PADX)
+
+                self.tilt_spin_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX, pady=PADY)
 
             case DecoderState.POSTFLIGHT:
-                self.postflight_location.pack(after=self.current_location, side=TOP, expand=False, fill=X, padx=PADX)
+                try:
+                    self.postflight_location.pack(after=self.tilt_spin_frame, side=BOTTOM, expand=False, fill=X, padx=PADX)
+                except Exception:
+                    self.postflight_location.pack(before=self.status_bar, side=BOTTOM, expand=False, fill=X, padx=PADX)
+
 
             case DecoderState.MAXES:
                 pass
@@ -180,10 +208,16 @@ class MapColumn(PanedWindow):
                 self.setvar("launch_time", "0.0")
                 self.map_frame.set_launch_point(float(self.getvar("launch_latitude")),
                                                 float(self.getvar("launch_longitude")))
+                self.launch_location.pack(after=self.map_frame, side=TOP, expand=False, fill=X, padx=PADX)
+
             case DecoderState.LAND:
                 self.setvar("landing_time", "0.0")
                 self.map_frame.set_landing_point(float(self.getvar("landing_latitude")),
                                                  float(self.getvar("landing_longitude")))
+                try:
+                    self.landing_location_location.pack(after=self.current_location, side=TOP, expand=False, fill=X, padx=PADX)
+                except Exception:
+                    self.landing_location_location.pack(before=self.status_bar, side=BOTTOM, expand=False, fill=X, padx=PADX)
 
             case DecoderState.ERROR:
                 pass
@@ -202,6 +236,8 @@ class MapColumn(PanedWindow):
         self.preflight_location.pack_forget()
         self.current_location.pack_forget()
         self.postflight_location.pack_forget()
+        self.launch_location.pack_forget()
+        self.landing_location.pack_forget()
         self.tilt_spin_frame.pack_forget()
 
 
@@ -213,6 +249,7 @@ class MapColumn(PanedWindow):
 class MapFrame(PanedWindow):
     def __init__(self, master, window):
         Frame.__init__(self, master,bg=Colors.BG_COLOR)
+        self.enabled = False
 
         self.lat_var = StringVar(window, name="gnssLat")
         self.lat_var.trace_add("write", self.update_location)
@@ -310,22 +347,14 @@ class MapFrame(PanedWindow):
             self.online_label.config(text=f"Offline", fg=Colors.DARK_RED)
 
     def update_location(self, *_):
-        """
-        Thing that need to be done:
-        Preflight location
-        Postflight location
-        Inflight location and trace
+        if not self.enabled:
+            return
 
-        Launch location  }
-        Landing location } When reading from SD Card flight data
+        new_lat = float(self.lat_var.get())
+        new_lon = float(self.lon_var.get())
 
-        """
-
-
-        new_lat = self.lat_var.get()
-        new_lon = self.lon_var.get()
-
-        print(f"{new_lat = }, {new_lon = }")
+        if self.map_view.get_position() == (new_lat, new_lon):
+            return
 
         self.map_view.set_position(float(new_lat), float(new_lon))
 
@@ -342,12 +371,13 @@ class MapFrame(PanedWindow):
             self.path.add_position(new_lat, new_lon)
 
     def set_landing_point(self, landing_lat, landing_lon):
-        self.landing_marker = self.map_view.set_marker(landing_lat, landing_lon, LANDING_TEXT)
+        self.landing_location_marker = self.map_view.set_marker(landing_lat, landing_lon, LANDING_TEXT)
 
     def set_launch_point(self, launch_lat, launch_lon):
         self.launch_marker = self.map_view.set_marker(launch_lat, launch_lon, LAUNCH_TEXT)
 
     def reset(self):
+        self.enabled = False
         self.lat = DEFAULT_LAT
         self.lon = DEFAULT_LON
         self.map_view.set_position(self.lat, self.lon)
@@ -357,7 +387,7 @@ class MapFrame(PanedWindow):
         self.path = None
         self.map_view.delete_all_marker()
         self.start_marker = None
-        self.landing_marker = None
+        self.landing_location_marker = None
         self.launch_marker = None
         self.update_num_sats()
         self.update_fix()
