@@ -215,9 +215,9 @@ class MapColumn(PanedWindow):
                 self.map_frame.set_landing_point(float(self.getvar("landing_latitude")),
                                                  float(self.getvar("landing_longitude")))
                 try:
-                    self.landing_location_location.pack(after=self.current_location, side=TOP, expand=False, fill=X, padx=PADX)
+                    self.landing_location.pack(after=self.current_location, side=TOP, expand=False, fill=X, padx=PADX)
                 except Exception:
-                    self.landing_location_location.pack(before=self.status_bar, side=BOTTOM, expand=False, fill=X, padx=PADX)
+                    self.landing_location.pack(before=self.status_bar, side=BOTTOM, expand=False, fill=X, padx=PADX)
 
             case DecoderState.ERROR:
                 pass
