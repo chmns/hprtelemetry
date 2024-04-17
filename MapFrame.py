@@ -52,7 +52,7 @@ class MapColumn(PanedWindow):
 
         self.bytes_read = IntVar(master, 0, "bytes_read")
         self.tilt = DoubleVar(master, 0.0, "offVert")
-        self.spin = DoubleVar(master, 0.0, "spin")
+        self.spin = DoubleVar(master, 0.0, "gyroZ")
         self.event_name = StringVar(master, "", "eventName")
         self.name = StringVar(master, "", "name")
         self.callsign = StringVar(master, "", "callsign")
