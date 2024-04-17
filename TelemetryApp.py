@@ -109,7 +109,7 @@ class TelemetryApp(Tk):
         self.telemetry_state_name = StringVar(self, "", "telemetryStateName")
         self.currently_receiving = BooleanVar(self, False, "currently_receiving")
         self.time_since_last_packet = StringVar(self, "0.0", "time_since_last_packet") # must be string for formating
-        self.total_bytes_read = IntVar(self, 0, "total_bytes_read")
+        self.total_bytes_read = StringVar(self, "0B", "total_bytes_read")
         self.total_messages_decoded = IntVar(self, 0, "total_messages_decoded")
 
         self.test_serial_sender = TelemetryTestSender() # for test data only
@@ -290,7 +290,7 @@ class TelemetryApp(Tk):
         decodes FC-style message into app variables and triggers graphs + map to update
         """
         self.set_telemetry_state(message.decoder_state)
-        self.total_bytes_read.set(message.total_bytes)
+        self.total_bytes_read.set(self.format_bytes(message.total_bytes*100))
         self.total_messages_decoded.set(message.total_messages)
         self.last_packet_local_timestamp = message.local_time
 
@@ -483,11 +483,26 @@ class TelemetryApp(Tk):
 
     def set_offline_path(self):
         filename = askopenfilename(filetypes =[('Map Database', '*.db'), ('Other Files', '*.*')])
-        if filename is not "":
+        if filename is not None and filename != "":
             print(f"Attempting to load map file: {filename}")
             self.map_column.load_offline_database(filename)
         pass
 
+    @staticmethod
+    def format_bytes(size):
+        power = 10**3
+
+        if size < power:
+            return f"{size}B"
+
+        n = 0
+        power_labels = {0 : '', 1: 'k', 2: 'M', 3: 'G', 4: 'T'}
+
+        while size > power:
+            size /= power
+            n += 1
+
+        return "{:.3f}".format(size)[:5] + power_labels[n] + "B"
 
 
 if __name__ == "__main__":

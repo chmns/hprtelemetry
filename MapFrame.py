@@ -50,7 +50,7 @@ class MapColumn(PanedWindow):
     def __init__(self, master):
         PanedWindow.__init__(self, orient="vertical", background=Colors.BLACK)
 
-        self.total_bytes_read = IntVar(master, name="total_bytes_read")
+        self.total_bytes_read = StringVar(master, name="total_bytes_read")
         self.tilt = DoubleVar(master, 0.0, "offVert")
         self.spin = DoubleVar(master, 0.0, "gyroZ")
         self.event_name = StringVar(master, "", "eventName")
@@ -122,7 +122,7 @@ class MapColumn(PanedWindow):
         self.tilt = NumberLabel(self.tilt_spin_frame, name="Tilt:", textvariable=self.tilt, units="°")
         self.tilt.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
-        self.spin = NumberLabel(self.tilt_spin_frame, name="Spin:", textvariable=self.spin, units="°/sec")
+        self.spin = NumberLabel(self.tilt_spin_frame, name="Roll:", textvariable=self.spin, units="°")
         self.spin.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
         # bytes read
@@ -310,6 +310,18 @@ class MapFrame(PanedWindow):
             self.online_label.config(text=f"Offline", fg=Colors.DARK_RED)
 
     def update_location(self, *_):
+        """
+        Thing that need to be done:
+        Preflight location
+        Postflight location
+        Inflight location and trace
+
+        Launch location  }
+        Landing location } When reading from SD Card flight data
+
+        """
+
+
         new_lat = self.lat_var.get()
         new_lon = self.lon_var.get()
 
