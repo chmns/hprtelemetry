@@ -25,6 +25,7 @@ from pathlib import Path
 style.use('dark_background')
 
 UPDATE_DELAY = 50 # ms between frames
+RECENT_PACKET_TIMEOUT = 1000
 
 NUM_COLS = 6
 NUM_ROWS = 3
@@ -98,8 +99,9 @@ class TelemetryApp(Tk):
         self.file_reader.name = "file_reader"
 
         self.offline_maps_only = BooleanVar(self, True, "offline_maps_only")
-
         self.telemetry_state_name = StringVar(self, "", "telemetryStateName")
+        self.recent_packet = BooleanVar(self, False, "recent_packet")
+        self.recent_packet_timer = None # used for storing tk.after object
 
         self.test_serial_sender = TelemetryTestSender() # for test data only
 
@@ -269,6 +271,13 @@ class TelemetryApp(Tk):
                 message = self.message_queue.get(block=False)
 
                 if message is not None:
+                    self.recent_packet.set(True)
+
+                    if self.recent_packet_timer is not None:
+                        self.after_cancel(self.recent_packet_timer)
+
+                    self.recent_packet_timer = self.after(RECENT_PACKET_TIMEOUT, lambda: self.recent_packet.set(False))
+
                     (telemetry, state) = message
                     # it state changed (launch -> flight, flight -> landed etc)
                     # then we must decode whole message
@@ -492,7 +501,7 @@ class TelemetryApp(Tk):
 
     def set_offline_path(self):
         filename = askopenfilename(filetypes =[('Map Database', '*.db'), ('Other Files', '*.*')])
-        if filename is not None and filename is not "":
+        if filename is not "":
             print(f"Attempting to load map file: {filename}")
             self.map_column.load_offline_database(filename)
         pass

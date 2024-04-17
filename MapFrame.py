@@ -58,6 +58,8 @@ class MapColumn(PanedWindow):
         self.callsign = StringVar(master, "", "callsign")
         self.telemetry_state_name = StringVar(master, "", "telemetryStateName")
         self.cont_name = StringVar(master, "", "contName")
+        self.recent_packet = BooleanVar(master, name="recent_packet")
+        self.recent_packet.trace_add("write", self.update_status_indicator)
 
         self.name_callsign_state_frame = Frame(self, bg=Colors.BG_COLOR)
         self.name_callsign_state_frame.pack(side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
@@ -107,6 +109,9 @@ class MapColumn(PanedWindow):
 
         self.bytes_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, textvariable=self.bytes_read, bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
         self.bytes_label.pack(side=LEFT, expand=False, fill=X, padx=PADX, pady=PADY)
+
+        self.status_indicator = Frame(self.status_bar, bg=Colors.BRIGHT_RED, width=20)
+        self.status_indicator.pack(side=RIGHT, fill=Y, padx=PADX*2, pady=PADY*2)
 
         self.status_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, text="Disconnected", bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
         self.status_label.pack(side=RIGHT, expand=False, fill=X, padx=PADX, pady=PADY)
@@ -182,6 +187,13 @@ class MapColumn(PanedWindow):
 
             case DecoderState.ERROR:
                 pass
+
+    def update_status_indicator(self, *_):
+        if self.recent_packet.get():
+            self.status_indicator.config(bg=Colors.BRIGHT_GREEN)
+        else:
+            self.status_indicator.config(bg=Colors.BRIGHT_RED)
+
 
     def __reset__pack__(self):
         self.name_label.pack_forget()
