@@ -223,13 +223,19 @@ class SDCardFileReader(TelemetryReader):
                 for line in telemetry_file:
                     if not running.is_set():
                         return
+                    self.bytes_received += len(line)
+                    self.messages_decoded += 1
 
                     telemetry_dict = self.decoder.decode(line)
 
                     if telemetry_dict is None:
                         continue
 
-                    message_queue.put((telemetry_dict, self.decoder.state))
+                    message_queue.put(Message(telemetry_dict,
+                                            self.decoder.state,
+                                            monotonic(),
+                                            self.bytes_received,
+                                            self.messages_decoded))
 
                     if "time" in telemetry_dict:
                         timestamp = float(telemetry_dict["time"])

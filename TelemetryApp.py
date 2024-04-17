@@ -14,7 +14,7 @@ from TelemetryControls import ReadOut
 from MapFrame import *
 from tkinter.filedialog import askopenfilename, asksaveasfilename
 from tkinter import messagebox
-from Styles import Fonts, Colors
+from Styles import Colors
 from time import monotonic
 from TelemetryDecoder import DecoderState
 from TelemetryReader import SDCardFileReader, RadioTelemetryReader, Message
@@ -35,7 +35,6 @@ PADX = 4
 PADY = 4
 
 SASH_WIDTH = 10
-
 CELL_WIDTH = 220
 
 """
@@ -49,10 +48,10 @@ x.  Correctly show bytes received
 7.  Add online/offline toggle to map itself
 8.  Add download current area to map itself
 9.  Add log window
-10. Correct display of units (m/s, kmh etc)
-x.  Show current map co-ords and zoom level on map itself
+10. Add min to readout
+x.  Show current map zoom level on map itself
 12. Event colors: 18 to 21,26,28 red color. Range 8-5 green.
-13. Add online/offline/timeout
+x. Add online/offline/timeout
 """
 
 class AppState(Enum):

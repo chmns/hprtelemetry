@@ -390,7 +390,7 @@ class LocationRow(Frame):
 
         Frame.__init__(self, master, bg=bg)
 
-        self.name = Label(self, text=name, width=7, bg=bg, fg=fg, font=Fonts.MONO_FONT, justify="right")
+        self.name = Label(self, text=name, width=8, bg=bg, fg=fg, font=Fonts.MONO_FONT, justify="right")
         self.name.grid(row=0, column=0, sticky=(N,S), padx=PADX, pady=PADY)
 
         self.lat = Label(self, textvariable=lat_var, bg=bg, fg=fg, font=Fonts.MONO_FONT, justify="center")
