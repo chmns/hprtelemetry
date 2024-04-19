@@ -98,7 +98,7 @@ class TelemetryDecoder(object):
         some values which are received from SD reading are not in a format good for
         the user interface, so we change them before sending to UI
         """
-        for key in telemetry_dict:
+        for key in telemetry_dict.keys():
             if key in self.modifiers:
                 old_value = telemetry_dict[key]
                 telemetry_dict[key] = self.modifiers[key](old_value)
@@ -144,9 +144,11 @@ class RadioTelemetryDecoder(TelemetryDecoder):
                            "callsign" : self.callsign_modifier,
                            "accelZ" : self.accel_modifier,
                            "offVert" : self.offvert_and_spin_modifier,
-                           "spin" : self.offvert_and_spin_modifier,
-                           "gnssLat": self.gnss_coords_modifier,
-                           "gnssLon": self.gnss_coords_modifier }
+                           "spin" : self.offvert_and_spin_modifier}
+        
+        self.floats = ["preGnssLat",  "preGnssLon",  "preGnssAlt",
+                       "gnssLat",     "gnssLon",     "gnssAlt",
+                       "postGnssLat", "postGnssLon", "postGnssAlt"]
 
     def name_modifier(self, name: bytes) -> str:
         return name.decode("ascii").strip().rstrip('\x00')
@@ -159,6 +161,14 @@ class RadioTelemetryDecoder(TelemetryDecoder):
 
     def offvert_and_spin_modifier(self, offvert: float) -> float:
         return offvert * self.OFFVERT_MULTIPLIER
+    
+    def format_floats(self, message):
+        for key, value in message.items():
+            if key in self.floats:
+                message[f"{key}String"] = self.gnss_coords_modifier(value)
+
+        return message
+
 
     def decode(self, data_bytes) -> list | None:
         telemetry = self.__decode__(data_bytes)
@@ -181,6 +191,12 @@ class RadioTelemetryDecoder(TelemetryDecoder):
                     message["contName"] = f"{self.cont_names[cont]} [{cont}]"
                 except:
                     pass # if [cont] doesn't exist in message then it will give exception, we ignore
+
+                try:
+                    message = self.format_floats(message)
+                except:
+                    pass
+
 
         return telemetry
 

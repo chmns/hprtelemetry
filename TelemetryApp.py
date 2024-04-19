@@ -273,9 +273,11 @@ class TelemetryApp(Tk):
                 message = self.message_queue.get(block=False)
                 self.reset_packet_timer()
                 self.message_callback(message)
+                self.map_column.update()
                 self.altitude_graph.update()
                 self.acceleration_graph.update()
                 self.velocity_graph.update()
+
         except queue.Empty:
             pass
         finally:

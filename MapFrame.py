@@ -12,13 +12,13 @@ OFFLINE_ZOOM_MAX = 19
 MIN_PATH_POINTS = 2
 DEFAULT_ZOOM = 10
 
-START_TEXT = "Start"
-LAUNCH_TEXT = "Landing"
-LANDING_TEXT = "Launch"
+START_TEXT =      "  Start:"
+LAUNCH_TEXT =     "Landing:"
+LANDING_TEXT =    " Launch:"
 
-PRELIGHT_TEXT =   "   Pre:"
-CURRENT_TEXT =    "Flight:"
-POSTFLIGHT_TEXT = "  Post:"
+PRELIGHT_TEXT =   "    Pre:"
+CURRENT_TEXT =    " Flight:"
+POSTFLIGHT_TEXT = "   Post:"
 
 ZERO_LAT = "0.000000"
 ZERO_LON = "0.000000"
@@ -84,21 +84,21 @@ class MapColumn(PanedWindow):
 
         self.preflight_location = LocationRow(self,
                                               PRELIGHT_TEXT,
-                                              StringVar(master, ZERO_LAT, "preGnssLat"),
-                                              StringVar(master, ZERO_LON, "preGnssLon"),
-                                              StringVar(master, ZERO_ALT, "preGnssAlt"))
+                                              StringVar(master, ZERO_LAT, "preGnssLatString"),
+                                              StringVar(master, ZERO_LON, "preGnssLonString"),
+                                              StringVar(master, ZERO_ALT, "preGnssAltString"))
 
         self.current_location = LocationRow(self,
                                             CURRENT_TEXT,
-                                            StringVar(master, DEFAULT_LAT, "gnssLat"),
-                                            StringVar(master, DEFAULT_LON, "gnssLon"),
-                                            StringVar(master, ZERO_ALT,    "gnssAlt"))
+                                            StringVar(master, DEFAULT_LAT, "gnssLatString"),
+                                            StringVar(master, DEFAULT_LON, "gnssLonString"),
+                                            StringVar(master, ZERO_ALT,    "gnssAltString"))
 
         self.postflight_location = LocationRow(self,
                                                POSTFLIGHT_TEXT,
-                                               StringVar(master, ZERO_LAT, "postGnssLat"),
-                                               StringVar(master, ZERO_LON, "postGnssLon"),
-                                               StringVar(master, ZERO_ALT, "postGnssAlt"))
+                                               StringVar(master, ZERO_LAT, "postGnssLatString"),
+                                               StringVar(master, ZERO_LON, "postGnssLonString"),
+                                               StringVar(master, ZERO_ALT, "postGnssAltString"))
 
         self.launch_location = LocationRow(self,
                                            LAUNCH_TEXT,
@@ -164,10 +164,7 @@ class MapColumn(PanedWindow):
             self.bytes_label.config(bg=Colors.BG_COLOR)
 
     def set_state(self, state: DecoderState):
-        if state == DecoderState.OFFLINE:
-            self.map_frame.enabled = False
-        else:
-            self.map_frame.enabled = True
+        self.map_frame.state = state
 
         match state:
             case DecoderState.OFFLINE:  # Default sate
@@ -228,6 +225,8 @@ class MapColumn(PanedWindow):
         else:
             self.last_packet_indicator.config(bg=Colors.BRIGHT_RED, fg=Colors.WHITE)
 
+    def update(self):
+        self.map_frame.update()
 
     def __reset__pack__(self):
         self.name_label.pack_forget()
@@ -249,15 +248,19 @@ class MapColumn(PanedWindow):
 class MapFrame(PanedWindow):
     def __init__(self, master, window):
         Frame.__init__(self, master,bg=Colors.BG_COLOR)
-        self.enabled = False
 
-        self.lat_var = StringVar(window, name="gnssLat")
-        self.lat_var.trace_add("write", self.update_location)
+        self.prevLat = 0.0
+        self.prevLon = 0.0
 
-        self.lon_var = StringVar(window, name="gnssLon")
-        self.lon_var.trace_add("write", self.update_location)
+        self.lat = DoubleVar(window, name="gnssLat")
+        self.lon = DoubleVar(window, name="gnssLon")
+        self.alt = DoubleVar(window, name="gnssAlt")
 
-        self.alt_var = StringVar(window, name="gnssAlt")
+        self.preLat = DoubleVar(window, name="preGnssLat")
+        self.preLon = DoubleVar(window, name="preGnssLon")
+
+        self.postLat = DoubleVar(window, name="postGnssLat")
+        self.postLon = DoubleVar(window, name="postGnssLon")
 
         self.sats_var = IntVar(window, 0, "gnssSatellites")
         self.sats_var.trace_add("write", self.update_num_sats)
@@ -296,6 +299,8 @@ class MapFrame(PanedWindow):
 
         self.online_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text=self.map_view.zoom, bg=Colors.GRAY, fg=Colors.DARK_RED, anchor=E, padx=PADX, pady=PADY)
         self.online_label.place(relx=1, rely=0, x=20, y=-20, anchor=SW)
+
+        self.state = DecoderState.OFFLINE
 
         self.map_view.canvas.bind("<ButtonRelease-1>", self.mouse_release)
         self.map_view.canvas.bind("<MouseWheel>", self.mouse_zoom)
@@ -346,17 +351,42 @@ class MapFrame(PanedWindow):
         else:
             self.online_label.config(text=f"Offline", fg=Colors.DARK_RED)
 
-    def update_location(self, *_):
-        if not self.enabled:
+    def update(self):        
+        changed = False
+
+        new_lat = self.prevLat
+        new_lon = self.prevLon
+
+
+        match self.state:
+            case DecoderState.OFFLINE:
+                return
+            case DecoderState.PREFLIGHT:
+                new_lat = self.preLat.get()
+                new_lon = self.preLat.get()
+            case DecoderState.INFLIGHT:
+                new_lat = self.lat.get()
+                new_lon = self.lon.get()
+            case DecoderState.POSTFLIGHT:
+                new_lat = self.postLat.get()
+                new_lon = self.postLat.get()
+
+        if self.prevLat != new_lat:
+            self.prevLat = new_lat
+            changed = True
+
+        if self.prevLon != new_lon:
+            self.prevLon = new_lon
+            changed = True
+
+        if not changed:
+            return 
+
+        print(f"{new_lat = } {self.prevLat = }")
+        self.map_view.set_position(new_lat, new_lon)
+
+        if self.state != DecoderState.INFLIGHT:
             return
-
-        new_lat = float(self.lat_var.get())
-        new_lon = float(self.lon_var.get())
-
-        if self.map_view.get_position() == (new_lat, new_lon):
-            return
-
-        self.map_view.set_position(float(new_lat), float(new_lon))
 
         # hacky way to do it but can't get the method in documentation
         # working. need to have at least 2 points before creating path
@@ -365,6 +395,7 @@ class MapFrame(PanedWindow):
             if len(self.path_list) > MIN_PATH_POINTS:
                 self.start_marker = self.map_view.set_marker(new_lat, new_lon, START_TEXT)
                 self.path = self.map_view.set_path(self.path_list, width=2)
+                print(self.path_list)
             else:
                 self.path_list.append((new_lat, new_lon))
         else:
@@ -377,10 +408,7 @@ class MapFrame(PanedWindow):
         self.launch_marker = self.map_view.set_marker(launch_lat, launch_lon, LAUNCH_TEXT)
 
     def reset(self):
-        self.enabled = False
-        self.lat = DEFAULT_LAT
-        self.lon = DEFAULT_LON
-        self.map_view.set_position(self.lat, self.lon)
+        self.map_view.set_position(DEFAULT_LAT, DEFAULT_LON)
         self.map_view.set_zoom(DEFAULT_ZOOM)
         self.map_view.delete_all_path()
         self.path_list = []
