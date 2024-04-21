@@ -443,6 +443,7 @@ class MapFrame(PanedWindow):
 
     def load_offline_database(self, database_path):
         print(f"Setting offline map file to: {database_path}")
+        self.database_path = database_path
         self.map_view.pack_forget()
         del self.map_view
 
