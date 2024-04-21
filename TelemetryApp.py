@@ -17,7 +17,7 @@ from tkinter import messagebox
 from Styles import Colors
 from time import monotonic
 from TelemetryDecoder import DecoderState
-from TelemetryReader import SDCardFileReader, RadioTelemetryReader, Message
+from TelemetryReader import SDCardFileReader, RadioTelemetryReader, BinaryFileReader
 from TelemetrySender import TelemetryTestSender
 from enum import Enum
 from matplotlib import style
@@ -41,7 +41,7 @@ CELL_WIDTH = 220
 Work list:
 x.  Make pre/current/post only appear when registerd
 x.  Re-arrange tilt/spin, last packet/timestamp/satellites to be smaller
-3.  Add reader for .tlm files
+x.  Add reader for .tlm files
 x.  Correctly show bytes received
 5.  Also save CSV backup file format
 6.  Show final value display (in addition to rolling max/min)
@@ -95,8 +95,10 @@ class TelemetryApp(Tk):
 
         self.serial_reader = RadioTelemetryReader(self.message_queue)
         self.serial_reader.name = "serial_reader"
-        self.file_reader = SDCardFileReader(self.message_queue)
-        self.file_reader.name = "file_reader"
+        self.csv_file_reader = SDCardFileReader(self.message_queue)
+        self.csv_file_reader.name = "csv_file_reader"
+        self.tlm_file_reader = BinaryFileReader(self.message_queue)
+        self.tlm_file_reader.name = "tlm_file_reader"
 
         self.fast_update_timer = None # used to store tk.after ID for text updating
         self.slow_update_timer = None # used to store tk after ID for graph updating
@@ -281,7 +283,7 @@ class TelemetryApp(Tk):
         except queue.Empty:
             pass
         finally:
-            if self.file_reader.running.is_set() or self.serial_reader.running.is_set():
+            if self.csv_file_reader.running.is_set() or self.serial_reader.running.is_set() or self.tlm_file_reader.running.is_set():
                 self.fast_update_timer = self.after(FAST_UPDATE_INTERVAL, self.update)
             else:
                 self.stop()
@@ -362,7 +364,7 @@ class TelemetryApp(Tk):
             self.slow_update_timer = None
 
         # stop file decoder if it's running
-        self.file_reader.stop()
+        self.csv_file_reader.stop()
         # stop serial decoder if it's running
         self.serial_reader.stop()
         # update status display to show we are now disconnected
@@ -445,14 +447,23 @@ class TelemetryApp(Tk):
         if self.confirm_stop():
             self.reset() # if user has decided to cancel current operation then we should also reset
 
-        filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'),
-                                               ('Telemetry Binary Files', '*.tlm')])
-        if filename != "":
+        filename = askopenfilename(filetypes =[('Telemetry Binary Files', '*.tlm'),
+                                               ('Telemetry Text Files', '*.csv')])
+        
+        if filename.endswith(".tlm"):
             self.reset()
-            self.file_reader.filename = filename
+            self.tlm_file_reader.filename = filename
             self.state = AppState.READING_FILE
             self.map_column.set_status_text(f"Playing: {filename.split('/')[-1]}", Colors.WHITE, Colors.DARK_GREEN)
-            self.file_reader.start()
+            self.tlm_file_reader.start()
+            self.start()
+            
+        if filename.endswith(".csv"):
+            self.reset()
+            self.csv_file_reader.filename = filename
+            self.state = AppState.READING_FILE
+            self.map_column.set_status_text(f"Playing: {filename.split('/')[-1]}", Colors.WHITE, Colors.DARK_GREEN)
+            self.csv_file_reader.start()
             self.start()
 
     def open_telemetry_test_file(self):
@@ -496,7 +507,6 @@ class TelemetryApp(Tk):
         if filename is not None and filename != "":
             print(f"Attempting to load map file: {filename}")
             self.map_column.load_offline_database(filename)
-        pass
 
     @staticmethod
     def format_bytes(size):

@@ -230,7 +230,7 @@ class RadioTelemetryDecoder(TelemetryDecoder):
 
             elif event == 28 or event == 32:
                 self.state = DecoderState.ERROR
-                return
+                return None
 
             else:
                 self.state = DecoderState.POSTFLIGHT

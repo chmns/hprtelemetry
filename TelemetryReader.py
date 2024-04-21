@@ -9,6 +9,10 @@ from time import monotonic
 from collections import namedtuple
 from TelemetryDecoder import SDCardTelemetryDecoder, RadioTelemetryDecoder
 
+SYNC_WORD = bytes.fromhex("A5A5A5A5")
+MAX_PACKET_LENGTH = 74
+TLM_INTERVAL = 0.2 # 200ms
+
 Message = namedtuple("message", ["telemetry", "decoder_state", "local_time", "total_bytes", "total_messages"])
 
 class TelemetryReader(object):
@@ -179,15 +183,12 @@ class RadioTelemetryReader(TelemetrySerialReader):
     Class for reading Radio telemetry sent by Flight Computer over RFD900 or other serial radio bridge
     """
 
-    SYNC_WORD = bytes.fromhex("A5A5A5A5")
-    MAX_PACKET_LENGTH = 74
-
     def __init__(self, *kargs) -> None:
         TelemetrySerialReader.__init__(self, *kargs)
         self.decoder = RadioTelemetryDecoder()
         self.read = lambda port: serial.Serial.read_until(port,
-                                                          self.SYNC_WORD,
-                                                          self.MAX_PACKET_LENGTH)
+                                                          SYNC_WORD,
+                                                          MAX_PACKET_LENGTH)
 
 
 class SDCardSerialReader(TelemetrySerialReader):
@@ -249,3 +250,61 @@ class SDCardFileReader(TelemetryReader):
             running.clear()
 
         print(f"Finished reading file {self.filename}")
+
+
+class BinaryFileReader(TelemetryReader):
+    """
+    Class for reading TLM file backup data
+    """
+    def __init__(self, queue: queue.Queue = None) -> None:
+
+        TelemetryReader.__init__(self, queue)
+        self.filename = None
+        self.decoder = RadioTelemetryDecoder()
+
+    def __run__(self, message_queue, running) -> None:
+
+        assert self.filename is not None
+
+        print(f"Reading binary (TLM) telemetry file {self.filename}")
+
+        last_timestamp = 0
+
+        try:
+            with open(self.filename, 'rb') as file:
+                raw_data = file.read()
+                
+                if not running.is_set():
+                        return
+                
+                packets = raw_data.split(SYNC_WORD)
+
+                for packet in packets:
+                    if not running.is_set():
+                        return
+                    
+                    try:
+                        packet = packet + SYNC_WORD # hack: should not need to add SYNC word here
+                        self.bytes_received += len(packet) # keep track of total amount of data we got since start
+                        decoded_messages = self.decoder.decode(packet) 
+                    except Exception as error:
+                        print(f"Error decoding data\n{str(error)}")
+
+                    if decoded_messages is not None:
+                        for message in decoded_messages:
+                            self.messages_decoded += 1
+                            message_queue.put(Message(message,
+                                              self.decoder.state,
+                                              monotonic(),
+                                              self.bytes_received,
+                                              self.messages_decoded))
+                            
+                    sleep(TLM_INTERVAL)
+
+        except IOError:
+            print(f"Cannot read file: {self.filename}")
+
+        finally:
+            running.clear()
+
+        print(f"Finished reading TLM file {self.filename}")
