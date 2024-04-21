@@ -167,60 +167,41 @@ class MapColumn(PanedWindow):
             self.bytes_label.config(bg=Colors.BG_COLOR)
 
     def set_state(self, state: DecoderState):
+
+        if self.map_frame.state == DecoderState.OFFLINE and state != DecoderState.OFFLINE:
+            self.name_label.pack(after=self.telemetry_state_label, side=LEFT, expand=True, fill=X)
+            self.callsign_label.pack(after=self.name_label, side=LEFT, expand=False, fill=NONE, padx=PADX)
+            self.cont_label.pack(before=self.event_name_label, side=LEFT, expand=True, fill=X, padx=PADX)
+            self.cont_event_frame.pack(after=self.name_callsign_state_frame, side=TOP, expand=False, fill=X, padx=PADX)
+
+            self.preflight_location.pack(after=self.map_frame, side=TOP, expand=False, fill=X, padx=PADX)
+            self.current_location.pack(after=self.preflight_location, side=TOP, expand=False, fill=X, padx=PADX)
+            self.postflight_location.pack(after=self.current_location, side=TOP, expand=False, fill=X, padx=PADX)
+
+            self.tilt_spin_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX, pady=PADY)
+            
+        if state == DecoderState.OFFLINE:
+            self.__reset__pack__()
+
+        if state == DecoderState.LAUNCH:
+            self.setvar("launch_time", "0.0")
+            self.map_frame.set_launch_point(float(self.getvar("launch_latitude")),
+                                            float(self.getvar("launch_longitude")))
+            self.launch_location.pack(after=self.preflight_location, side=TOP, expand=False, fill=X, padx=PADX)
+
+        if state == DecoderState.LAND:
+            self.setvar("landing_time", "0.0")
+            self.map_frame.set_landing_point(float(self.getvar("landing_latitude")),
+                                             float(self.getvar("landing_longitude")))
+            try:
+                self.landing_location.pack(after=self.postflight_location, side=TOP, expand=False, fill=X, padx=PADX)
+            except Exception:
+                self.landing_location.pack(before=self.status_bar, side=BOTTOM, expand=False, fill=X, padx=PADX)
+
         self.map_frame.state = state
 
-        match state:
-            case DecoderState.OFFLINE:  # Default sate
-                self.__reset__pack__()
-
-            case DecoderState.PREFLIGHT:
-                self.name_label.pack(after=self.telemetry_state_label, side=LEFT, expand=True, fill=X)
-                self.callsign_label.pack(after=self.name_label, side=LEFT, expand=False, fill=NONE, padx=PADX)
-                self.cont_label.pack(before=self.event_name_label, side=LEFT, expand=True, fill=X, padx=PADX)
-                self.cont_event_frame.pack(after=self.name_callsign_state_frame, side=TOP, expand=False, fill=X, padx=PADX)
-                self.preflight_location.pack(after=self.map_frame, side=TOP, expand=False, fill=X, padx=PADX)
-
-            case DecoderState.INFLIGHT:
-                self.cont_label.pack_forget()
-                try:
-                    self.current_location.pack(after=self.preflight_location)
-                except Exception:
-                    try:
-                        self.current_location.pack(after=self.launch_location)
-                    except Exception:
-                        self.current_location.pack(after=self.map_frame)
-                finally:
-                    self.current_location.pack(side=TOP, expand=False, fill=X, padx=PADX)
-
-                self.tilt_spin_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX, pady=PADY)
-
-            case DecoderState.POSTFLIGHT:
-                try:
-                    self.postflight_location.pack(after=self.tilt_spin_frame, side=BOTTOM, expand=False, fill=X, padx=PADX)
-                except Exception:
-                    self.postflight_location.pack(before=self.status_bar, side=BOTTOM, expand=False, fill=X, padx=PADX)
 
 
-            case DecoderState.MAXES:
-                pass
-
-            case DecoderState.LAUNCH:
-                self.setvar("launch_time", "0.0")
-                self.map_frame.set_launch_point(float(self.getvar("launch_latitude")),
-                                                float(self.getvar("launch_longitude")))
-                self.launch_location.pack(after=self.map_frame, side=TOP, expand=False, fill=X, padx=PADX)
-
-            case DecoderState.LAND:
-                self.setvar("landing_time", "0.0")
-                self.map_frame.set_landing_point(float(self.getvar("landing_latitude")),
-                                                 float(self.getvar("landing_longitude")))
-                try:
-                    self.landing_location.pack(after=self.current_location, side=TOP, expand=False, fill=X, padx=PADX)
-                except Exception:
-                    self.landing_location.pack(before=self.status_bar, side=BOTTOM, expand=False, fill=X, padx=PADX)
-
-            case DecoderState.ERROR:
-                pass
 
     def update_status_indicator(self, *_):
         if self.currently_receiving.get():
@@ -400,7 +381,6 @@ class MapFrame(PanedWindow):
             if len(self.path_list) > MIN_PATH_POINTS:
                 self.start_marker = self.map_view.set_marker(new_lat, new_lon, START_TEXT)
                 self.path = self.map_view.set_path(self.path_list, width=2)
-                print(self.path_list)
             else:
                 self.path_list.append((new_lat, new_lon))
         else:
