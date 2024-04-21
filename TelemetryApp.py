@@ -534,8 +534,17 @@ class TelemetryApp(Tk):
         return "{:.3f}".format(size)[:5] + power_labels[n] + "B"
 
 
-if __name__ == "__main__":
+def run():
     telemetry = TelemetryApp()
     telemetry.mainloop()
     telemetry.quit()
 
+
+if __name__ == "__main__":
+    import cProfile, pstats
+    profiler = cProfile.Profile()
+    profiler.enable()
+    run()
+    profiler.disable()
+    stats = pstats.Stats(profiler).sort_stats('ncalls')
+    stats.dump_stats('analysis.bin')
