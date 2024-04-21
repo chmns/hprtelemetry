@@ -286,18 +286,18 @@ class MapFrame(PanedWindow):
         self.map_view.set_tile_server(TILE_SERVER_URL)
         self.map_view.pack(expand=True, fill=BOTH)
 
-        self.sats_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text="", bg=Colors.GRAY, anchor=E)
+        self.sats_label = Label(self, font=Fonts.MEDIUM_FONT_BOLD, text="", bg=Colors.GRAY, anchor=E)
         self.sats_label.place(relx=1, x=-20, y=20, anchor=NE)
         self.update_num_sats()
 
-        self.fix_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text="", bg=Colors.GRAY, anchor=E, padx=PADX, pady=PADY)
+        self.fix_label = Label(self, font=Fonts.MEDIUM_FONT_BOLD, text="", bg=Colors.GRAY, anchor=E, padx=PADX, pady=PADY)
         self.fix_label.place(relx=1, x=-20, y=50, anchor=NE)
         self.update_fix()
 
-        self.zoom_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text=self.map_view.zoom, bg=Colors.GRAY, fg=Colors.LIGHT_GRAY, anchor=E, padx=PADX, pady=PADY)
+        self.zoom_label = Label(self, font=Fonts.MEDIUM_FONT_BOLD, text=self.map_view.zoom, bg=Colors.GRAY, fg=Colors.LIGHT_GRAY, anchor=E, padx=PADX, pady=PADY)
         self.zoom_label.place(relx=1, rely=1, x=-20, y=-20, anchor=SE)
 
-        self.online_label = Label(self.map_view, font=Fonts.MEDIUM_FONT_BOLD, text=self.map_view.zoom, bg=Colors.GRAY, fg=Colors.DARK_RED, anchor=E, padx=PADX, pady=PADY)
+        self.online_label = Label(self, font=Fonts.MEDIUM_FONT_BOLD, text=self.map_view.zoom, bg=Colors.GRAY, fg=Colors.DARK_RED, anchor=E, padx=PADX, pady=PADY)
         self.online_label.place(relx=1, rely=0, x=20, y=-20, anchor=SW)
 
         self.state = DecoderState.OFFLINE
@@ -451,6 +451,10 @@ class MapFrame(PanedWindow):
                                        use_database_only=self.offline_maps_only.get())
         self.map_view.set_tile_server(TILE_SERVER_URL)
         self.map_view.pack(expand=True, fill=BOTH)
+        self.sats_label.lift()
+        self.fix_label.lift()
+        self.zoom_label.lift()
+        self.online_label.lift()
         self.reset()
 
 class LocationRow(Frame):

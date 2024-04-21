@@ -475,6 +475,8 @@ class TelemetryApp(Tk):
             self.test_serial_sender.start()
 
     def download_current_map(self):
+        if not self.confirm_stop():
+            return
 
         try:
             self.download_overlay = Frame(self.window, background="#0f0f0f")
@@ -503,6 +505,9 @@ class TelemetryApp(Tk):
 
 
     def set_offline_path(self):
+        if not self.confirm_stop():
+            return
+        
         filename = askopenfilename(filetypes =[('Map Database', '*.db'), ('Other Files', '*.*')])
         if filename is not None and filename != "":
             print(f"Attempting to load map file: {filename}")
