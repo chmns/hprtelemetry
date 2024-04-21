@@ -121,6 +121,7 @@ class TelemetrySerialReader(TelemetryReader):
             if file is not None:
                 try:
                     file.write(telemetry_bytes)
+                    file.flush()
                 except Exception as error:
                     print(f"Couldn't write backup data to file {self.filename}\n{str(error)}")
 
