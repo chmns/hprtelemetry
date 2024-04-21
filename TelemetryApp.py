@@ -143,6 +143,7 @@ class TelemetryApp(Tk):
         self.map_menu = Menu(self.menubar)
         self.map_menu.add_command(label="Download current map", command=self.download_current_map)
         self.map_menu.add_command(label="Set offline map path", command=self.set_offline_path)
+        self.map_menu.add_command(label="Delete map", command=self.delete_map)
 
         self.map_menu.add_checkbutton(label="Only use offline maps",
                                       variable=self.offline_maps_only)
@@ -512,6 +513,9 @@ class TelemetryApp(Tk):
         if filename is not None and filename != "":
             print(f"Attempting to load map file: {filename}")
             self.map_column.load_offline_database(filename)
+    
+    def delete_map(self):
+        self.map_column.delete_map()
 
     @staticmethod
     def format_bytes(size):

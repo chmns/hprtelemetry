@@ -145,6 +145,9 @@ class MapColumn(PanedWindow):
     def load_offline_database(self, database_path):
         self.map_frame.load_offline_database(database_path)
 
+    def delete_map(self):
+        self.map_frame.delete_map()
+
     def set_status_text(self, text,
                         color:str = None,
                         bg: str = None):
@@ -382,8 +385,10 @@ class MapFrame(PanedWindow):
         if not changed:
             return 
 
-        print(f"{new_lat = } {self.prevLat = }")
-        self.map_view.set_position(new_lat, new_lon)
+        try:
+            self.map_view.set_position(new_lat, new_lon)
+        except Exception:
+            return
 
         if self.state != DecoderState.INFLIGHT:
             return
@@ -457,6 +462,9 @@ class MapFrame(PanedWindow):
         self.zoom_label.lift()
         self.online_label.lift()
         self.reset()
+    
+    def delete_map(self):
+        del self.map_view
 
 class LocationRow(Frame):
     def __init__(self,
