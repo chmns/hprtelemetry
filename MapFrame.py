@@ -443,10 +443,15 @@ class MapFrame(PanedWindow):
 
     def load_offline_database(self, database_path):
         print(f"Setting offline map file to: {database_path}")
+        self.map_view.pack_forget()
+        del self.map_view
 
-        self.map_view = TkinterMapView(self, database_path = database_path)
+        self.map_view = TkinterMapView(self,
+                                       database_path=self.database_path,
+                                       use_database_only=self.offline_maps_only.get())
+        self.map_view.set_tile_server(TILE_SERVER_URL)
         self.map_view.pack(expand=True, fill=BOTH)
-
+        self.reset()
 
 class LocationRow(Frame):
     def __init__(self,
