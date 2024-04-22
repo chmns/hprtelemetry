@@ -7,11 +7,14 @@ import glob
 import serial
 from time import monotonic
 from collections import namedtuple
-from TelemetryDecoder import SDCardTelemetryDecoder, RadioTelemetryDecoder
+from TelemetryDecoder import *
 
 SYNC_WORD = bytes.fromhex("A5A5A5A5")
 MAX_PACKET_LENGTH = 74
 TLM_INTERVAL = 0.2 # 200ms
+
+TLM_EXTENSION = "tlm"
+CSV_EXTENSION = "csv"
 
 Message = namedtuple("message", ["telemetry", "decoder_state", "local_time", "total_bytes", "total_messages"])
 
@@ -79,7 +82,9 @@ class TelemetrySerialReader(TelemetryReader):
         assert self.serial_port != ""
 
         port = None
-        file = None
+        tlm_file = None
+        csv_file = None
+        previous_decoder_state = DecoderState.OFFLINE
 
         try:
             port = serial.Serial(port=self.serial_port,
@@ -109,19 +114,32 @@ class TelemetrySerialReader(TelemetryReader):
                 print(f"Error reading from port: {self.serial_port}\n{str(error)}")
                 print(f"{telemetry_bytes = }")
 
-            if file is None and self.filename is not None: # file isn't open but user has added backup file during running
+            # Open binary file for direct data backup
+            if tlm_file is None and self.filename is not None: # tlm file isn't open but user has added backup file during running
                 try:
-                    file = open(self.filename, 'wb') # open with 'wb' write binary mode - will overwrite any existing file
+                    tlm_filename = f"{self.filename}.{TLM_EXTENSION}"
+                    tlm_file = open(tlm_filename, 'wb')                 
                 except Exception as error:
-                    print(f"Couldn't open file {self.filename}")
-                    file = None
+                    print(f"Couldn't open file {tlm_filename}")
+                    tlm_file = None
                 else:
-                    print(f"Open file for writing backup to: {self.filename}")
+                    print(f"Open TLM file for writing backup to: {tlm_filename}")
 
-            if file is not None:
+            # Open human-readable CSV file for backup       
+            if csv_file is None and self.filename is not None: # csv file isn't open but user has added backup file during running
                 try:
-                    file.write(telemetry_bytes)
-                    file.flush()
+                    csv_filename = f"{self.filename}.{CSV_EXTENSION}"
+                    csv_file = open(csv_filename, 'wb')                 
+                except Exception as error:
+                    print(f"Couldn't open file {csv_filename}")
+                    tlm_file = None
+                else:
+                    print(f"Open CSV file for writing backup to: {csv_filename}")
+
+            if tlm_file is not None:
+                try:
+                    tlm_file.write(telemetry_bytes)
+                    tlm_file.flush()
                 except Exception as error:
                     print(f"Couldn't write backup data to file {self.filename}\n{str(error)}")
 
@@ -140,14 +158,35 @@ class TelemetrySerialReader(TelemetryReader):
                     self.messages_decoded += 1
                     received_telemetry |= message
 
+            if csv_file is not None:
+
+                # If the telemetry state changes then we write a new header
+                # to show what the following CSV values mean
+                if previous_decoder_state != self.decoder.state:
+                    previous_decoder_state = self.decoder.state
+                    
+                    match self.decoder.state:
+                        case DecoderState.PREFLIGHT:
+                            csv_file.write(",".join(PreFlightPacket.keys) + "\n")
+                        case DecoderState.INFLIGHT:
+                            csv_file.write(",".join(InFlightData.keys) + "," + ",".join(InFlightMetaData.keys) + "\n")
+                        case DecoderState.POSTFLIGHT:
+                            csv_file.write(",".join(PostFlightPacket.keys) + "\n")
+                
+                csv_file.write(",".join(received_telemetry.values()) + "\n")
+                        
+                        
             message_queue.put(Message(received_telemetry,
                                       self.decoder.state,
                                       monotonic(),
                                       self.bytes_received,
                                       self.messages_decoded))
 
-        if file is not None:
-            file.close()
+        if tlm_file is not None:
+            tlm_file.close()
+
+        if csv_file is not None:
+            csv_file.close()
 
         if port is not None:
             port.close()
