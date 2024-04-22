@@ -118,24 +118,25 @@ class TelemetrySerialReader(TelemetryReader):
             # Open binary file for direct data backup
             if tlm_file is None and self.filename is not None: # tlm file isn't open but user has added backup file during running
                 try:
+                    tlm_file = open(self.filename, 'wb')
 
-                    tlm_filename = os.path.splitext(self.filename)[0] + TLM_EXTENSION
-                    tlm_file = open(tlm_filename, 'wb')
-                except Exception as error:
-                    print(f"Couldn't open file {tlm_filename}")
-                    tlm_file = None
-                else:
-                    print(f"Open TLM file for writing backup to: {tlm_filename}")
-
-            # Open human-readable CSV file for backup
-            if csv_file is None and self.filename is not None: # csv file isn't open but user has added backup file during running
-                try:
-                    csv_file = open(self.filename, 'wb')
                 except Exception as error:
                     print(f"Couldn't open file {self.filename}")
                     tlm_file = None
                 else:
-                    print(f"Open CSV file for writing backup to: {self.filename}")
+                    print(f"Open TLM file for writing backup to: {self.filename}")
+
+            # Open human-readable CSV file for backup
+            if csv_file is None and self.filename is not None: # csv file isn't open but user has added backup file during running
+                try:
+                    csv_filename = os.path.splitext(self.filename)[0] + CSV_EXTENSION
+                    csv_file = open(csv_filename, 'wt')
+
+                except Exception as error:
+                    print(f"Couldn't open file {csv_filename}")
+                    tlm_file = None
+                else:
+                    print(f"Open CSV file for writing backup to: {csv_filename}")
 
             if tlm_file is not None:
                 try:
@@ -178,11 +179,11 @@ class TelemetrySerialReader(TelemetryReader):
 
                     if header is not None:
                         print(header)
-                        csv_file.write(header.encode("ascii"))
+                        csv_file.write(header)
 
                 data = ",".join(map(str,received_telemetry.values())) + "\n"
                 print(data)
-                csv_file.write(data.encode("ascii"))
+                csv_file.write(data)
 
 
             message_queue.put(Message(received_telemetry,
