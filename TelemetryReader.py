@@ -1,6 +1,7 @@
 from threading import Thread, Event
 from time import sleep
 import sys
+import os
 import queue
 import sys
 import glob
@@ -13,8 +14,8 @@ SYNC_WORD = bytes.fromhex("A5A5A5A5")
 MAX_PACKET_LENGTH = 74
 TLM_INTERVAL = 0.2 # 200ms
 
-TLM_EXTENSION = "tlm"
-CSV_EXTENSION = "csv"
+TLM_EXTENSION = ".tlm"
+CSV_EXTENSION = ".csv"
 
 Message = namedtuple("message", ["telemetry", "decoder_state", "local_time", "total_bytes", "total_messages"])
 
@@ -117,24 +118,24 @@ class TelemetrySerialReader(TelemetryReader):
             # Open binary file for direct data backup
             if tlm_file is None and self.filename is not None: # tlm file isn't open but user has added backup file during running
                 try:
-                    tlm_filename = f"{self.filename}.{TLM_EXTENSION}"
-                    tlm_file = open(tlm_filename, 'wb')                 
+
+                    tlm_filename = os.path.splitext(self.filename)[0] + TLM_EXTENSION
+                    tlm_file = open(tlm_filename, 'wb')
                 except Exception as error:
                     print(f"Couldn't open file {tlm_filename}")
                     tlm_file = None
                 else:
                     print(f"Open TLM file for writing backup to: {tlm_filename}")
 
-            # Open human-readable CSV file for backup       
+            # Open human-readable CSV file for backup
             if csv_file is None and self.filename is not None: # csv file isn't open but user has added backup file during running
                 try:
-                    csv_filename = f"{self.filename}.{CSV_EXTENSION}"
-                    csv_file = open(csv_filename, 'wb')                 
+                    csv_file = open(self.filename, 'wb')
                 except Exception as error:
-                    print(f"Couldn't open file {csv_filename}")
+                    print(f"Couldn't open file {self.filename}")
                     tlm_file = None
                 else:
-                    print(f"Open CSV file for writing backup to: {csv_filename}")
+                    print(f"Open CSV file for writing backup to: {self.filename}")
 
             if tlm_file is not None:
                 try:
@@ -164,18 +165,26 @@ class TelemetrySerialReader(TelemetryReader):
                 # to show what the following CSV values mean
                 if previous_decoder_state != self.decoder.state:
                     previous_decoder_state = self.decoder.state
-                    
+
+                    header = None
+
                     match self.decoder.state:
                         case DecoderState.PREFLIGHT:
-                            csv_file.write(",".join(PreFlightPacket.keys) + "\n")
+                            header = ",".join(PreFlightPacket.keys) + "\n"
                         case DecoderState.INFLIGHT:
-                            csv_file.write(",".join(InFlightData.keys) + "," + ",".join(InFlightMetaData.keys) + "\n")
+                            header = ",".join(InFlightData.keys) + "," + ",".join(InFlightMetaData.keys) + "\n"
                         case DecoderState.POSTFLIGHT:
-                            csv_file.write(",".join(PostFlightPacket.keys) + "\n")
-                
-                csv_file.write(",".join(received_telemetry.values()) + "\n")
-                        
-                        
+                            header = ",".join(PostFlightPacket.keys) + "\n"
+
+                    if header is not None:
+                        print(header)
+                        csv_file.write(header.encode("ascii"))
+
+                data = ",".join(map(str,received_telemetry.values())) + "\n"
+                print(data)
+                csv_file.write(data.encode("ascii"))
+
+
             message_queue.put(Message(received_telemetry,
                                       self.decoder.state,
                                       monotonic(),
