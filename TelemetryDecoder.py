@@ -13,6 +13,7 @@ TelemetryDecoder:
   - RadioTelemetryDecoder
 """
 ENDIANNESS = "<"
+FLOATS_FORMAT = "{:.6f}"
 
 class RadioPacket(object):
     def __init__(self,
@@ -46,7 +47,7 @@ class InFlightData(RadioPacket):
             "time",      # uint16_t fltTime
             "fusionVel", # int16_t  vel
             "fusionAlt", # int16_t  alt
-            "gyroZ",     # int16_t  roll
+            "spin",      # int16_t  roll
             "offVert",   # int16_t  offVert
             "accelZ"]    # int16_t  accel
 
@@ -105,14 +106,17 @@ class TelemetryDecoder(object):
 
         return telemetry_dict
 
-    def gnss_coords_modifier(self, coord: float) -> str:
-        return "{:.6f}".format(coord)
+    def floats_modifier(self, coord: float) -> str:
+        return FLOATS_FORMAT.format(coord)
 
 
 class RadioTelemetryDecoder(TelemetryDecoder):
     """
     Converts flight telemetry received over radio direct from vehicle
-    into SD-card style data for sending to UI (which is wanting SD-card style)
+    into dictionaries for sending to UI.
+    decode() is making from binary radio into SD-card style CSV (which
+    can be save to CSV file)
+    then modify() changes this to be appropriate for the UI
     """
 
     NUM_FLIGHT_DATA_MESSAGES = 4        # each in-flight packet contains this many actual data samples
@@ -151,9 +155,15 @@ class RadioTelemetryDecoder(TelemetryDecoder):
                        "postGnssLat", "postGnssLon"]
 
     def name_modifier(self, name: bytes) -> str:
+        """
+        Removes extra or bad characters from name
+        """
         return name.decode("ascii").strip().rstrip('\x00')
 
     def callsign_modifier(self, callsign: bytes) -> str:
+        """
+        Removes extra or bad characters from callsign
+        """
         return callsign.decode("ascii").strip()
 
     def accel_modifier(self, accel: float) -> float:
@@ -161,6 +171,17 @@ class RadioTelemetryDecoder(TelemetryDecoder):
 
     def offvert_and_spin_modifier(self, offvert: float) -> float:
         return offvert * self.OFFVERT_MULTIPLIER
+
+    def add_formatted_floats(self, message):
+        """
+        For each floating point number in the telemetry it adds
+        a new key with "string" on the end of the name, and the
+        float is formatted into string of fixed length (for
+        displaying on UI)
+        """
+        for key, value in message.items():
+            if key in self.floats:
+                message[f"{key}String"] = self.floats_modifier(value)
 
     def generate_float_strings(self, telemetry: dict):
         """
@@ -175,40 +196,15 @@ class RadioTelemetryDecoder(TelemetryDecoder):
 
         return float_strings
 
-
     def decode(self, data_bytes) -> list | None:
-        telemetry = self.__decode__(data_bytes)
-
-        if telemetry is not None:
-            for message in telemetry:
-                # apply modifiers from our list
-                message = self.apply_modifiers(message)
-
-                # add separate event name value:
-                try:
-                    event = message["event"]
-                    message["eventName"] = f"{self.event_names[event]} [{event}]"
-                except:
-                    pass # if [event] doesn't exist in message then it will give exception, we ignore
-
-                # if there's a cont code (PREFLIGHT) then also add the name for it
-                try:
-                    cont = message["cont"]
-                    message["contName"] = f"{self.cont_names[cont]} [{cont}]"
-                except:
-                    pass # if [cont] doesn't exist in message then it will give exception, we ignore
-
-                try:
-                    message |= self.generate_float_strings(message)
-                except:
-                    pass
-
-        return telemetry
-
-    def __decode__(self, data_bytes) -> list | None:
-
-        data_bytes = data_bytes[:-self.SYNC_WORD_LENGTH]
-
+        """
+        Takes buffer of bytes and converts into a
+        list of telemetry dictionaries. Pre and post
+        packets just have 1 piece of telemetry inside
+        each inflight packet has 4 samples + metadata
+        so for this we get 5 dictionarys
+        """
+        # work out state from event byte:
         event = data_bytes[0]
 
         try:
@@ -246,6 +242,38 @@ class RadioTelemetryDecoder(TelemetryDecoder):
             return None
 
 
+    def modify(self, telemetry: dict) -> dict:
+        """
+        Modifies a decoded telemetary dict to be acceptable
+        to the user interaces. For instance remove NULLs from
+        name and format floats to strings
+        """
+        if telemetry is not None:
+            # apply modifiers from our list
+            telemetry = self.apply_modifiers(telemetry)
+
+            # add separate event name value:
+            try:
+                event = telemetry["event"]
+                telemetry["eventName"] = f"{self.event_names[event]} [{event}]"
+            except:
+                pass # if [event] doesn't exist in telemetry then it will give exception, we ignore
+
+            # if there's a cont code (PREFLIGHT) then also add the name for it
+            try:
+                cont = telemetry["cont"]
+                telemetry["contName"] = f"{self.cont_names[cont]} [{cont}]"
+            except:
+                pass # if [cont] doesn't exist in telemetry then it will give exception, we ignore
+
+            try:
+                telemetry = self.format_floats(telemetry)
+            except:
+                pass
+
+        return telemetry
+
+
 class SDCardTelemetryDecoder(TelemetryDecoder):
     """
     takes line of FC SD-card data and decodes it into a dictionary:
@@ -258,6 +286,7 @@ class SDCardTelemetryDecoder(TelemetryDecoder):
         TelemetryDecoder.__init__(self)
 
         self.telemetry_keys = None
+        # Unique keys found in CSV headers for each flight mode:
         self.unique_keys = { DecoderState.INFLIGHT: "fltEvents",
                              DecoderState.MAXES: "Max Baro Alt",
                              DecoderState.LAUNCH: "launch date",
@@ -266,7 +295,7 @@ class SDCardTelemetryDecoder(TelemetryDecoder):
 
         self.accel_resolution = accel_resolution
 
-        self.modifiers = { "time": self.time_modifier,
+        self.modifiers = { "time":   self.time_modifier,
                            "accelX": self.accel_modifier,
                            "accelY": self.accel_modifier,
                            "accelZ": self.accel_modifier }

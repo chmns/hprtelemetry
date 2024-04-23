@@ -52,7 +52,7 @@ class MapColumn(PanedWindow):
 
         self.total_bytes_read = StringVar(master, name="total_bytes_read")
         self.tilt = DoubleVar(master, 0.0, "offVert")
-        self.spin = DoubleVar(master, 0.0, "gyroZ")
+        self.spin = DoubleVar(master, 0.0, "spin")
         self.event_name = StringVar(master, "", "eventName")
         self.name = StringVar(master, "", "name")
         self.callsign = StringVar(master, "", "callsign")
@@ -381,6 +381,11 @@ class MapFrame(PanedWindow):
             changed = True
 
         if not changed:
+            return
+
+        try:
+            self.map_view.set_position(new_lat, new_lon)
+        except Exception:
             return
 
         if self.autofollow.get():

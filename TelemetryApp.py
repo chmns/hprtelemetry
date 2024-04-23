@@ -39,19 +39,15 @@ CELL_WIDTH = 220
 
 """
 Work list:
-x.  Make pre/current/post only appear when registerd
-x.  Re-arrange tilt/spin, last packet/timestamp/satellites to be smaller
-x.  Add reader for .tlm files
-x.  Correctly show bytes received
-5.  Also save CSV backup file format
-6.  Show final value display (in addition to rolling max/min)
-7.  Add online/offline toggle to map itself
-8.  Add download current area to map itself
-9.  Add log window
-10. Add min to readout
-x.  Show current map zoom level on map itself
-12. Event colors: 18 to 21,26,28 red color. Range 8-5 green.
-x.  Add online/offline/timeout
+1.  Add online/offline toggle to map itself
+2.  Add download current area to map itself
+3.  Add log window
+4.  Add min to readout
+5.  Add auto-follow selection to map
+6.  Click on GPS lat/lon to make map move there
+7.  Event colors: 18 to 21,26,28 red color. Range 8-5 green.
+8.  CSV format like ground station CSV format
+9.  Faster graph rendering
 """
 
 class AppState(Enum):
