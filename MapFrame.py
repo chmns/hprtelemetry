@@ -179,7 +179,7 @@ class MapColumn(PanedWindow):
             self.postflight_location.pack(after=self.current_location, side=TOP, expand=False, fill=X, padx=PADX)
 
             self.tilt_spin_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX, pady=PADY)
-            
+
         if state == DecoderState.OFFLINE:
             self.__reset__pack__()
 
@@ -255,6 +255,8 @@ class MapFrame(PanedWindow):
         self.offline_maps_only = BooleanVar(window, name="offline_maps_only")
         self.offline_maps_only.trace_add("write", self.set_offline_maps_only)
 
+        self.autofollow = BooleanVar(self, True, name="autofollow")
+
         script_directory = os.path.dirname(os.path.abspath(__file__))
         self.database_path = os.path.join(script_directory, DEFAULT_DATABASE_NAME)
 
@@ -283,6 +285,9 @@ class MapFrame(PanedWindow):
 
         self.online_label = Label(self, font=Fonts.MEDIUM_FONT_BOLD, text=self.map_view.zoom, bg=Colors.GRAY, fg=Colors.DARK_RED, anchor=E, padx=PADX, pady=PADY)
         self.online_label.place(relx=1, rely=0, x=20, y=-20, anchor=SW)
+
+        self.autofollow_checkbox = Checkbutton(self, variable=self.autofollow, text="Auto-follow", font=Fonts.MEDIUM_FONT, bg=Colors.GRAY, fg=Colors.LIGHT_GRAY, anchor=W, padx=PADX, pady=PADY)
+        self.autofollow_checkbox.place(relx=0, rely=1, x=20, y=-20, anchor=SW)
 
         self.state = DecoderState.OFFLINE
 
@@ -335,7 +340,7 @@ class MapFrame(PanedWindow):
         else:
             self.online_label.config(text=f"Offline", fg=Colors.DARK_RED)
 
-    def update(self):        
+    def update(self):
         changed = False
 
         new_lat = self.prevLat
@@ -364,12 +369,13 @@ class MapFrame(PanedWindow):
             changed = True
 
         if not changed:
-            return 
-
-        try:
-            self.map_view.set_position(new_lat, new_lon)
-        except Exception:
             return
+
+        if self.autofollow.get():
+            try:
+                self.map_view.set_position(new_lat, new_lon)
+            except Exception:
+                return
 
         if self.state != DecoderState.INFLIGHT:
             return
@@ -414,7 +420,7 @@ class MapFrame(PanedWindow):
         print(f"Attempting to download region bound by: {top_left_position} and {bottom_right_position}")
         print(f"Zoom level: {self.map_view.zoom}")
 
-        self.map_view.set_position(*top_left_position)
+        self.map_view.set_position(*current_position)
 
         try:
             self.downloader.save_offline_tiles(top_left_position,
@@ -441,8 +447,9 @@ class MapFrame(PanedWindow):
         self.fix_label.lift()
         self.zoom_label.lift()
         self.online_label.lift()
+        self.autofollow_checkbox.lift()
         self.reset()
-    
+
     def delete_map(self):
         del self.map_view
 
