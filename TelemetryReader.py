@@ -87,6 +87,12 @@ class TelemetrySerialReader(TelemetryReader):
         csv_file = None
         previous_decoder_state = DecoderState.OFFLINE
 
+        # CSV backup file headers (only used if saving to CSV file)
+        # we get them ready before running so they can be used quickly later
+        preflight_header = ",".join(PreFlightPacket.keys) + "\n"
+        inflight_header = ",".join(InFlightData.keys) + "," + ",".join(InFlightMetaData.keys) + "\n"
+        postflight_header = ",".join(PostFlightPacket.keys) + "\n"
+
         try:
             port = serial.Serial(port=self.serial_port,
                                  baudrate=self.baud_rate,
@@ -138,6 +144,7 @@ class TelemetrySerialReader(TelemetryReader):
                 else:
                     print(f"Open CSV file for writing backup to: {csv_filename}")
 
+            # if we have an open TLM file then write the raw data into it
             if tlm_file is not None:
                 try:
                     tlm_file.write(telemetry_bytes)
@@ -155,12 +162,14 @@ class TelemetrySerialReader(TelemetryReader):
             except Exception as error:
                 print(f"Error decoding data from: {self.serial_port}\n{str(error)}")
 
-            if received_telemetry_messages is not None:
-                for message in received_telemetry_messages:
-                    self.messages_decoded += 1
-                    received_telemetry |= message
-
+            # if there is open csv_file then write
             if csv_file is not None:
+                # rules:
+                # OFFLINE -> PREFLIGHT: put telemetry in preflight_telemetry var
+                # PREFLIGHT -> FLIGHT: write header and preflight_telemetry to file
+                # FLIGHT -> PREFLIGHT: delete file and start from beginning
+                # FLIGHT -> POSTFLIGHT: Write postflight header
+                # POSTFLIGHT: overwrite last postflight message
 
                 # If the telemetry state changes then we write a new header
                 # to show what the following CSV values mean
@@ -171,11 +180,11 @@ class TelemetrySerialReader(TelemetryReader):
 
                     match self.decoder.state:
                         case DecoderState.PREFLIGHT:
-                            header = ",".join(PreFlightPacket.keys) + "\n"
+                            header =
                         case DecoderState.INFLIGHT:
-                            header = ",".join(InFlightData.keys) + "," + ",".join(InFlightMetaData.keys) + "\n"
+                            header =
                         case DecoderState.POSTFLIGHT:
-                            header = ",".join(PostFlightPacket.keys) + "\n"
+                            header =
 
                     if header is not None:
                         print(header)
@@ -185,13 +194,22 @@ class TelemetrySerialReader(TelemetryReader):
                 print(data)
                 csv_file.write(data)
 
+            # finally modify the CSV style data into UI-compatible data for UI
+            if received_telemetry_messages is not None:
+                for message in received_telemetry_messages:
+                    self.messages_decoded += 1
+                    # when in flight we just send last of 4 packets to UI to save time updating:
+                    received_telemetry |= message # merge telemetry dicts together
 
-            message_queue.put(Message(received_telemetry,
-                                      self.decoder.state,
-                                      monotonic(),
-                                      self.bytes_received,
-                                      self.messages_decoded))
+            # add merged dict to queue for UI:
+            message_queue.put(Message(received_telemetry, # the telemetry dictionarie
+                                      self.decoder.state, # current decoder state (PRE/INFLIGHT/POST)
+                                      monotonic(), # current time in float seconds
+                                      self.bytes_received, # total number of bytes receive so far
+                                      self.messages_decoded)) # total number of good messages so far
 
+
+        # after ending serial port reading we must clean up:
         if tlm_file is not None:
             tlm_file.close()
 
