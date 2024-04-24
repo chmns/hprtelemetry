@@ -1,11 +1,10 @@
 from threading import Thread, Event
 from time import sleep
-import sys
 import os
 import datetime
+import time
 import queue
 import sys
-import glob
 import serial
 from time import monotonic
 from collections import namedtuple
@@ -17,6 +16,8 @@ TLM_INTERVAL = 0.2 # 200ms
 
 TLM_EXTENSION = ".tlm"
 CSV_EXTENSION = ".csv"
+
+TIME_FORMAT = "%H:%M:%S"
 
 Message = namedtuple("message", ["telemetry", "decoder_state", "local_time", "total_bytes", "total_messages"])
 
@@ -195,20 +196,20 @@ class TelemetrySerialReader(TelemetryReader):
                    self.decoder.state     == DecoderState.PREFLIGHT:
                    csv_file.seek(0) # seek to beginning
                    csv_file.truncate() # delete file content and start again
-                   preflight_telemetry = received_telemetry
+                   preflight_telemetry = received_telemetry.copy()
 
                 # PREFLIGHT -> PREFLIGHT: just store incoming data (dont't write it)
                 elif previous_decoder_state == DecoderState.PREFLIGHT and \
                      self.decoder.state     == DecoderState.PREFLIGHT:
                      csv_file.truncate(0) # delete file content and start again
-                     preflight_telemetry = received_telemetry
+                     preflight_telemetry = received_telemetry.copy()
 
                 # PREFLIGHT -> INFLIGHT: write header and preflight_telemetry to file
                 elif previous_decoder_state == DecoderState.PREFLIGHT and \
                      self.decoder.state     == DecoderState.INFLIGHT:
                      # add date and time to preflight telemetry before writing
                      preflight_telemetry["date"] = datetime.date.today().isoformat()
-                     preflight_telemetry["time"] = str(datetime.datetime.now())
+                     preflight_telemetry["time"] = time.strftime(TIME_FORMAT)
                      csv_file.write(self.csv_format(preflight_telemetry.keys()))
                      csv_file.write(self.csv_format(preflight_telemetry.values()))
                      csv_file.write(inflight_header)

@@ -144,7 +144,7 @@ class RadioTelemetryDecoder(TelemetryDecoder):
 
     def __init__(self):
         TelemetryDecoder.__init__(self)
-        self.modifiers = { "name": self.name_modifier,
+        self.modifiers = { "name" : self.name_modifier,
                            "callsign" : self.callsign_modifier,
                            "accelZ" : self.accel_modifier,
                            "offVert" : self.offvert_and_spin_modifier,
