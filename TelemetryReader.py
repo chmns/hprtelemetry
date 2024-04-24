@@ -2,6 +2,7 @@ from threading import Thread, Event
 from time import sleep
 import sys
 import os
+import datetime
 import queue
 import sys
 import glob
@@ -85,13 +86,17 @@ class TelemetrySerialReader(TelemetryReader):
         port = None
         tlm_file = None
         csv_file = None
+        csv_ended = False # used to flag that we have now received postflight
+                          # packets and should stop recording any other type
         previous_decoder_state = DecoderState.OFFLINE
 
         # CSV backup file headers (only used if saving to CSV file)
         # we get them ready before running so they can be used quickly later
-        preflight_header = ",".join(PreFlightPacket.keys) + "\n"
-        inflight_header = ",".join(InFlightData.keys) + "," + ",".join(InFlightMetaData.keys) + "\n"
-        postflight_header = ",".join(PostFlightPacket.keys) + "\n"
+        inflight_header = self.csv_format(InFlightData.keys + InFlightMetaData.keys)
+        postflight_header = self.csv_format(PostFlightPacket.keys)
+        postflight_start_position = 0
+
+        preflight_telemetry = {} # to store preflight data for writing when FLIGHT packet comes
 
         try:
             port = serial.Serial(port=self.serial_port,
@@ -132,8 +137,16 @@ class TelemetrySerialReader(TelemetryReader):
                 else:
                     print(f"Open TLM file for writing backup to: {self.filename}")
 
+            # if we have an open TLM file then write the raw data into it
+            if tlm_file is not None:
+                try:
+                    tlm_file.write(telemetry_bytes)
+                    tlm_file.flush()
+                except Exception as error:
+                    print(f"Couldn't write backup data to file {self.filename}\n{str(error)}")
+
             # Open human-readable CSV file for backup
-            if csv_file is None and self.filename is not None: # csv file isn't open but user has added backup file during running
+            if not csv_ended and csv_file is None and self.filename is not None: # csv file isn't open but user has added backup file during running
                 try:
                     csv_filename = os.path.splitext(self.filename)[0] + CSV_EXTENSION
                     csv_file = open(csv_filename, 'wt')
@@ -144,67 +157,99 @@ class TelemetrySerialReader(TelemetryReader):
                 else:
                     print(f"Open CSV file for writing backup to: {csv_filename}")
 
-            # if we have an open TLM file then write the raw data into it
-            if tlm_file is not None:
-                try:
-                    tlm_file.write(telemetry_bytes)
-                    tlm_file.flush()
-                except Exception as error:
-                    print(f"Couldn't write backup data to file {self.filename}\n{str(error)}")
-
             # We still send message to UI even if no telemetry is decoded from packet (maybe is corrupt)
             # So start with empty dict
             received_telemetry = {}
             received_telemetry_messages = []
 
             try:
-                received_telemetry_messages = self.decoder.decode(telemetry_bytes)
+                received_telemetry_messages = self.decoder.decode(telemetry_bytes[:-len(SYNC_WORD)])
             except Exception as error:
                 print(f"Error decoding data from: {self.serial_port}\n{str(error)}")
+                continue
 
-            # if there is open csv_file then write
-            if csv_file is not None:
-                # rules:
-                # OFFLINE -> PREFLIGHT: put telemetry in preflight_telemetry var
-                # PREFLIGHT -> FLIGHT: write header and preflight_telemetry to file
-                # FLIGHT -> PREFLIGHT: delete file and start from beginning
-                # FLIGHT -> POSTFLIGHT: Write postflight header
-                # POSTFLIGHT: overwrite last postflight message
-
-                # If the telemetry state changes then we write a new header
-                # to show what the following CSV values mean
-                if previous_decoder_state != self.decoder.state:
-                    previous_decoder_state = self.decoder.state
-
-                    header = None
-
-                    match self.decoder.state:
-                        case DecoderState.PREFLIGHT:
-                            header =
-                        case DecoderState.INFLIGHT:
-                            header =
-                        case DecoderState.POSTFLIGHT:
-                            header =
-
-                    if header is not None:
-                        print(header)
-                        csv_file.write(header)
-
-                data = ",".join(map(str,received_telemetry.values())) + "\n"
-                print(data)
-                csv_file.write(data)
-
-            # finally modify the CSV style data into UI-compatible data for UI
+            # INFLIGHT packets actually include 4 telemetry payloads. for now we just merge them
             if received_telemetry_messages is not None:
                 for message in received_telemetry_messages:
                     self.messages_decoded += 1
                     # when in flight we just send last of 4 packets to UI to save time updating:
                     received_telemetry |= message # merge telemetry dicts together
 
+
+
+            # if there is open csv_file then write
+            if not csv_ended and csv_file is not None:
+                """
+                CSV files have quite complex behaviour, to try to simulate the CSV file recorded by groundstation
+                 - there should only be 1 preflight message (but FC can go PRE->FlIGHT->PRE many times during setup)
+                 - i.e. it is possible to go FLIGHT->PREFLIGHT so need to handle this
+                 - there should only be 1 postflight message (but we may receive more than this, and dont know which is last)
+                 - should not allow POSTFLIGHT->FLIGHT
+                 - file should be flushed regularly to ensure it is write to disk
+                This code would make better sense as a state machine with transition
+                functions, but for now I just use elif cases
+                """
+
+                # !PREFLIGHT -> PREFLIGHT: start over and just store incoming data (dont't write it)
+                if previous_decoder_state != DecoderState.PREFLIGHT and \
+                   self.decoder.state     == DecoderState.PREFLIGHT:
+                   csv_file.seek(0) # seek to beginning
+                   csv_file.truncate() # delete file content and start again
+                   preflight_telemetry = received_telemetry
+
+                # PREFLIGHT -> PREFLIGHT: just store incoming data (dont't write it)
+                elif previous_decoder_state == DecoderState.PREFLIGHT and \
+                     self.decoder.state     == DecoderState.PREFLIGHT:
+                     csv_file.truncate(0) # delete file content and start again
+                     preflight_telemetry = received_telemetry
+
+                # PREFLIGHT -> INFLIGHT: write header and preflight_telemetry to file
+                elif previous_decoder_state == DecoderState.PREFLIGHT and \
+                     self.decoder.state     == DecoderState.INFLIGHT:
+                     # add date and time to preflight telemetry before writing
+                     preflight_telemetry["date"] = datetime.date.today().isoformat()
+                     preflight_telemetry["time"] = str(datetime.datetime.now())
+                     csv_file.write(self.csv_format(preflight_telemetry.keys()))
+                     csv_file.write(self.csv_format(preflight_telemetry.values()))
+                     csv_file.write(inflight_header)
+                     csv_file.write(self.csv_format(received_telemetry.values()))
+
+                # INFLIGHT -> INFLIGHT: write telemetry to file
+                elif previous_decoder_state == DecoderState.INFLIGHT and \
+                     self.decoder.state     == DecoderState.INFLIGHT:
+                     csv_file.write(self.csv_format(received_telemetry.values()))
+
+                # INFLIGHT -> POSTFLIGHT: write postflight header
+                elif previous_decoder_state == DecoderState.INFLIGHT and \
+                     self.decoder.state     == DecoderState.POSTFLIGHT:
+                     csv_file.write(postflight_header) # write postflight header then...
+                     postflight_start_position = csv_file.tell() # store start of postflight data for use later
+                     csv_file.write(self.csv_format(received_telemetry.values()))
+                     csv_file.flush()
+
+                # POSTFLIGHT -> POSTFLIGHT: overwrite last postflight message
+                elif previous_decoder_state == DecoderState.POSTFLIGHT and \
+                     self.decoder.state     == DecoderState.POSTFLIGHT:
+                     csv_file.seek(postflight_start_position)
+                     csv_file.truncate()
+                     csv_file.write(self.csv_format(received_telemetry.values()))
+                     csv_file.flush()
+
+                # To catch corner case of possible POSTFLIGHT -> !POSTFLIGHT which is forbidden
+                # we end the csv telemetry writing for this session
+                if previous_decoder_state == DecoderState.POSTFLIGHT and \
+                    self.decoder.state    != DecoderState.POSTFLIGHT:
+                    csv_ended = True
+
+
+                # Finely store old state
+                previous_decoder_state = self.decoder.state
+
+
             # add merged dict to queue for UI:
-            message_queue.put(Message(received_telemetry, # the telemetry dictionarie
+            message_queue.put(Message(self.decoder.modify(received_telemetry), # the telemetry dictionarie modify for UI display
                                       self.decoder.state, # current decoder state (PRE/INFLIGHT/POST)
-                                      monotonic(), # current time in float seconds
+                                      monotonic(), # current time in float seconds. monotonic() is not affected by time/date/zone changes
                                       self.bytes_received, # total number of bytes receive so far
                                       self.messages_decoded)) # total number of good messages so far
 
@@ -220,6 +265,10 @@ class TelemetrySerialReader(TelemetryReader):
             port.close()
 
         running.clear()
+
+    def csv_format(self, values: list):
+        return ",".join(map(str,values)) + "\n"
+
 
     def available_ports(self) -> list:
         """
