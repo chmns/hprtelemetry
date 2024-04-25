@@ -13,7 +13,7 @@ import pathlib
 
 SYNC_WORD = bytes.fromhex("A5A5A5A5")
 MAX_PACKET_LENGTH = 74
-TLM_INTERVAL = 0.2 # 200ms
+TLM_INTERVAL = 0.01
 
 TLM_EXTENSION = ".tlm"
 CSV_EXTENSION = ".csv"
@@ -415,7 +415,6 @@ class BinaryFileReader(TelemetryReader):
                 packets = raw_data.split(SYNC_WORD)
 
                 for packet in packets:
-                    print("Packet")
                     if not running.is_set():
                         return
 
