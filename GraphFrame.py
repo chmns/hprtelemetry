@@ -7,17 +7,17 @@ from matplotlib.figure import Figure
 import matplotlib.animation as animation
 from collections import deque
 
-NUM_POINTS = 400 # @ 10ms accuracy this is about 4seconds
+NUM_POINTS = 100
 LINEWIDTH = 1
 FPS = 20 # update rate of graph
-INITIAL_INTERVAL = 0.01 # for filling empty space at start
+INITIAL_INTERVAL = 1 # for filling empty space at start
 BG_COLOR = "#0f0f0f"
 FG_COLOR = "#eeeeee"
 
 class GraphFrame(Frame):
 
     def __zero_data__(self):
-        self.ys = NUM_POINTS*[0]
+        self.ys = deque(NUM_POINTS*[0], NUM_POINTS)
         self.xs = [x * INITIAL_INTERVAL for x in (range(0-NUM_POINTS,0))]
 
     def reset(self):
@@ -48,14 +48,8 @@ class GraphFrame(Frame):
         if new_y < self.min:
             self.min = new_y
 
-        if self.appended < NUM_POINTS:
-            self.ys.pop(0)
-            self.xs.pop(0)
-
-        self.xs.append(new_x)
         self.ys.append(new_y)
 
-        self.appended += 1
 
     def render(self):
         self.draw()
@@ -104,13 +98,12 @@ class GraphFrame(Frame):
 
     def draw(self):
         self.line.set_xdata(self.xs)
-        self.subplot.set_xlim(self.xs[0],
-                              self.xs[len(self.xs)-1])
+        # self.subplot.set_xlim(self.xs[0],
+        #                       self.xs[len(self.xs)-1])
 
         self.line.set_ydata(self.ys)
 
-        if self.y_range is None and self.appended > 0:
-            self.subplot.set_ylim(self.min, self.max)
+        self.subplot.set_ylim(self.min, self.max)
 
         self.canvas.draw()
         self.canvas.flush_events()
