@@ -31,7 +31,7 @@ class TelemetryReader(object):
     def __init__(self,
                  queue: queue.Queue = None,
                  name: str = "") -> None:
-        # assert queue is not None
+
         self.queue = queue
         self.running = Event()
         self.decoder = None
@@ -169,7 +169,7 @@ class TelemetrySerialReader(TelemetryReader):
                 continue
 
             # INFLIGHT packets actually include 4 telemetry payloads. for now we just merge them
-            if received_telemetry_messages is not None:
+            if received_telemetry_messages:
                 for message in received_telemetry_messages:
                     self.messages_decoded += 1
                     # when in flight we just send last of 4 packets to UI to save time updating:
@@ -179,7 +179,7 @@ class TelemetrySerialReader(TelemetryReader):
             received_telemetry = self.decoder.apply_modifiers(received_telemetry)
 
             # if there is open csv_file then write
-            if csv_file is not None and received_telemetry is not {}:
+            if received_telemetry and csv_file is not None:
                 """
                 CSV files have quite complex behaviour, to try to simulate the CSV file recorded by groundstation
                  - there should only be 1 preflight message (but FC can go PRE->FlIGHT->PRE many times during setup)
@@ -425,7 +425,7 @@ class BinaryFileReader(TelemetryReader):
                     except Exception as error:
                         print(f"Error decoding data\n{str(error)}")
 
-                    if decoded_messages is not None:
+                    if decoded_messages:
                         for message in decoded_messages:
                             self.messages_decoded += 1
                             message_queue.put(Message(message,
