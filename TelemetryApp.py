@@ -39,13 +39,12 @@ CELL_WIDTH = 220
 
 """
 Work list:
-1.  Show name of log file that is being written to
-2.  Show last packet number
-3.  Add minimim to readout
-4.  Event colors: 18 to 21,26,28 red color. Range 8-5 green.
-5.  Add online/offline toggle to map itself
-6.  Add download current area to map itself
-7.  Faster graph rendering using tkchart
+1.  Show last packet number
+2.  Add minimim to readout
+3.  Event colors: 18 to 21,26,28 red color. Range 8-5 green.
+4.  Add online/offline toggle to map itself
+5.  Add download current area to map itself
+6.  Faster graph rendering using tkchart
 """
 
 class AppState(Enum):
@@ -429,7 +428,7 @@ class TelemetryApp(Tk):
                 if filename != "":
                     self.serial_reader.filename = filename
                     self.state = AppState.RECORDING_SERIAL
-                    self.map_column.set_status_text(f"Recording serial port {port}", Colors.WHITE, Colors.DARK_RED)
+                    self.map_column.set_status_text(f"Recording {port} to {os.path.basename(filename)}", Colors.WHITE, Colors.DARK_RED)
                 else:
                     return
             else:
