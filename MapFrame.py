@@ -4,6 +4,7 @@ from tkintermapview.utility_functions import osm_to_decimal
 from Styles import Fonts, Colors
 from TelemetryDecoder import DecoderState
 import os # for maps db
+from enum import StrEnum
 
 DEFAULT_LAT = 44.7916443
 DEFAULT_LON = -0.5995578
@@ -14,8 +15,8 @@ DEFAULT_ZOOM = 10
 AUTOFOLLOW_ZOOM = 19
 
 START_TEXT =      "  Start:"
-LAUNCH_TEXT =     "Landing:"
-LANDING_TEXT =    " Launch:"
+LAUNCH_TEXT =     " Launch:"
+LANDING_TEXT =    "Landing:"
 
 PRELIGHT_TEXT =   "    Pre:"
 CURRENT_TEXT =    " Flight:"
@@ -186,14 +187,16 @@ class MapColumn(PanedWindow):
 
         if state == DecoderState.LAUNCH:
             self.setvar("launch_time", "0.0")
-            self.map_frame.set_launch_point(float(self.getvar("launch_latitude")),
-                                            float(self.getvar("launch_longitude")))
+            self.map_frame.update_marker(state,
+                                         float(self.getvar("launch_latitude")),
+                                         float(self.getvar("launch_longitude")))
             self.launch_location.pack(after=self.preflight_location, side=TOP, expand=False, fill=X, padx=PADX)
 
         if state == DecoderState.LAND:
             self.setvar("landing_time", "0.0")
-            self.map_frame.set_landing_point(float(self.getvar("landing_latitude")),
-                                             float(self.getvar("landing_longitude")))
+            self.map_frame.update_marker(state,
+                                         float(self.getvar("landing_latitude")),
+                                         float(self.getvar("landing_longitude")))
             try:
                 self.landing_location.pack(after=self.postflight_location, side=TOP, expand=False, fill=X, padx=PADX)
             except Exception:
@@ -236,6 +239,8 @@ class MapFrame(PanedWindow):
 
         self.prevLat = 0.0
         self.prevLon = 0.0
+
+        self.markers = { state : None for state in DecoderState }
 
         self.lat = DoubleVar(window, name="gnssLat")
         self.lon = DoubleVar(window, name="gnssLon")
@@ -359,7 +364,6 @@ class MapFrame(PanedWindow):
         new_lat = self.prevLat
         new_lon = self.prevLon
 
-
         match self.state:
             case DecoderState.OFFLINE:
                 return
@@ -398,7 +402,12 @@ class MapFrame(PanedWindow):
             except Exception:
                 return
 
-        if self.state != DecoderState.INFLIGHT:
+        if self.state == DecoderState.PREFLIGHT:
+            self.update_marker(self.state, new_lat, new_lon)
+            return
+
+        if self.state == DecoderState.POSTFLIGHT:
+            self.update_marker(self.state, new_lat, new_lon)
             return
 
         # hacky way to do it but can't get the method in documentation
@@ -406,29 +415,28 @@ class MapFrame(PanedWindow):
         # and then after that you append to it, rather than setting it
         if self.path is None:
             if len(self.path_list) > MIN_PATH_POINTS:
-                self.start_marker = self.map_view.set_marker(new_lat, new_lon, START_TEXT)
                 self.path = self.map_view.set_path(self.path_list, width=2)
             else:
                 self.path_list.append((new_lat, new_lon))
         else:
             self.path.add_position(new_lat, new_lon)
 
-    def set_landing_point(self, landing_lat, landing_lon):
-        self.landing_location_marker = self.map_view.set_marker(landing_lat, landing_lon, LANDING_TEXT)
+    def update_marker(self, state: DecoderState, lat: float, lon:float) -> None:
+        marker = self.markers[state]
+        if marker is None:
+            self.markers[state] = self.map_view.set_marker(lat, lon, state.name)
+        else:
+            marker.set_position(lat, lon)
 
-    def set_launch_point(self, launch_lat, launch_lon):
-        self.launch_marker = self.map_view.set_marker(launch_lat, launch_lon, LAUNCH_TEXT)
-
-    def reset(self):
+    def reset(self) -> None:
         self.map_view.set_position(DEFAULT_LAT, DEFAULT_LON)
         self.map_view.set_zoom(DEFAULT_ZOOM)
         self.map_view.delete_all_path()
         self.path_list = []
         self.path = None
         self.map_view.delete_all_marker()
-        self.start_marker = None
-        self.landing_location_marker = None
-        self.launch_marker = None
+        for entry in self.markers:
+            self.markers[entry] = None
         self.update_num_sats()
         self.update_fix()
 
