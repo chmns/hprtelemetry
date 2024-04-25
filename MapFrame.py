@@ -11,6 +11,7 @@ OFFLINE_ZOOM_MIN = 5
 OFFLINE_ZOOM_MAX = 19
 MIN_PATH_POINTS = 2
 DEFAULT_ZOOM = 10
+AUTOFOLLOW_ZOOM = 19
 
 START_TEXT =      "  Start:"
 LAUNCH_TEXT =     "Landing:"
@@ -391,6 +392,9 @@ class MapFrame(PanedWindow):
         if self.autofollow.get():
             try:
                 self.map_view.set_position(new_lat, new_lon)
+                self.map_view.set_zoom(AUTOFOLLOW_ZOOM)
+                self.__update_zoom_label__()
+
             except Exception:
                 return
 
