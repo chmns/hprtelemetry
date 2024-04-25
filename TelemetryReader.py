@@ -175,6 +175,9 @@ class TelemetrySerialReader(TelemetryReader):
                     # when in flight we just send last of 4 packets to UI to save time updating:
                     received_telemetry |= message # merge telemetry dicts together
 
+            # Apply modifiers to telemetry (like accel * ACCEL_MULTIPLIER)
+            received_telemetry = self.decoder.modify(received_telemetry)
+
             # if there is open csv_file then write
             if csv_file is not None and received_telemetry is not {}:
                 """
@@ -253,8 +256,14 @@ class TelemetrySerialReader(TelemetryReader):
                 # Finely store old state
                 previous_decoder_state = self.decoder.state
 
+
+            # add additional string-representations of floats for UI
+            # (should be done in UI really, but tkinter cannot apply format to variables easily
+            # (this operator: |= merges 2 dicts and saves in left-side)
+            received_telemetry |= self.decoder.generate_float_strings(received_telemetry)
+
             # add merged dict to queue for UI:
-            message_queue.put(Message(self.decoder.modify(received_telemetry), # the telemetry dictionarie modify for UI display
+            message_queue.put(Message(received_telemetry, # the telemetry dictionarie modify for UI display
                                       self.decoder.state, # current decoder state (PRE/INFLIGHT/POST)
                                       monotonic(), # current time in float seconds. monotonic() is not affected by time/date/zone changes
                                       self.bytes_received, # total number of bytes receive so far

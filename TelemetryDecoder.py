@@ -172,17 +172,6 @@ class RadioTelemetryDecoder(TelemetryDecoder):
     def offvert_and_spin_modifier(self, offvert: float) -> float:
         return offvert * self.OFFVERT_MULTIPLIER
 
-    def add_formatted_floats(self, message):
-        """
-        For each floating point number in the telemetry it adds
-        a new key with "string" on the end of the name, and the
-        float is formatted into string of fixed length (for
-        displaying on UI)
-        """
-        for key, value in message.items():
-            if key in self.floats:
-                message[f"{key}String"] = self.floats_modifier(value)
-
     def generate_float_strings(self, telemetry: dict):
         """
         Adds an additional pre-formtted float (as str type) to
@@ -192,7 +181,7 @@ class RadioTelemetryDecoder(TelemetryDecoder):
 
         for key, value in telemetry.items():
             if key in self.floats:
-                float_strings[f"{key}String"] = self.gnss_coords_modifier(value)
+                float_strings[f"{key}String"] = self.floats_modifier(value)
 
         return float_strings
 
@@ -241,7 +230,6 @@ class RadioTelemetryDecoder(TelemetryDecoder):
             print(e)
             return None
 
-
     def modify(self, telemetry: dict) -> dict:
         """
         Modifies a decoded telemetary dict to be acceptable
@@ -265,11 +253,6 @@ class RadioTelemetryDecoder(TelemetryDecoder):
                 telemetry["contName"] = f"{self.cont_names[cont]} [{cont}]"
             except:
                 pass # if [cont] doesn't exist in telemetry then it will give exception, we ignore
-
-            try:
-                telemetry = self.format_floats(telemetry)
-            except:
-                pass
 
         return telemetry
 
