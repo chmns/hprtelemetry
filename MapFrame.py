@@ -175,12 +175,15 @@ class MapColumn(PanedWindow):
             self.callsign_label.pack(after=self.name_label, side=LEFT, expand=False, fill=NONE, padx=PADX)
             self.cont_label.pack(before=self.event_name_label, side=LEFT, expand=True, fill=X, padx=PADX)
             self.cont_event_frame.pack(after=self.name_callsign_state_frame, side=TOP, expand=False, fill=X, padx=PADX)
-
             self.preflight_location.pack(after=self.map_frame, side=TOP, expand=False, fill=X, padx=PADX)
+            self.tilt_spin_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX, pady=PADY)
+
+        if state == DecoderState.INFLIGHT:
+            self.current_location.pack(after=self.preflight_location, side=TOP, expand=False, fill=X, padx=PADX)
+
+        if state == DecoderState.POSTFLIGHT:
             self.current_location.pack(after=self.preflight_location, side=TOP, expand=False, fill=X, padx=PADX)
             self.postflight_location.pack(after=self.current_location, side=TOP, expand=False, fill=X, padx=PADX)
-
-            self.tilt_spin_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX, pady=PADY)
 
         if state == DecoderState.OFFLINE:
             self.__reset__pack__()
