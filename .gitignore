@@ -170,5 +170,9 @@ cython_debug/
 # Test flight data:
 /test_data
 
+# Backup files:
+backup.csv
+backup.tlm
+
 # VS Code settings:
 /.vscode

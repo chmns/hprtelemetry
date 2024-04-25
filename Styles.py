@@ -24,3 +24,4 @@ class Colors(StrEnum):
     BRIGHT_RED = "#FF3333"
     DARK_GREEN = "#33AA33"
     BRIGHT_GREEN = "#33FF33"
+    DARK_BLUE = "dark blue"

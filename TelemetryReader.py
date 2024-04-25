@@ -9,6 +9,7 @@ import serial
 from time import monotonic
 from collections import namedtuple
 from TelemetryDecoder import *
+import pathlib
 
 SYNC_WORD = bytes.fromhex("A5A5A5A5")
 MAX_PACKET_LENGTH = 74
@@ -16,6 +17,7 @@ TLM_INTERVAL = 0.2 # 200ms
 
 TLM_EXTENSION = ".tlm"
 CSV_EXTENSION = ".csv"
+BACKUP_NAME = "backup.tlm"
 
 TIME_FORMAT = "%H:%M:%S"
 
@@ -72,7 +74,7 @@ class TelemetrySerialReader(TelemetryReader):
         self.serial_port = serial_port
         self.baud_rate = baud_rate
         self.timeout = timeout
-        self.filename = None
+        self.filename = os.path.join(pathlib.Path(__file__).parent.resolve(), BACKUP_NAME) # always save backup
         self.read = None
         TelemetryReader.__init__(self, queue)
 
@@ -95,8 +97,6 @@ class TelemetrySerialReader(TelemetryReader):
         postflight_header = self.csv_format(PostFlightPacket.keys)
         preflight_start_position = 0
         postflight_start_position = 0
-
-        preflight_telemetry = {} # to store preflight data for writing when FLIGHT packet comes
 
         try:
             port = serial.Serial(port=self.serial_port,

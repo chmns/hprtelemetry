@@ -121,10 +121,10 @@ class MapColumn(PanedWindow):
         self.status_bar = Frame(self, bg=Colors.BG_COLOR)
         self.status_bar.pack(side=BOTTOM, expand=False, fill=X)
 
-        self.packet_num_label = Label(self.status_bar, font=Fonts.SMALL_FONT, textvariable=self.last_packet_num, bg=Colors.BG_COLOR, fg=Colors.WHITE, anchor=E, justify="left")
+        self.packet_num_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, textvariable=self.last_packet_num, bg=Colors.BG_COLOR, fg=Colors.WHITE, anchor=E, justify="left")
         self.packet_num_label.pack(side=LEFT, expand=False, fill=X, padx=PADX, pady=PADY)
 
-        self.bytes_label = Label(self.status_bar, font=Fonts.SMALL_FONT, textvariable=self.total_bytes_read, bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
+        self.bytes_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, textvariable=self.total_bytes_read, bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
         self.bytes_label.pack(side=LEFT, expand=False, fill=X, padx=PADX, pady=PADY)
 
         self.last_packet_indicator = Label(self.status_bar, textvariable=self.time_since_last_packet, font=Fonts.SMALL_MONO_FONT, bg=Colors.BRIGHT_RED, fg=Colors.WHITE)
@@ -277,8 +277,8 @@ class MapFrame(PanedWindow):
         self.downloader = OfflineLoader(path=self.database_path,
                                         tile_server=TILE_SERVER_URL)
 
-        print(f"Online maps downloading enabled?: {self.offline_maps_only.get()}")
-        print(f"Using offline maps database at: {self.database_path}")
+        # print(f"Online maps downloading enabled?: {self.offline_maps_only.get()}")
+        # print(f"Using offline maps database at: {self.database_path}")
 
         self.map_view = TkinterMapView(self,
                                        database_path=self.database_path,

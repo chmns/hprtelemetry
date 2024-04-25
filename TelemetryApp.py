@@ -253,7 +253,6 @@ class TelemetryApp(Tk):
 
     def set_telemetry_state(self, state: DecoderState) -> None:
         if state != self.telemetry_state:
-            print(f"Changing state to {str(state)}")
             self.telemetry_state = state
             self.telemetry_state_name.set(f"{str(state).upper()}")
             self.map_column.set_state(state)
@@ -432,9 +431,9 @@ class TelemetryApp(Tk):
                 else:
                     return
             else:
-                print(f"Not saving telemetry from serial port {port} to file")
+                # print(f"Not saving telemetry from serial port {port} to file")
                 self.state = AppState.READING_SERIAL
-                self.map_column.set_status_text(f"Listening to {port} (Not Recording)", Colors.WHITE, "dark blue")
+                self.map_column.set_status_text(f"Listening to {port}", Colors.WHITE, Colors.DARK_BLUE)
 
             self.serial_reader.serial_port = port
             self.serial_reader.start()
