@@ -53,6 +53,7 @@ class MapColumn(PanedWindow):
         PanedWindow.__init__(self, orient="vertical", background=Colors.BLACK)
 
         self.total_bytes_read = StringVar(master, name="total_bytes_read")
+        self.last_packet_num = IntVar(master, name="radioPacketNum")
         self.tilt = DoubleVar(master, 0.0, "offVert")
         self.spin = DoubleVar(master, 0.0, "spin")
         self.event_name = StringVar(master, "", "eventName")
@@ -120,7 +121,10 @@ class MapColumn(PanedWindow):
         self.status_bar = Frame(self, bg=Colors.BG_COLOR)
         self.status_bar.pack(side=BOTTOM, expand=False, fill=X)
 
-        self.bytes_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, textvariable=self.total_bytes_read, bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
+        self.packet_num_label = Label(self.status_bar, font=Fonts.SMALL_FONT, textvariable=self.last_packet_num, bg=Colors.BG_COLOR, fg=Colors.WHITE, anchor=E, justify="left")
+        self.packet_num_label.pack(side=LEFT, expand=False, fill=X, padx=PADX, pady=PADY)
+
+        self.bytes_label = Label(self.status_bar, font=Fonts.SMALL_FONT, textvariable=self.total_bytes_read, bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
         self.bytes_label.pack(side=LEFT, expand=False, fill=X, padx=PADX, pady=PADY)
 
         self.last_packet_indicator = Label(self.status_bar, textvariable=self.time_since_last_packet, font=Fonts.SMALL_MONO_FONT, bg=Colors.BRIGHT_RED, fg=Colors.WHITE)
@@ -159,14 +163,14 @@ class MapColumn(PanedWindow):
         if color is not None:
             self.status_label.config(fg=color)
 
-        if bg is not None:
-            self.status_label.config(bg=bg)
-            self.status_bar.config(bg=bg)
-            self.bytes_label.config(bg=bg)
-        else:
-            self.status_label.config(bg=Colors.BG_COLOR)
-            self.status_bar.config(bg=Colors.BG_COLOR)
-            self.bytes_label.config(bg=Colors.BG_COLOR)
+        if bg is None:
+            bg = Colors.BG_COLOR
+
+        self.status_label.config(bg=bg)
+        self.status_bar.config(bg=bg)
+        self.packet_num_label.config(bg=bg)
+        self.bytes_label.config(bg=bg)
+
 
     def set_state(self, state: DecoderState):
 
