@@ -27,6 +27,7 @@ style.use('dark_background')
 FAST_UPDATE_INTERVAL = 10
 GRAPH_UPDATE_INTERVAL = 100 # time between updating graphs
 RECENT_PACKET_TIMEOUT = 1000 # ms after receiving last message that we show red marker to user
+BYTES_PER_SECOND_INTERVAL = 500 # ms between calculating the bytes/second value
 TIME_SINCE_FORMAT = "{:.2f}"
 
 NUM_COLS = 6
@@ -96,6 +97,7 @@ class TelemetryApp(Tk):
         self.fast_update_timer = None # used to store tk.after ID for text updating
         self.slow_update_timer = None # used to store tk after ID for graph updating
         self.currently_receiving_timer = None # used for storing tk.after ID for
+        self.bytes_packets_per_second_timer = None
 
         self.last_packet_local_timestamp = 0.0
 
@@ -106,8 +108,15 @@ class TelemetryApp(Tk):
         self.time_since_last_packet = StringVar(self, "0.0", "time_since_last_packet") # must be string for formating
         self.total_bytes_read = StringVar(self, "0B", "total_bytes_read")
         self.total_messages_decoded = IntVar(self, 0, "total_messages_decoded")
+        self.bytes_per_sec = StringVar(self, "0B", "bytes_per_sec")
+        self.packets_per_sec = IntVar(self, 0, "packets_per_sec")
 
         self.test_serial_sender = TelemetryTestSender() # for test data only
+
+        self.last_bytes_total = 0 # quick hack remove later
+        self.last_packets_total = 0
+        self.bytes_counter = 0
+        self.packets_counter = 0
 
 
         """
@@ -279,6 +288,7 @@ class TelemetryApp(Tk):
         except queue.Empty:
             pass
         finally:
+            # ugly code, should use state machine:
             if self.csv_file_reader.running.is_set() or self.serial_reader.running.is_set() or self.tlm_file_reader.running.is_set():
                 self.fast_update_timer = self.after(FAST_UPDATE_INTERVAL, self.update)
             else:
@@ -292,6 +302,11 @@ class TelemetryApp(Tk):
 
         self.slow_update_timer = self.after(GRAPH_UPDATE_INTERVAL, self.update_graph)
 
+    def update_stats(self):
+        print(self.format_bytes(self.bytes_counter / (BYTES_PER_SECOND_INTERVAL / 1000)))
+        self.bytes_counter = 0
+
+        self.bytes_packets_per_second_timer = self.after(BYTES_PER_SECOND_INTERVAL, self.update_stats)
 
     def message_callback(self, message):
         """
@@ -301,6 +316,12 @@ class TelemetryApp(Tk):
         self.total_bytes_read.set(self.format_bytes(message.total_bytes))
         self.total_messages_decoded.set(message.total_messages)
         self.last_packet_local_timestamp = message.local_time
+
+        self.bytes_counter += (message.total_bytes - self.last_bytes_total)
+        self.packets_counter += (message.total_messages - self.last_packets_total)
+
+        self.last_bytes_total = message.total_bytes
+        self.last_packets_total = message.total_messages
 
         for (key, value) in message.telemetry.items():
             self.setvar(key, value)
@@ -349,6 +370,7 @@ class TelemetryApp(Tk):
         self.last_packet_local_timestamp = monotonic()
         self.update()
         self.update_graph()
+        self.update_stats()
 
     def stop(self):
         if self.fast_update_timer is not None:
@@ -358,6 +380,10 @@ class TelemetryApp(Tk):
         if self.slow_update_timer is not None:
             self.after_cancel(self.slow_update_timer)
             self.slow_update_timer = None
+
+        if self.bytes_packets_per_second_timer is not None:
+            self.after_cancel(self.bytes_packets_per_second_timer)
+            self.bytes_packets_per_second_timer = None
 
         # stop file decoder if it's running
         self.csv_file_reader.stop()

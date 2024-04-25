@@ -41,7 +41,7 @@ class TelemetryReader(object):
         self.name = name
         self.bytes_received = 0
         self.messages_decoded = 0
-        self.print_received = True
+        self.print_received = False
 
     def start(self) -> None:
         self.running.set()
@@ -415,11 +415,11 @@ class BinaryFileReader(TelemetryReader):
                 packets = raw_data.split(SYNC_WORD)
 
                 for packet in packets:
+                    print("Packet")
                     if not running.is_set():
                         return
 
                     try:
-                        packet = packet + SYNC_WORD # hack: should not need to add SYNC word here
                         self.bytes_received += len(packet) # keep track of total amount of data we got since start
                         decoded_messages = self.decoder.decode(packet)
                     except Exception as error:
