@@ -145,10 +145,10 @@ class RadioTelemetryDecoder(TelemetryDecoder):
                            "accelZ" : self.accel_modifier,
                            "offVert" : self.offvert_and_spin_modifier,
                            "spin" : self.offvert_and_spin_modifier}
-        
-        self.floats = ["preGnssLat",  "preGnssLon",  "preGnssAlt",
-                       "gnssLat",     "gnssLon",     "gnssAlt",
-                       "postGnssLat", "postGnssLon", "postGnssAlt"]
+
+        self.floats = ["preGnssLat",  "preGnssLon",
+                       "gnssLat",     "gnssLon",
+                       "postGnssLat", "postGnssLon"]
 
     def name_modifier(self, name: bytes) -> str:
         return name.decode("ascii").strip().rstrip('\x00')
@@ -161,13 +161,19 @@ class RadioTelemetryDecoder(TelemetryDecoder):
 
     def offvert_and_spin_modifier(self, offvert: float) -> float:
         return offvert * self.OFFVERT_MULTIPLIER
-    
-    def format_floats(self, message):
-        for key, value in message.items():
-            if key in self.floats:
-                message[f"{key}String"] = self.gnss_coords_modifier(value)
 
-        return message
+    def generate_float_strings(self, telemetry: dict):
+        """
+        Adds an additional pre-formtted float (as str type) to
+        telemetry for every named float
+        """
+        float_strings = {}
+
+        for key, value in telemetry.items():
+            if key in self.floats:
+                float_strings[f"{key}String"] = self.gnss_coords_modifier(value)
+
+        return float_strings
 
 
     def decode(self, data_bytes) -> list | None:
@@ -193,10 +199,9 @@ class RadioTelemetryDecoder(TelemetryDecoder):
                     pass # if [cont] doesn't exist in message then it will give exception, we ignore
 
                 try:
-                    message = self.format_floats(message)
+                    message |= self.generate_float_strings(message)
                 except:
                     pass
-
 
         return telemetry
 

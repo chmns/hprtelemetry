@@ -450,7 +450,7 @@ class TelemetryApp(Tk):
 
         filename = askopenfilename(filetypes =[('Telemetry Binary Files', '*.tlm'),
                                                ('Telemetry Text Files', '*.csv')])
-        
+
         if filename.endswith(".tlm"):
             self.reset()
             self.tlm_file_reader.filename = filename
@@ -458,7 +458,7 @@ class TelemetryApp(Tk):
             self.map_column.set_status_text(f"Playing: {filename.split('/')[-1]}", Colors.WHITE, Colors.DARK_GREEN)
             self.tlm_file_reader.start()
             self.start()
-            
+
         if filename.endswith(".csv"):
             self.reset()
             self.csv_file_reader.filename = filename
@@ -508,12 +508,12 @@ class TelemetryApp(Tk):
     def set_offline_path(self):
         if not self.confirm_stop():
             return
-        
+
         filename = askopenfilename(filetypes =[('Map Database', '*.db'), ('Other Files', '*.*')])
         if filename is not None and filename != "":
             print(f"Attempting to load map file: {filename}")
             self.map_column.load_offline_database(filename)
-    
+
     def delete_map(self):
         self.map_column.delete_map()
 

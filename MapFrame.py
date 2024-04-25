@@ -90,9 +90,9 @@ class MapColumn(PanedWindow):
 
         self.current_location = LocationRow(self,
                                             CURRENT_TEXT,
-                                            StringVar(master, DEFAULT_LAT, "gnssLatString"),
-                                            StringVar(master, DEFAULT_LON, "gnssLonString"),
-                                            StringVar(master, ZERO_ALT,    "gnssAltString"))
+                                            StringVar(master, ZERO_LAT, "gnssLatString"),
+                                            StringVar(master, ZERO_LON, "gnssLonString"),
+                                            StringVar(master, ZERO_ALT, "gnssAltString"))
 
         self.postflight_location = LocationRow(self,
                                                POSTFLIGHT_TEXT,

@@ -274,20 +274,20 @@ class BinaryFileReader(TelemetryReader):
         try:
             with open(self.filename, 'rb') as file:
                 raw_data = file.read()
-                
+
                 if not running.is_set():
                         return
-                
+
                 packets = raw_data.split(SYNC_WORD)
 
                 for packet in packets:
                     if not running.is_set():
                         return
-                    
+
                     try:
                         packet = packet + SYNC_WORD # hack: should not need to add SYNC word here
                         self.bytes_received += len(packet) # keep track of total amount of data we got since start
-                        decoded_messages = self.decoder.decode(packet) 
+                        decoded_messages = self.decoder.decode(packet)
                     except Exception as error:
                         print(f"Error decoding data\n{str(error)}")
 
@@ -299,7 +299,7 @@ class BinaryFileReader(TelemetryReader):
                                               monotonic(),
                                               self.bytes_received,
                                               self.messages_decoded))
-                            
+
                     sleep(TLM_INTERVAL)
 
         except IOError:
