@@ -256,6 +256,7 @@ class MapFrame(PanedWindow):
         self.offline_maps_only.trace_add("write", self.set_offline_maps_only)
 
         self.autofollow = BooleanVar(self, True, name="autofollow")
+        self.autofollow.trace_add("write", self.center_map)
 
         script_directory = os.path.dirname(os.path.abspath(__file__))
         self.database_path = os.path.join(script_directory, DEFAULT_DATABASE_NAME)
@@ -297,6 +298,17 @@ class MapFrame(PanedWindow):
         self.reset()
         self.__update_zoom_label__()
 
+    def center_map(self, *_):
+        if not self.autofollow.get():
+            return
+
+        match self.state:
+            case DecoderState.PREFLIGHT:
+                self.map_view.set_position(self.preLat.get(), self.preLon.get())
+            case DecoderState.INFLIGHT:
+                self.map_view.set_position(self.lat.get(), self.lon.get())
+            case DecoderState.POSTFLIGHT:
+                self.map_view.set_position(self.postLat.get(), self.postLon.get())
 
     def set_offline_maps_only(self, *_):
         offline_only = self.offline_maps_only.get()
@@ -352,13 +364,13 @@ class MapFrame(PanedWindow):
                 return
             case DecoderState.PREFLIGHT:
                 new_lat = self.preLat.get()
-                new_lon = self.preLat.get()
+                new_lon = self.preLon.get()
             case DecoderState.INFLIGHT:
                 new_lat = self.lat.get()
                 new_lon = self.lon.get()
             case DecoderState.POSTFLIGHT:
                 new_lat = self.postLat.get()
-                new_lon = self.postLat.get()
+                new_lon = self.postLon.get()
 
         if self.prevLat != new_lat:
             self.prevLat = new_lat
