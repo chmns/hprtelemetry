@@ -39,15 +39,15 @@ CELL_WIDTH = 220
 
 """
 Work list:
-1.  CSV format like ground station CSV format
-2.  Faster graph rendering
+1.  CSV file: always save FLIGHT data, apply modifiers to time+accelZ+spin+offVert
+2.  Add preflight/postflight marker on map
 3.  Show name of log file that is being written to
-4.  Add log window
-5.  Add min to readout
-6.  Click on GPS lat/lon to make map move there
-7.  Event colors: 18 to 21,26,28 red color. Range 8-5 green.
-8.  Add online/offline toggle to map itself
-9.  Add download current area to map itself
+4.  Show last packet number
+5.  Add minimim to readout
+6.  Event colors: 18 to 21,26,28 red color. Range 8-5 green.
+7.  Add online/offline toggle to map itself
+8.  Add download current area to map itself
+9   Faster graph rendering using tkchart
 """
 
 class AppState(Enum):
