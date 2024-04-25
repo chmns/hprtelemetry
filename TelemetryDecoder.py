@@ -185,6 +185,26 @@ class RadioTelemetryDecoder(TelemetryDecoder):
 
         return float_strings
 
+    def generate_name_strings(self, telemetry: dict) -> dict:
+
+        name_strings = {}
+
+        # add separate event name value:
+        try:
+            event = telemetry["event"]
+            name_strings["eventName"] = f"{self.event_names[event]} [{event}]"
+        except KeyError:
+            pass # if [event] doesn't exist in telemetry then it will give exception, we ignore
+
+        # if there's a cont code (PREFLIGHT) then also add the name for it
+        try:
+            cont = telemetry["cont"]
+            name_strings["contName"] = f"{self.cont_names[cont]} [{cont}]"
+        except KeyError:
+            pass # if [cont] doesn't exist in telemetry then it will give exception, we ignore
+
+        return name_strings
+
     def decode(self, data_bytes) -> list | None:
         """
         Takes buffer of bytes and converts into a
@@ -229,32 +249,6 @@ class RadioTelemetryDecoder(TelemetryDecoder):
         except Exception as e:
             print(e)
             return None
-
-    def modify(self, telemetry: dict) -> dict:
-        """
-        Modifies a decoded telemetary dict to be acceptable
-        to the user interaces. For instance remove NULLs from
-        name and format floats to strings
-        """
-        if telemetry is not None:
-            # apply modifiers from our list
-            telemetry = self.apply_modifiers(telemetry)
-
-            # add separate event name value:
-            try:
-                event = telemetry["event"]
-                telemetry["eventName"] = f"{self.event_names[event]} [{event}]"
-            except:
-                pass # if [event] doesn't exist in telemetry then it will give exception, we ignore
-
-            # if there's a cont code (PREFLIGHT) then also add the name for it
-            try:
-                cont = telemetry["cont"]
-                telemetry["contName"] = f"{self.cont_names[cont]} [{cont}]"
-            except:
-                pass # if [cont] doesn't exist in telemetry then it will give exception, we ignore
-
-        return telemetry
 
 
 class SDCardTelemetryDecoder(TelemetryDecoder):

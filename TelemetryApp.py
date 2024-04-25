@@ -39,14 +39,13 @@ CELL_WIDTH = 220
 
 """
 Work list:
-1.  Add preflight/postflight marker on map
-2.  Show name of log file that is being written to
-3.  Show last packet number
-4.  Add minimim to readout
-5.  Event colors: 18 to 21,26,28 red color. Range 8-5 green.
-6.  Add online/offline toggle to map itself
-7.  Add download current area to map itself
-8.  Faster graph rendering using tkchart
+1.  Show name of log file that is being written to
+2.  Show last packet number
+3.  Add minimim to readout
+4.  Event colors: 18 to 21,26,28 red color. Range 8-5 green.
+5.  Add online/offline toggle to map itself
+6.  Add download current area to map itself
+7.  Faster graph rendering using tkchart
 """
 
 class AppState(Enum):
