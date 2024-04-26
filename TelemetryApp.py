@@ -554,9 +554,12 @@ class TelemetryApp(Tk):
 
         return "{:.3f}".format(size)[:5] + power_labels[n] + "B"
 
+from pympler.tracker import SummaryTracker
 
 if __name__ == "__main__":
+    tracker = SummaryTracker()
     telemetry = TelemetryApp()
     telemetry.mainloop()
     telemetry.quit()
+    tracker.print_diff()
 

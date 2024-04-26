@@ -7,7 +7,7 @@ from matplotlib.figure import Figure
 import matplotlib.animation as animation
 from collections import deque
 
-NUM_POINTS = 100
+NUM_POINTS = 1000
 LINEWIDTH = 1
 FPS = 20 # update rate of graph
 INITIAL_INTERVAL = 1 # for filling empty space at start

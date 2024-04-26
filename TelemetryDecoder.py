@@ -119,7 +119,7 @@ class RadioTelemetryDecoder(TelemetryDecoder):
     then modify() changes this to be appropriate for the UI
     """
 
-    NUM_FLIGHT_DATA_MESSAGES = 4        # each in-flight packet contains this many actual data samples
+    NUM_FLIGHT_DATA_MESSAGES = 1        # each in-flight packet contains this many actual data samples
     FLIGHT_DATA_MESSAGE_LENGTH = 13     # length of each of this samples
     FLIGHT_DATA_TOTAL_LENGTH = NUM_FLIGHT_DATA_MESSAGES * FLIGHT_DATA_MESSAGE_LENGTH
     SYNC_WORD_LENGTH = 4
