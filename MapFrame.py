@@ -151,8 +151,8 @@ class MapColumn(PanedWindow):
     def load_offline_database(self, database_path):
         self.map_frame.load_offline_database(database_path)
 
-    def delete_map(self):
-        self.map_frame.delete_map()
+    # def delete_map(self):
+        # self.map_frame.delete_map()
 
     def set_status_text(self, text,
                         color:str = None,
@@ -461,10 +461,10 @@ class MapFrame(PanedWindow):
         try:
             self.downloader.save_offline_tiles(top_left_position,
                                                bottom_right_position,
-                                               self.map_view,
+                                               self.map_view.zoom,
                                                OFFLINE_ZOOM_MAX)
-        except Exception:
-            print("Error downloading offline maps")
+        except Exception as e:
+            print(f"Error downloading offline maps: {e}")
         else:
             self.map_view.set_position(*current_position)
 
@@ -486,8 +486,8 @@ class MapFrame(PanedWindow):
         self.autofollow_checkbox.lift()
         self.reset()
 
-    def delete_map(self):
-        del self.map_view
+    # def delete_map(self):
+        # del self.map_view
 
 class LocationRow(Frame):
     def __init__(self,
