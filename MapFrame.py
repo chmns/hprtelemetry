@@ -207,7 +207,7 @@ class MapColumn(PanedWindow):
             try:
                 self.landing_location.pack(after=self.postflight_location, side=TOP, expand=False, fill=X, padx=PADX)
             except Exception:
-                self.landing_location.pack(before=self.status_bar, side=BOTTOM, expand=False, fill=X, padx=PADX)
+                self.landing_location.pack(after=self.current_location, side=TOP, expand=False, fill=X, padx=PADX)
 
         self.map_frame.state = state
 

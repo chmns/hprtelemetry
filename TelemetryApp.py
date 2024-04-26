@@ -65,6 +65,8 @@ class TelemetryApp(Tk):
 
         super().__init__(screenName, baseName, className, useTk, sync, use)
 
+        self.tracker = SummaryTracker()
+
         self.state = AppState.IDLE
 
         self.message_queue = queue.Queue() # incoming telemetry from file or serial port
@@ -248,7 +250,7 @@ class TelemetryApp(Tk):
             self.bind(str(i+1), self.num_key_pressed)
 
         self.bind('q', lambda _: self.quit())
-        self.bind('s', lambda _: print(self.serial_reader.available_ports()))
+        self.bind('s', lambda _: self.tracker.print_diff())
         self.bind('r', lambda _: self.reset())
         self.bind('t', lambda _: self.open_telemetry_test_file())
         self.focus()
@@ -269,6 +271,7 @@ class TelemetryApp(Tk):
 
     def on_closing(self):
         if self.confirm_stop():
+            self.tracker.print_diff()
             self.destroy()
             self.quit()
 
@@ -519,7 +522,7 @@ class TelemetryApp(Tk):
 
         else:
             messagebox.showinfo("Downloading Successful",
-                                f"Saved current location to database: {self.map_column.database_path}")
+                                f"Saved current location to database.")
 
         finally:
             self.download_overlay.destroy()
@@ -557,9 +560,7 @@ class TelemetryApp(Tk):
 from pympler.tracker import SummaryTracker
 
 if __name__ == "__main__":
-    tracker = SummaryTracker()
     telemetry = TelemetryApp()
     telemetry.mainloop()
     telemetry.quit()
-    tracker.print_diff()
 
