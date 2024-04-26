@@ -448,20 +448,22 @@ class MapFrame(PanedWindow):
         self.update_fix()
 
     def download_current_map(self):
-        current_zoom = self.map_view.zoom
+        current_zoom = round(self.map_view.zoom)
         current_position = self.map_view.get_position()
         top_left_position = osm_to_decimal(*self.map_view.upper_left_tile_pos, current_zoom)
         bottom_right_position = osm_to_decimal(*self.map_view.lower_right_tile_pos, current_zoom)
 
+
+
         print(f"Attempting to download region bound by: {top_left_position} and {bottom_right_position}")
-        print(f"From zoom level: {self.map_view.zoom} to {OFFLINE_ZOOM_MAX}")
+        print(f"From zoom level: {current_zoom} to {OFFLINE_ZOOM_MAX}")
 
         self.map_view.set_position(*current_position)
 
         try:
             self.downloader.save_offline_tiles(top_left_position,
                                                bottom_right_position,
-                                               self.map_view.zoom,
+                                               current_zoom,
                                                OFFLINE_ZOOM_MAX)
         except Exception as e:
             print(f"Error downloading offline maps: {e}")
