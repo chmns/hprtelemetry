@@ -30,7 +30,7 @@ RECENT_PACKET_TIMEOUT = 1000 # ms after receiving last message that we show red 
 BYTES_PER_SECOND_INTERVAL = 500 # ms between calculating the bytes/second value
 TIME_SINCE_FORMAT = "{:.2f}"
 
-PROFILING = False
+PROFILING = False # set to True and press 's' key during app running to see memory use
 
 NUM_COLS = 6
 NUM_ROWS = 3
@@ -47,7 +47,6 @@ Work list:
 3.  Event colors: 18 to 21,26,28 red color. Range 8-5 green.
 4.  Add online/offline toggle to map itself
 5.  Add download current area to map itself
-6.  Faster graph rendering using tkchart
 """
 
 class AppState(Enum):
