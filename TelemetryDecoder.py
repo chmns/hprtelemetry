@@ -29,7 +29,7 @@ class ErrorPacket(object):
     def __init__(self, event) -> None:
         self.values["event"] = event
 
-class PreFlightPacket(RadioPacket):
+class PreFlightPacket(RadioPacket): # 43 bytes
     keys = ["event",          # uint8_t   event
             "preGnssFix",     # uint8_t   gnss.fix # interpret as bool
             "cont",           # uint8_t   cont.reportCode
@@ -43,7 +43,7 @@ class PreFlightPacket(RadioPacket):
 
     format = f"{ENDIANNESS}B?B20shhffH6s"
 
-class InFlightData(RadioPacket):
+class InFlightData(RadioPacket): # 13 bytes
     keys = ["event",     # uint8_t  event
             "time",      # uint16_t fltTime
             "fusionVel", # int16_t  vel
@@ -54,7 +54,7 @@ class InFlightData(RadioPacket):
 
     format = f"{ENDIANNESS}BHhhhhh"
 
-class InFlightMetaData(RadioPacket):
+class InFlightMetaData(RadioPacket): # 18 bytes
     keys = ["radioPacketNum", # int16_t packetnum
             "gnssAlt",        # int16_t GPSalt
             "gnssLat",        # float   GPS.location.lat
@@ -63,7 +63,7 @@ class InFlightMetaData(RadioPacket):
 
     format = f"{ENDIANNESS}HHff6s"
 
-class PostFlightPacket(RadioPacket):
+class PostFlightPacket(RadioPacket): # 26
     keys = ["event",        # uint8_t  event
             "maxAlt",       # uint16_t maxAlt
             "maxVel",       # uint16_t maxVel

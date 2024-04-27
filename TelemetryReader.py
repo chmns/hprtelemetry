@@ -123,8 +123,8 @@ class TelemetrySerialReader(TelemetryReader):
                         print(f"{len(telemetry_bytes):>6} bytes: {telemetry_bytes.hex(' ')}  ({self.bytes_received} bytes total)") # for debug
 
             except Exception as error:
-                print(f"Error reading from port: {self.serial_port}\n{str(error)}")
-                print(f"{telemetry_bytes = }")
+                print(f"Error reading from port: {self.serial_port}, disconnecting\n{str(error)}")
+                break
 
             # Open binary file for direct data backup
             if tlm_file is None and self.filename is not None: # tlm file isn't open but user has added backup file during running
