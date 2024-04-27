@@ -14,6 +14,7 @@ TelemetryDecoder:
 """
 ENDIANNESS = "<"
 FLOATS_FORMAT = "{:.6f}"
+STRING_DECODING_ERRORS = "ignore"
 
 class RadioPacket(object):
     def __init__(self,
@@ -158,13 +159,16 @@ class RadioTelemetryDecoder(TelemetryDecoder):
         """
         Removes extra or bad characters from name
         """
-        return name.decode("ascii").strip().rstrip('\x00')
+        return name.decode("ascii", errors=STRING_DECODING_ERRORS).strip().rstrip('\x00')
 
     def callsign_modifier(self, callsign: bytes) -> str:
         """
         Removes extra or bad characters from callsign
         """
-        return callsign.decode("ascii").strip()
+        try:
+            return callsign.decode("ascii", errors=STRING_DECODING_ERRORS).strip()
+        except UnicodeDecodeError:
+            return
 
     def accel_modifier(self, accel: float) -> float:
         return accel * self.ACCEL_MULTIPLIER
