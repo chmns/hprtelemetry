@@ -1,6 +1,12 @@
 from TelemetryReader import TelemetryReader
+from TelemetryDecoder import PreFlightPacket, InFlightData, InFlightMetaData, PostFlightPacket
+import struct
 from time import sleep
 import serial
+
+CALLSIGN = "QQ0523".encode("ascii")
+NAME = "Test Flight Rocket 1".encode("ascii")
+SYNC_WORD = bytes.fromhex("A5A5A5A5")
 
 class TelemetryTestSender(TelemetryReader):
 
@@ -12,9 +18,26 @@ class TelemetryTestSender(TelemetryReader):
         self.serial_port = "COM3"
         TelemetryReader.__init__(self, None)
 
-    def send_single_packet(self, packet: bytes):
+        flight_packet = bytearray(struct.pack(InFlightData.format, 1, 500, 200, 300, 1200, 2200, 505))
+        flight_packet += struct.pack(InFlightMetaData.format, 10, 220, 45.79160, 0.59950, CALLSIGN)
+
+        self.test_packets = [
+            #                                   Event   Fix    Cont  Name   Baro    gAlt    gLat        gLon        sats    call
+            struct.pack(PreFlightPacket.format, 0,      False, 0,    NAME,  100,    200,    45.79164,   0.59958,    0,      CALLSIGN),
+            struct.pack(PreFlightPacket.format, 0,      True,  1,    NAME,  110,    210,    45.79165,   0.59957,    1,      CALLSIGN),
+            struct.pack(PreFlightPacket.format, 0,      True,  2,    NAME,  120,    220,    45.79166,   0.59956,    3,      CALLSIGN),
+
+            flight_packet,
+            #                                    Event  mAlt,   mVel,   mG, mGAlt,
+            struct.pack(PostFlightPacket.format, 26, 100,  200, 3, 1000, True, 1001, 45.79166, 0.59956, CALLSIGN),
+        ]
+
+    def send_single_packet(self, packet_number: int):
         assert self.serial_port is not None
         port = None
+
+        if packet_number < 0 or packet_number >= len(self.test_packets):
+            return
 
         try:
             port = serial.Serial(port=self.serial_port,
@@ -26,7 +49,12 @@ class TelemetryTestSender(TelemetryReader):
 
         try:
             # print(f"Sending packet {packet} out of port: {self.serial_port}")
-            port.write(packet)
+            port.write(self.test_packets[packet_number])
+            port.write(SYNC_WORD)
+            # for packet in self.test_packets:
+                # port.write(packet)
+                # port.write(SYNC_WORD)
+
         except IOError as e:
             print(e)
         finally:
