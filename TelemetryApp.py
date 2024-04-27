@@ -30,6 +30,8 @@ RECENT_PACKET_TIMEOUT = 1000 # ms after receiving last message that we show red 
 BYTES_PER_SECOND_INTERVAL = 500 # ms between calculating the bytes/second value
 TIME_SINCE_FORMAT = "{:.2f}"
 
+PROFILING = False
+
 NUM_COLS = 6
 NUM_ROWS = 3
 PADX = 4
@@ -65,7 +67,9 @@ class TelemetryApp(Tk):
 
         super().__init__(screenName, baseName, className, useTk, sync, use)
 
-        self.tracker = SummaryTracker()
+        self.tracker = None
+        if PROFILING:
+            self.tracker = SummaryTracker()
 
         self.state = AppState.IDLE
 
@@ -112,6 +116,11 @@ class TelemetryApp(Tk):
         self.total_messages_decoded = IntVar(self, 0, "total_messages_decoded")
         self.bytes_per_sec = StringVar(self, "0B", "bytes_per_sec")
         self.packets_per_sec = IntVar(self, 0, "packets_per_sec")
+
+        # for test
+        self.print_to_console = BooleanVar(self, False, "print_to_console")
+        self.print_to_console.trace_add("write", self.update_print_to_console)
+
 
         self.test_serial_sender = TelemetryTestSender() # for test data only
 
@@ -250,13 +259,17 @@ class TelemetryApp(Tk):
             self.bind(str(i+1), self.num_key_pressed)
 
         self.bind('q', lambda _: self.quit())
-        self.bind('s', lambda _: self.tracker.print_diff())
+        if PROFILING:
+            self.bind('s', lambda _: self.tracker.print_diff())
         self.bind('r', lambda _: self.reset())
         self.bind('t', lambda _: self.open_telemetry_test_file())
         self.focus()
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.reset()
+
+    def update_print_to_console(self, *_):
+        self.serial_reader.print_received = self.print_to_console.get()
 
     def num_key_pressed(self, event):
         if self.serial_reader.running.is_set():
@@ -271,7 +284,8 @@ class TelemetryApp(Tk):
 
     def on_closing(self):
         if self.confirm_stop():
-            self.tracker.print_diff()
+            if PROFILING:
+                self.tracker.print_diff()
             self.destroy()
             self.quit()
 
@@ -306,7 +320,7 @@ class TelemetryApp(Tk):
         self.slow_update_timer = self.after(GRAPH_UPDATE_INTERVAL, self.update_graph)
 
     def update_stats(self):
-        print(self.format_bytes(self.bytes_counter / (BYTES_PER_SECOND_INTERVAL / 1000)))
+        # print(self.format_bytes(self.bytes_counter / (BYTES_PER_SECOND_INTERVAL / 1000)))
         self.bytes_counter = 0
 
         self.bytes_packets_per_second_timer = self.after(BYTES_PER_SECOND_INTERVAL, self.update_stats)
@@ -437,6 +451,7 @@ class TelemetryApp(Tk):
 
         self.serial_menu.add_separator()
         self.serial_menu.add_command(label="Re-scan", command=self.update_serial_menu)
+        self.serial_menu.add_checkbutton(label="Print data in console",variable=self.print_to_console)
 
     def listen_to_port(self, port):
         if self.confirm_stop():
