@@ -143,7 +143,6 @@ class TelemetrySerialReader(TelemetryReader):
             # if we have an open TLM file then write the raw data into it
             if tlm_file is not None:
                 self.safe_write(tlm_file, self.filename, telemetry_bytes)
-                os.fsync(tlm_file.fileno()) # force packet to be written to disk
 
             # Open human-readable CSV file for backup
             if csv_file is None and self.filename is not None: # csv file isn't open but user has added backup file during running
@@ -267,7 +266,6 @@ class TelemetrySerialReader(TelemetryReader):
                     self.safe_write(csv_file,
                                     csv_filename,
                                     self.csv_format(csv_telemetry.values()))
-                    os.fsync(csv_file.fileno()) # force packet to be written to disk
 
                 # Finely store old state
                 previous_decoder_state = self.decoder.state
