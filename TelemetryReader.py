@@ -14,6 +14,7 @@ import pathlib
 SYNC_WORD = bytes.fromhex("A5A5A5A5")
 MAX_PACKET_LENGTH = 74
 TLM_INTERVAL = 0.01
+SERIAL_READ_INTERVAL = 0.01
 
 TLM_EXTENSION = ".tlm"
 CSV_EXTENSION = ".csv"
@@ -88,6 +89,7 @@ class TelemetrySerialReader(TelemetryReader):
         port = None
         tlm_file = None
         csv_file = None
+        csv_filename = None
         csv_saving_state = DecoderState.OFFLINE
         previous_decoder_state = DecoderState.OFFLINE
 
@@ -113,18 +115,19 @@ class TelemetrySerialReader(TelemetryReader):
             try:
                 telemetry_bytes = self.read(port)
 
-                if len(telemetry_bytes) == 0:
-                    sleep(0.01)
-                    continue
-                else:
-                    self.bytes_received += len(telemetry_bytes) # keep track of total amount of data we got since start
-
-                    if self.print_received:
-                        print(f"{len(telemetry_bytes):>6} bytes: {telemetry_bytes.hex(' ')}  ({self.bytes_received} bytes total)") # for debug
-
             except Exception as error:
                 print(f"Error reading from port: {self.serial_port}\n{str(error)}")
                 print(f"{telemetry_bytes = }")
+
+            if len(telemetry_bytes) == 0:
+                sleep(SERIAL_READ_INTERVAL)
+                continue
+            else:
+                self.bytes_received += len(telemetry_bytes) # keep track of total amount of data we got since start
+
+                if self.print_received:
+                    print(f"{len(telemetry_bytes):>6} bytes: {telemetry_bytes.hex(' ')}  ({self.bytes_received} bytes total)") # for debug
+
 
             # Open binary file for direct data backup
             if tlm_file is None and self.filename is not None: # tlm file isn't open but user has added backup file during running
@@ -139,11 +142,8 @@ class TelemetrySerialReader(TelemetryReader):
 
             # if we have an open TLM file then write the raw data into it
             if tlm_file is not None:
-                try:
-                    tlm_file.write(telemetry_bytes)
-                    tlm_file.flush()
-                except Exception as error:
-                    print(f"Couldn't write backup data to file {self.filename}\n{str(error)}")
+                self.safe_write(tlm_file, self.filename, telemetry_bytes)
+                os.fsync(tlm_file.fileno()) # force packet to be written to disk
 
             # Open human-readable CSV file for backup
             if csv_file is None and self.filename is not None: # csv file isn't open but user has added backup file during running
@@ -168,7 +168,7 @@ class TelemetrySerialReader(TelemetryReader):
                 print(f"Error decoding data from: {self.serial_port}\n{str(error)}")
                 continue
 
-            # INFLIGHT packets actually include 4 telemetry payloads. for now we just merge them
+            # INFLIGHT packets can have 4 telemetry payloads + metadata. for now we just merge them to one
             if received_telemetry_messages:
                 for message in received_telemetry_messages:
                     self.messages_decoded += 1
@@ -209,7 +209,9 @@ class TelemetrySerialReader(TelemetryReader):
                     csv_saving_state = DecoderState.PREFLIGHT
 
                     # Record file header (PREFLIGHT keys + date and time)
-                    csv_file.write(self.csv_format(csv_telemetry.keys()))
+                    self.safe_write(csv_file,
+                                    csv_filename,
+                                    self.csv_format(csv_telemetry.keys()))
 
                     # Record position of start of PREFLIGHT packet:
                     preflight_start_position = csv_file.tell()
@@ -220,8 +222,11 @@ class TelemetrySerialReader(TelemetryReader):
                     # If we have not yet seen any FLIGHT data but already saw PREFLIGHT data...
                     if csv_saving_state == DecoderState.PREFLIGHT:
                         # then we go back to start of PREFLIGHT packet and erase
-                        csv_file.seek(preflight_start_position)
-                        csv_file.truncate()
+                        try:
+                            csv_file.seek(preflight_start_position)
+                            csv_file.truncate()
+                        except Exception as error:
+                            print(f"Error seeking/truncating {csv_filename}:\n{error}")
 
                 # 3. PREFLIGHT -> INFLIGHT
                 elif previous_decoder_state == DecoderState.PREFLIGHT and \
@@ -231,7 +236,9 @@ class TelemetrySerialReader(TelemetryReader):
                         # ... set the writer state to FLIGHT and ...
                         csv_saving_state = DecoderState.INFLIGHT
                         # ...write the FLIGHT data headers:
-                        csv_file.write(inflight_header)
+                        self.safe_write(csv_file,
+                                        csv_filename,
+                                        inflight_header)
 
                 # 4. INFLIGHT -> POSTFLIGHT: write postflight header
                 elif previous_decoder_state == DecoderState.INFLIGHT and \
@@ -239,19 +246,28 @@ class TelemetrySerialReader(TelemetryReader):
 
                     if csv_saving_state == DecoderState.INFLIGHT:
                         csv_saving_state = DecoderState.POSTFLIGHT
-                        csv_file.write(postflight_header) # write postflight header then...
-                        postflight_start_position = csv_file.tell() # store start of postflight data for use later
-                        csv_file.flush() # ensure last flight data was written to disk
+                        self.safe_write(csv_file,
+                                        csv_filename,
+                                        postflight_header) # write postflight header then...
+                        # store start of postflight data for use later:
+                        postflight_start_position = csv_file.tell()
 
                 # 5. POSTFLIGHT -> POSTFLIGHT: overwrite last postflight message
                 elif previous_decoder_state == DecoderState.POSTFLIGHT and \
                      self.decoder.state     == DecoderState.POSTFLIGHT:
-                     csv_file.seek(postflight_start_position)
-                     csv_file.truncate()
+                    try:
+                        if postflight_start_position != 0: # don't let erroneous postflight packet wipe whole file
+                            csv_file.seek(postflight_start_position)
+                            csv_file.truncate()
+                    except Exception as error:
+                        print(f"Error seeking/truncating {csv_filename}:\n{error}")
 
                 # Only if we are receiving the packets we expect, write to file:
                 if self.decoder.state == csv_saving_state:
-                    csv_file.write(self.csv_format(csv_telemetry.values()))
+                    self.safe_write(csv_file,
+                                    csv_filename,
+                                    self.csv_format(csv_telemetry.values()))
+                    os.fsync(csv_file.fileno()) # force packet to be written to disk
 
                 # Finely store old state
                 previous_decoder_state = self.decoder.state
@@ -283,6 +299,14 @@ class TelemetrySerialReader(TelemetryReader):
             port.close()
 
         running.clear()
+
+
+    def safe_write(self, file, filename, data):
+        try:
+            file.write(data)
+            file.flush()
+        except Exception as error:
+            print(f"Error writing to file {filename}:\n{error}")
 
     def csv_format(self, values: list):
         return ",".join(map(str,values)) + "\n"
