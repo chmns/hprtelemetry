@@ -172,7 +172,7 @@ class MapColumn(PanedWindow):
         self.messages_spacer.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
         self.total_bad_messages_label = NumberLabel(self.messages_stats_frame, name="Bad pkt:", textvariable=StringVar(master, name="total_bad_messages"), units="")
-        self.total_bad_messages_label.pack(sidea=LEFT, expand=True, fill=X, padx=PADX)
+        self.total_bad_messages_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
     def load_offline_database(self, database_path):
         self.map_frame.load_offline_database(database_path)
