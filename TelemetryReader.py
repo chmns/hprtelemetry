@@ -175,7 +175,10 @@ class TelemetrySerialReader(TelemetryReader):
                     received_telemetry |= message # merge telemetry dicts together
 
             # Apply modifiers to telemetry (like accel * ACCEL_MULTIPLIER)
-            received_telemetry = self.decoder.apply_modifiers(received_telemetry)
+            try:
+                received_telemetry = self.decoder.apply_modifiers(received_telemetry)
+            except Exception as error:
+                print(f"Error applying modifers to telemetry data received from: {self.serial_port}\n{str(error)}")
 
             # if there is open csv_file then write
             if received_telemetry and csv_file is not None:
@@ -273,10 +276,16 @@ class TelemetrySerialReader(TelemetryReader):
             # add additional string-representations of floats for UI
             # (should be done in UI really, but tkinter cannot apply format to variables easily
             # (this operator: |= merges 2 dicts and saves in left-side)
-            received_telemetry |= self.decoder.generate_float_strings(received_telemetry)
+            try:
+                received_telemetry |= self.decoder.generate_float_strings(received_telemetry)
+            except Exception as error:
+                print(f"Error generating float strings for telemetry data received from: {self.serial_port}\n{str(error)}")
 
             # add additional string names for UI representation:
-            received_telemetry |= self.decoder.generate_name_strings(received_telemetry)
+            try:
+                received_telemetry |= self.decoder.generate_name_strings(received_telemetry)
+            except Exception as error:
+                print(f"Error generating name strings for telemetry data received from: {self.serial_port}\n{str(error)}")
 
             # add merged dict to queue for UI:
             message_queue.put(Message(received_telemetry, # the telemetry dictionarie modify for UI display
