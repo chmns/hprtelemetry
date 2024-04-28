@@ -32,9 +32,9 @@ class ErrorPacket(object):
     def __init__(self, event) -> None:
         self.values["event"] = event
 
-class PreFlightPacket(RadioPacket): # 43 bytes
+class PreFlightPacket(RadioPacket): # 43 bytes (51)
     keys = ["event",          # uint8_t   event
-            "preGnssFix",     # uint8_t   gnss.fix # interpret as bool
+            "gnssFix",        # uint8_t   gnss.fix # interpret as bool
             "cont",           # uint8_t   cont.reportCode
             "name",           # char[20]  rocketName
             "baroAlt",        # int16_t   baseAlt
@@ -46,7 +46,7 @@ class PreFlightPacket(RadioPacket): # 43 bytes
 
     format = f"{ENDIANNESS}B?B20shhffH6s"
 
-class InFlightData(RadioPacket): # 13 bytes
+class InFlightData(RadioPacket): # 13 bytes (total 37)
     keys = ["event",     # uint8_t  event
             "time",      # uint16_t fltTime
             "fusionVel", # int16_t  vel
@@ -57,7 +57,7 @@ class InFlightData(RadioPacket): # 13 bytes
 
     format = f"{ENDIANNESS}BHhhhhh"
 
-class InFlightMetaData(RadioPacket): # 18 bytes
+class InFlightMetaData(RadioPacket): # 18 bytes (26)
     keys = ["radioPacketNum", # int16_t packetnum
             "gnssAlt",        # int16_t GPSalt
             "gnssLat",        # float   GPS.location.lat
@@ -72,11 +72,11 @@ class PostFlightPacket(RadioPacket): # 26
             "maxVel",       # uint16_t maxVel
             "maxG",         # uint16_t maxG
             "maxGnssAlt",   # uint16_t maxGPSalt
-            "postGnssFix",  # uint8_t  gnss.fix
+            "gnssFix",      # uint8_t  gnss.fix
             "postGnssAlt",  # uint16_t GPSalt
             "postGnssLat",  # float    GPS.location.lat
             "postGnssLon",  # float    GPS.location.lng
-            "callsign"]     # char[6] callsign
+            "callsign"]     # char[6]  callsign
 
     format = f"{ENDIANNESS}B4HBHff6s"
 

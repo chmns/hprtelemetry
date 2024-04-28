@@ -42,12 +42,13 @@ SASH_WIDTH = 10
 CELL_WIDTH = 220
 
 """
-Work list:
-1.  Show last packet number
-2.  Add minimim to readout
-3.  Event colors: 18 to 21,26,28 red color. Range 8-5 green.
-4.  Add online/offline toggle to map itself
-5.  Add download current area to map itself
+Work list
+---------
+1. Show baro alt in UI
+2. Put real time on each CSV line
+3. Add minimim to accel / alt / velocity indicator
+4. Event colors: 18 to 21,26,28 red color. Range 8-5 green.
+5. Reduce CPU %
 """
 
 class AppState(Enum):
@@ -82,13 +83,6 @@ class TelemetryApp(Tk):
                                "landing_latitude", "landing_longitude", "landing_time",
                                "launch_latitude", "launch_longitude", "launch_time", "gnssFix",
                                "gnssSpeed", "gnssAlt", "gnssAngle", "gnssSatellites", "radioPacketNum"]
-
-        """
-        priority variables are always updated when a new message comes in
-        (vars not in this list overwrite the last known value and only update at
-        the selected frame rate)
-        """
-        self.priority_vars = ["time", "name", "accelZ", "fusionAlt", "fusionVel"]
 
         for var in self.telemetry_vars:
             self.setvar(var)
@@ -434,6 +428,12 @@ class TelemetryApp(Tk):
 
         self.set_telemetry_state(DecoderState.OFFLINE)
         self.time_since_last_packet.set(TIME_SINCE_FORMAT.format(float(0)))
+        self.total_bytes_read.set("0B")
+        self.total_bad_bytes_read.set("0B")
+        self.total_messages_decoded.set(0)
+        self.total_bad_messages.set(0)
+        self.bytes_per_sec.set("0B")
+        self.messages_per_sec.set("0P")
 
         # clear app variables and graphs:
         self.setvar("name", "")
