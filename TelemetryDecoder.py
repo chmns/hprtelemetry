@@ -16,6 +16,9 @@ ENDIANNESS = "<"
 FLOATS_FORMAT = "{:.6f}"
 STRING_DECODING_ERRORS = "ignore"
 
+class DecodingError(Exception):
+    pass
+
 class RadioPacket(object):
     def __init__(self,
                  data_bytes: bytes) -> None:
@@ -220,39 +223,34 @@ class RadioTelemetryDecoder(TelemetryDecoder):
         # work out state from event byte:
         event = data_bytes[0]
 
-        try:
-            if event == 0 or event == 30:
-                self.state = DecoderState.PREFLIGHT
-                return [PreFlightPacket(data_bytes).as_dict()]
+        if event == 0 or event == 30:
+            self.state = DecoderState.PREFLIGHT
+            return [PreFlightPacket(data_bytes).as_dict()]
 
-            elif event < 26:
-                self.state = DecoderState.INFLIGHT
+        elif event < 26:
+            self.state = DecoderState.INFLIGHT
 
-                messages = []
+            messages = []
 
-                for index in range(0,
-                                   self.FLIGHT_DATA_TOTAL_LENGTH,
-                                   self.FLIGHT_DATA_MESSAGE_LENGTH):
+            for index in range(0,
+                                self.FLIGHT_DATA_TOTAL_LENGTH,
+                                self.FLIGHT_DATA_MESSAGE_LENGTH):
 
-                    inflight_bytes = data_bytes[index:index + self.FLIGHT_DATA_MESSAGE_LENGTH]
-                    messages.append(InFlightData(inflight_bytes).as_dict())
+                inflight_bytes = data_bytes[index:index + self.FLIGHT_DATA_MESSAGE_LENGTH]
+                messages.append(InFlightData(inflight_bytes).as_dict())
 
-                in_flight_meta_bytes = data_bytes[self.FLIGHT_DATA_TOTAL_LENGTH:]
-                messages.append(InFlightMetaData(in_flight_meta_bytes).as_dict())
+            in_flight_meta_bytes = data_bytes[self.FLIGHT_DATA_TOTAL_LENGTH:]
+            messages.append(InFlightMetaData(in_flight_meta_bytes).as_dict())
 
-                return messages
+            return messages
 
-            elif event == 28 or event == 32:
-                self.state = DecoderState.ERROR
-                return None
-
-            else:
-                self.state = DecoderState.POSTFLIGHT
-                return [PostFlightPacket(data_bytes).as_dict()]
-
-        except Exception as e:
-            print(e)
+        elif event == 28 or event == 32:
+            self.state = DecoderState.ERROR
             return None
+
+        else:
+            self.state = DecoderState.POSTFLIGHT
+            return [PostFlightPacket(data_bytes).as_dict()]
 
 
 class SDCardTelemetryDecoder(TelemetryDecoder):

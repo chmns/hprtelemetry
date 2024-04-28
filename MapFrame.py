@@ -121,12 +121,6 @@ class MapColumn(PanedWindow):
         self.status_bar = Frame(self, bg=Colors.BG_COLOR)
         self.status_bar.pack(side=BOTTOM, expand=False, fill=X)
 
-        self.packet_num_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, textvariable=self.last_packet_num, bg=Colors.BG_COLOR, fg=Colors.WHITE, anchor=E, justify="left")
-        self.packet_num_label.pack(side=LEFT, expand=False, fill=X, padx=PADX, pady=PADY)
-
-        self.bytes_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, textvariable=self.total_bytes_read, bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
-        self.bytes_label.pack(side=LEFT, expand=False, fill=X, padx=PADX, pady=PADY)
-
         self.last_packet_indicator = Label(self.status_bar, textvariable=self.time_since_last_packet, font=Fonts.SMALL_MONO_FONT, bg=Colors.BRIGHT_RED, fg=Colors.WHITE)
         self.last_packet_indicator.pack(side=RIGHT, fill=X, ipadx=PADX*2, padx=PADX*2, pady=PADY*2)
 
@@ -141,9 +135,44 @@ class MapColumn(PanedWindow):
         self.spin = NumberLabel(self.tilt_spin_frame, name="Roll:", textvariable=self.spin, units="°")
         self.spin.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
-        # bytes read
-        # valid messages decoded
-        # last packet number
+
+        # Statistics bar
+        # ==============
+        # Data:
+        self.data_stats_frame = Frame(self, bg=Colors.BG_COLOR)
+        self.data_stats_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX)
+
+        self.total_bytes_read_label = NumberLabel(self.data_stats_frame, name="Data:", textvariable=StringVar(master, name="total_bytes_read"), units="")
+        self.total_bytes_read_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+
+        self.bytes_per_second_label = NumberLabel(self.data_stats_frame, name="", textvariable=StringVar(master, name="bytes_per_sec"), units="/s")
+        self.bytes_per_second_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+
+        self.data_spacer = Frame(self.data_stats_frame, bg=Colors.BG_COLOR)
+        self.data_spacer.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+
+        self.total_bad_bytes_label = NumberLabel(self.data_stats_frame, name="Error:", textvariable=StringVar(master, name="total_bad_bytes_read"), units="")
+        self.total_bad_bytes_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+
+        # Messages:
+        self.messages_stats_frame = Frame(self, bg=Colors.BG_COLOR)
+        self.messages_stats_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX)
+
+        self.total_messages_read_label = NumberLabel(self.messages_stats_frame, name="Packets:", textvariable=StringVar(master, name="total_messages_decoded"), units="")
+        self.total_messages_read_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+
+        self.packet_num_label = NumberLabel(self.messages_stats_frame, name="Last Packet #:", textvariable=self.last_packet_num, units="")
+        self.packet_num_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+
+        self.messages_per_second_label = NumberLabel(self.messages_stats_frame, name="", textvariable=StringVar(master, name="messages_per_sec"), units="/s")
+        self.messages_per_second_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+
+        self.messages_spacer = Frame(self.messages_stats_frame, bg=Colors.BG_COLOR)
+        self.messages_spacer.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+
+        self.total_bad_messages_label = NumberLabel(self.messages_stats_frame, name="Error:", textvariable=StringVar(master, name="total_bad_messages"), units="/s")
+        self.total_bad_messages_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+
 
     def download_current_map(self):
         self.map_frame.download_current_map()
@@ -168,9 +197,6 @@ class MapColumn(PanedWindow):
 
         self.status_label.config(bg=bg)
         self.status_bar.config(bg=bg)
-        self.packet_num_label.config(bg=bg)
-        self.bytes_label.config(bg=bg)
-
 
     def set_state(self, state: DecoderState):
 
@@ -180,7 +206,7 @@ class MapColumn(PanedWindow):
             self.cont_label.pack(before=self.event_name_label, side=LEFT, expand=True, fill=X, padx=PADX)
             self.cont_event_frame.pack(after=self.name_callsign_state_frame, side=TOP, expand=False, fill=X, padx=PADX)
             self.preflight_location.pack(after=self.map_frame, side=TOP, expand=False, fill=X, padx=PADX)
-            self.tilt_spin_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX, pady=PADY)
+            self.tilt_spin_frame.pack(side=BOTTOM, after=self.data_stats_frame, expand=False, fill=X, padx=PADX, pady=PADY)
 
         if state == DecoderState.INFLIGHT:
             self.current_location.pack(after=self.preflight_location, side=TOP, expand=False, fill=X, padx=PADX)

@@ -51,6 +51,7 @@ class TelemetryTestSender(TelemetryReader):
         try:
             # print(f"Sending packet {packet} out of port: {self.serial_port}")
             packet = self.test_packets[packet_number]
+            # port.write(bytes.fromhex("00 00 00 48 61 77 6b 20 73 68 6f 63 6b 00 00 00 00 00 00 00 00 00 00 dd 01 00 00 00 00 00 00 00 00 00 00 00 00 4b 4b 34 45 4c 46 ec 94 b3 dd a5 a5 a5 a5"))
 
             port.write(packet)
             port.write(int.to_bytes(crc32(packet),4))

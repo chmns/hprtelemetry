@@ -27,7 +27,7 @@ BACKUP_NAME = "backup.tlm"
 
 TIME_FORMAT = "%H:%M:%S"
 
-Message = namedtuple("message", ["telemetry", "decoder_state", "local_time", "total_bytes", "total_messages"])
+Message = namedtuple("message", ["telemetry", "decoder_state", "local_time", "total_message_size"])
 
 class TelemetryReader(object):
     """
@@ -120,12 +120,39 @@ class TelemetrySerialReader(TelemetryReader):
             print(f"Could not open serial port: {self.serial_port}\n{str(error)}")
             return
 
+
+        # Open binary file for direct data backup
+        if tlm_file is None and self.filename is not None: # tlm file isn't open but user has added backup file during running
+            try:
+                tlm_file = open(self.filename, 'wb')
+
+            except Exception as error:
+                print(f"Couldn't open file {self.filename}")
+                tlm_file = None
+            else:
+                print(f"Open TLM file for writing backup to: {self.filename}")
+
+
+        # Open human-readable CSV file for backup
+        if csv_file is None and self.filename is not None: # csv file isn't open but user has added backup file during running
+            try:
+                csv_filename = os.path.splitext(self.filename)[0] + CSV_EXTENSION
+                csv_file = open(csv_filename, 'wt')
+
+            except Exception as error:
+                print(f"Couldn't open file {csv_filename}")
+                tlm_file = None
+            else:
+                print(f"Open CSV file for writing backup to: {csv_filename}")
+
+
         while self.running.is_set():
             telemetry_bytes = None
+            buffer = None
+            buffer_length = 0
 
             try:
                 buffer = self.read(port)
-
             except Exception as error:
                 print(f"Error reading from port: {self.serial_port}, disconnecting\n{str(error)}")
                 break
@@ -137,9 +164,16 @@ class TelemetrySerialReader(TelemetryReader):
                 buffer_length = len(buffer)
                 self.bytes_received += buffer_length # keep track of total amount of data we got since start
 
-                # if self.print_received:
-                print(f"{len(buffer):>6} bytes: {buffer.hex(' ')}  ({self.bytes_received} bytes total)") # for debug
+                if self.print_received:
+                   print(f"{len(buffer):>6} bytes: {buffer.hex(' ')}  ({self.bytes_received} bytes total)") # for debug
 
+            # if we have an open TLM file then write the raw data into it
+            # (we always write TLM data even if it is bad - for future debug)
+            if tlm_file is not None:
+                self.safe_write(tlm_file, self.filename, buffer)
+
+            # CRC32 check
+            # -----------
             if self.use_crc32:
                 received_crc32 = buffer[-FOOTER_LENGTH:-SYNC_WORD_LENGTH]
                 telemetry_bytes = buffer[:-FOOTER_LENGTH]
@@ -153,40 +187,11 @@ class TelemetrySerialReader(TelemetryReader):
                     continue
 
             else:
-                print("not using CRC32")
                 telemetry_bytes = buffer[:-SYNC_WORD_LENGTH]
-                print(f"{len(telemetry_bytes):>6} bytes: {telemetry_bytes.hex(' ')}  ({self.bytes_received} bytes total)") # for debug
 
 
-            # Open binary file for direct data backup
-            if tlm_file is None and self.filename is not None: # tlm file isn't open but user has added backup file during running
-                try:
-                    tlm_file = open(self.filename, 'wb')
-
-                except Exception as error:
-                    print(f"Couldn't open file {self.filename}")
-                    tlm_file = None
-                else:
-                    print(f"Open TLM file for writing backup to: {self.filename}")
-
-            # if we have an open TLM file then write the raw data into it
-            if tlm_file is not None:
-                self.safe_write(tlm_file, self.filename, telemetry_bytes)
-
-            # Open human-readable CSV file for backup
-            if csv_file is None and self.filename is not None: # csv file isn't open but user has added backup file during running
-                try:
-                    csv_filename = os.path.splitext(self.filename)[0] + CSV_EXTENSION
-                    csv_file = open(csv_filename, 'wt')
-
-                except Exception as error:
-                    print(f"Couldn't open file {csv_filename}")
-                    tlm_file = None
-                else:
-                    print(f"Open CSV file for writing backup to: {csv_filename}")
-
-            # We still send message to UI even if no telemetry is decoded from packet (maybe is corrupt)
-            # So start with empty dict
+            # Packet decoding
+            # ---------------
             received_telemetry = {}
             received_telemetry_messages = []
 
@@ -194,8 +199,13 @@ class TelemetrySerialReader(TelemetryReader):
                 received_telemetry_messages = self.decoder.decode(telemetry_bytes)
             except Exception as error:
                 print(f"Error decoding data from: {self.serial_port}\n{str(error)}")
+                self.bad_packets_received += 1
+                self.bad_bytes_received += buffer_length
                 continue
 
+
+            # Packet merging
+            # --------------
             # INFLIGHT packets can have 4 telemetry payloads + metadata. for now we just merge them to one
             if received_telemetry_messages:
                 for message in received_telemetry_messages:
@@ -203,12 +213,18 @@ class TelemetrySerialReader(TelemetryReader):
                     # when in flight we just send last of 4 packets to UI to save time updating:
                     received_telemetry |= message # merge telemetry dicts together
 
-            # Apply modifiers to telemetry (like accel * ACCEL_MULTIPLIER)
+
+            # Apply modifiers
+            # ---------------
+            # (like accel * ACCEL_MULTIPLIER)
             try:
                 received_telemetry = self.decoder.apply_modifiers(received_telemetry)
             except Exception as error:
                 print(f"Error applying modifers to telemetry data received from: {self.serial_port}\n{str(error)}")
 
+
+            # CSV file writing
+            # ----------------
             # if there is open csv_file then write
             if received_telemetry and csv_file is not None:
                 """
@@ -319,9 +335,9 @@ class TelemetrySerialReader(TelemetryReader):
             # add merged dict to queue for UI:
             message_queue.put(Message(received_telemetry, # the telemetry dictionarie modify for UI display
                                       self.decoder.state, # current decoder state (PRE/INFLIGHT/POST)
-                                      monotonic(), # current time in float seconds. monotonic() is not affected by time/date/zone changes
-                                      self.bytes_received, # total number of bytes receive so far
-                                      self.messages_decoded)) # total number of good messages so far
+                                      monotonic(),
+                                      buffer_length)) # current time in float seconds. monotonic() is not affected by time/date/zone changes
+
 
 
         # after ending serial port reading we must clean up:
@@ -430,8 +446,7 @@ class SDCardFileReader(TelemetryReader):
                     message_queue.put(Message(telemetry_dict,
                                             self.decoder.state,
                                             monotonic(),
-                                            self.bytes_received,
-                                            self.messages_decoded))
+                                            len(line)))
 
                     if "time" in telemetry_dict:
                         timestamp = float(telemetry_dict["time"])
@@ -490,8 +505,7 @@ class BinaryFileReader(TelemetryReader):
                             message_queue.put(Message(message,
                                               self.decoder.state,
                                               monotonic(),
-                                              self.bytes_received,
-                                              self.messages_decoded))
+                                              len(packet)))
 
                     sleep(TLM_INTERVAL)
 

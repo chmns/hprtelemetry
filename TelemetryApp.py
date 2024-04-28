@@ -27,8 +27,9 @@ style.use('dark_background')
 FAST_UPDATE_INTERVAL = 10
 GRAPH_UPDATE_INTERVAL = 100 # time between updating graphs
 RECENT_PACKET_TIMEOUT = 1000 # ms after receiving last message that we show red marker to user
-BYTES_PER_SECOND_INTERVAL = 500 # ms between calculating the bytes/second value
+STATS_INTERVAL = 500 # ms between calculating the bytes/second value
 TIME_SINCE_FORMAT = "{:.2f}"
+MESSAGE_PER_SEC_FORMAT = "{:.1f}"
 
 PROFILING = False # set to True and press 's' key during app running to see memory use
 
@@ -99,10 +100,12 @@ class TelemetryApp(Tk):
         self.tlm_file_reader = BinaryFileReader(self.message_queue)
         self.tlm_file_reader.name = "tlm_file_reader"
 
+        self.current_reader = None
+
         self.fast_update_timer = None # used to store tk.after ID for text updating
         self.slow_update_timer = None # used to store tk after ID for graph updating
         self.currently_receiving_timer = None # used for storing tk.after ID for
-        self.bytes_packets_per_second_timer = None
+        self.stats_timer = None
 
         self.last_packet_local_timestamp = 0.0
 
@@ -112,21 +115,20 @@ class TelemetryApp(Tk):
         self.currently_receiving = BooleanVar(self, False, "currently_receiving")
         self.time_since_last_packet = StringVar(self, "0.0", "time_since_last_packet") # must be string for formating
         self.total_bytes_read = StringVar(self, "0B", "total_bytes_read")
+        self.total_bad_bytes_read = StringVar(self, "0B", "total_bad_bytes_read")
         self.total_messages_decoded = IntVar(self, 0, "total_messages_decoded")
+        self.total_bad_messages = IntVar(self, 0, "total_bad_messages")
         self.bytes_per_sec = StringVar(self, "0B", "bytes_per_sec")
-        self.packets_per_sec = IntVar(self, 0, "packets_per_sec")
+        self.messages_per_sec = StringVar(self, "0P", "messages_per_sec")
 
         # for test
         self.print_to_console = BooleanVar(self, False, "print_to_console")
         self.print_to_console.trace_add("write", self.update_print_to_console)
 
-
         self.test_serial_sender = TelemetryTestSender() # for test data only
 
-        self.last_bytes_total = 0 # quick hack remove later
-        self.last_packets_total = 0
         self.bytes_counter = 0
-        self.packets_counter = 0
+        self.messages_counter = 0
 
 
         """
@@ -296,16 +298,14 @@ class TelemetryApp(Tk):
                 message = self.message_queue.get(block=False)
                 self.reset_packet_timer()
                 self.message_callback(message)
-                self.map_column.update()
-                self.altitude_graph.update()
-                self.acceleration_graph.update()
-                self.velocity_graph.update()
+
 
         except queue.Empty:
             pass
+
         finally:
-            # ugly code, should use state machine:
-            if self.csv_file_reader.running.is_set() or self.serial_reader.running.is_set() or self.tlm_file_reader.running.is_set():
+
+            if self.current_reader.running.is_set():
                 self.fast_update_timer = self.after(FAST_UPDATE_INTERVAL, self.update)
             else:
                 self.stop()
@@ -319,28 +319,38 @@ class TelemetryApp(Tk):
         self.slow_update_timer = self.after(GRAPH_UPDATE_INTERVAL, self.update_graph)
 
     def update_stats(self):
-        # print(self.format_bytes(self.bytes_counter / (BYTES_PER_SECOND_INTERVAL / 1000)))
+        interval = STATS_INTERVAL / 1000
+        self.bytes_per_sec.set(f"{self.format_bytes(self.bytes_counter / interval)}")
         self.bytes_counter = 0
 
-        self.bytes_packets_per_second_timer = self.after(BYTES_PER_SECOND_INTERVAL, self.update_stats)
+        self.messages_per_sec.set(MESSAGE_PER_SEC_FORMAT.format(self.messages_counter / interval))
+        self.messages_counter = 0
+
+        self.total_bad_bytes_read.set(self.format_bytes(self.current_reader.bad_bytes_received))
+        self.total_bad_messages.set(self.current_reader.bad_packets_received)
+
+        self.stats_timer = self.after(STATS_INTERVAL, self.update_stats)
 
     def message_callback(self, message):
         """
         decodes FC-style message into app variables and triggers graphs + map to update
         """
         self.set_telemetry_state(message.decoder_state)
-        self.total_bytes_read.set(self.format_bytes(message.total_bytes))
-        self.total_messages_decoded.set(message.total_messages)
         self.last_packet_local_timestamp = message.local_time
 
-        self.bytes_counter += (message.total_bytes - self.last_bytes_total)
-        self.packets_counter += (message.total_messages - self.last_packets_total)
+        self.bytes_counter += (message.total_message_size)
+        self.messages_counter += 1
 
-        self.last_bytes_total = message.total_bytes
-        self.last_packets_total = message.total_messages
+        self.total_messages_decoded.set(self.current_reader.messages_decoded)
+        self.total_bytes_read.set(self.format_bytes(self.current_reader.bytes_received))
 
         for (key, value) in message.telemetry.items():
             self.setvar(key, value)
+
+        self.map_column.update()
+        self.altitude_graph.update()
+        self.acceleration_graph.update()
+        self.velocity_graph.update()
 
 
     def reset_packet_timer(self):
@@ -397,9 +407,9 @@ class TelemetryApp(Tk):
             self.after_cancel(self.slow_update_timer)
             self.slow_update_timer = None
 
-        if self.bytes_packets_per_second_timer is not None:
-            self.after_cancel(self.bytes_packets_per_second_timer)
-            self.bytes_packets_per_second_timer = None
+        if self.stats_timer is not None:
+            self.after_cancel(self.stats_timer)
+            self.stats_timer = None
 
         # stop file decoder if it's running
         self.csv_file_reader.stop()
@@ -478,6 +488,7 @@ class TelemetryApp(Tk):
                 self.state = AppState.READING_SERIAL
                 self.map_column.set_status_text(f"Listening to {port}", Colors.WHITE, Colors.DARK_BLUE)
 
+            self.current_reader = self.serial_reader
             self.serial_reader.serial_port = port
             self.serial_reader.start()
             self.start()
@@ -494,6 +505,7 @@ class TelemetryApp(Tk):
             self.tlm_file_reader.filename = filename
             self.state = AppState.READING_FILE
             self.map_column.set_status_text(f"Playing: {filename.split('/')[-1]}", Colors.WHITE, Colors.DARK_GREEN)
+            self.current_reader = self.tlm_file_reader
             self.tlm_file_reader.start()
             self.start()
 
@@ -502,6 +514,7 @@ class TelemetryApp(Tk):
             self.csv_file_reader.filename = filename
             self.state = AppState.READING_FILE
             self.map_column.set_status_text(f"Playing: {filename.split('/')[-1]}", Colors.WHITE, Colors.DARK_GREEN)
+            self.current_reader = self.csv_file_reader
             self.csv_file_reader.start()
             self.start()
 
