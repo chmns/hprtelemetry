@@ -170,7 +170,7 @@ class MapColumn(PanedWindow):
         self.messages_spacer = Frame(self.messages_stats_frame, bg=Colors.BG_COLOR)
         self.messages_spacer.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
-        self.total_bad_messages_label = NumberLabel(self.messages_stats_frame, name="Error:", textvariable=StringVar(master, name="total_bad_messages"), units="/s")
+        self.total_bad_messages_label = NumberLabel(self.messages_stats_frame, name="Bad pkt:", textvariable=StringVar(master, name="total_bad_messages"), units="")
         self.total_bad_messages_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
 
