@@ -183,8 +183,6 @@ class TelemetryApp(Tk):
         self.window.sash_place(0, CELL_WIDTH, 0)
         self.window.sash_place(1, CELL_WIDTH, 0)
 
-        self.download_overlay = None # Used to blank the UI when map download is happen
-
 
         """
         Readouts Column
@@ -530,30 +528,36 @@ class TelemetryApp(Tk):
         if not self.confirm_stop():
             return
 
-        try:
-            self.download_overlay = Frame(self.window, background="#0f0f0f")
-            self.download_overlay.place(relwidth=1, relheight=1)
+        download_overlay = Frame(self.window, background="#0f0f0f")
+        download_overlay.place(relwidth=1, relheight=1)
+        map_overlay = Frame(self.map_column, background="#0f0f0f")
+        map_overlay.place(relwidth=1, relheight=1)
 
-            ok = messagebox.askokcancel("Download current map",
-                                        "This will currently displayed location at all zoom levels. Depending on internet connection this require take several minutes.\n\nDuring download the app will be unresponsive.\n\nAre you sure you wish to continue?")
+        ok = messagebox.askokcancel("Download current map",
+                                    "This will currently displayed location at all zoom levels. Depending on internet connection this require take several minutes.\n\nDuring download the app will be unresponsive.\n\nAre you sure you wish to continue?")
 
-            if not ok:
-                return
-
-            self.map_column.download_current_map()
-
-        except Exception as e:
-            messagebox.showerror("Downloading Error",
-                                 f"Unable to download map, check internet connection\n\n({e})")
+        if not ok:
+            download_overlay.place_forget()
+            del download_overlay
+            map_overlay.place_forget()
+            del map_overlay
             return
+
+        try:
+            self.map_column.map_frame.download_current_map()
+        except Exception as error:
+            messagebox.showerror("Downloading Error",
+                                f"Unable to download map: \n\n({error})")
 
         else:
             messagebox.showinfo("Downloading Successful",
                                 f"Saved current location to database.")
 
         finally:
-            self.download_overlay.destroy()
-            self.download_overlay = None
+            download_overlay.place_forget()
+            del download_overlay
+            map_overlay.place_forget()
+            del map_overlay
 
 
     def set_offline_path(self):

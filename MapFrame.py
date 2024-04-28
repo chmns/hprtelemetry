@@ -90,6 +90,7 @@ class MapColumn(PanedWindow):
                                               StringVar(master, ZERO_LAT, "preGnssLatString"),
                                               StringVar(master, ZERO_LON, "preGnssLonString"),
                                               StringVar(master, ZERO_ALT, "preGnssAltString"))
+        # self.preflight_location.on_click = lam
 
         self.current_location = LocationRow(self,
                                             CURRENT_TEXT,
@@ -171,11 +172,7 @@ class MapColumn(PanedWindow):
         self.messages_spacer.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
         self.total_bad_messages_label = NumberLabel(self.messages_stats_frame, name="Bad pkt:", textvariable=StringVar(master, name="total_bad_messages"), units="")
-        self.total_bad_messages_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
-
-
-    def download_current_map(self):
-        self.map_frame.download_current_map()
+        self.total_bad_messages_label.pack(sidea=LEFT, expand=True, fill=X, padx=PADX)
 
     def load_offline_database(self, database_path):
         self.map_frame.load_offline_database(database_path)
@@ -288,7 +285,7 @@ class MapFrame(PanedWindow):
         self.sats_var = IntVar(window, 0, "gnssSatellites")
         self.sats_var.trace_add("write", self.update_num_sats)
 
-        self.fix_var = BooleanVar(window, False, "preGnssFix")
+        self.fix_var = BooleanVar(window, False, "gnssFix")
         self.fix_var.trace_add("write", self.update_fix)
 
         self.offline_maps_only = BooleanVar(window, name="offline_maps_only")
@@ -299,9 +296,6 @@ class MapFrame(PanedWindow):
 
         script_directory = os.path.dirname(os.path.abspath(__file__))
         self.database_path = os.path.join(script_directory, DEFAULT_DATABASE_NAME)
-
-        self.downloader = OfflineLoader(path=self.database_path,
-                                        tile_server=TILE_SERVER_URL)
 
         # print(f"Online maps downloading enabled?: {self.offline_maps_only.get()}")
         # print(f"Using offline maps database at: {self.database_path}")
@@ -479,22 +473,20 @@ class MapFrame(PanedWindow):
         top_left_position = osm_to_decimal(*self.map_view.upper_left_tile_pos, current_zoom)
         bottom_right_position = osm_to_decimal(*self.map_view.lower_right_tile_pos, current_zoom)
 
-
-
         print(f"Attempting to download region bound by: {top_left_position} and {bottom_right_position}")
         print(f"From zoom level: {current_zoom} to {OFFLINE_ZOOM_MAX}")
 
         self.map_view.set_position(*current_position)
 
-        try:
-            self.downloader.save_offline_tiles(top_left_position,
-                                               bottom_right_position,
-                                               current_zoom,
-                                               OFFLINE_ZOOM_MAX)
-        except Exception as e:
-            print(f"Error downloading offline maps: {e}")
-        else:
-            self.map_view.set_position(*current_position)
+        downloader = OfflineLoader(path=self.database_path, tile_server=TILE_SERVER_URL)
+
+        downloader.save_offline_tiles(top_left_position,
+                                        bottom_right_position,
+                                        current_zoom,
+                                        OFFLINE_ZOOM_MAX)
+
+        self.map_view.set_position(*current_position)
+
 
     def load_offline_database(self, database_path):
         print(f"Setting offline map file to: {database_path}")
@@ -543,3 +535,8 @@ class LocationRow(Frame):
 
         self.columnconfigure((0,3), weight=0)
         self.columnconfigure((1,2), weight=1)
+
+        self.bind("<Button-1>", self.on_click)
+
+    def on_click(self, event):
+        pass
