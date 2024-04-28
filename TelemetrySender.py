@@ -3,6 +3,7 @@ from TelemetryDecoder import PreFlightPacket, InFlightData, InFlightMetaData, Po
 import struct
 from time import sleep
 import serial
+from zlib import crc32
 
 CALLSIGN = "QQ0523".encode("ascii")
 NAME = "Test Flight Rocket 1".encode("ascii")
@@ -49,7 +50,10 @@ class TelemetryTestSender(TelemetryReader):
 
         try:
             # print(f"Sending packet {packet} out of port: {self.serial_port}")
-            port.write(self.test_packets[packet_number])
+            packet = self.test_packets[packet_number]
+
+            port.write(packet)
+            port.write(int.to_bytes(crc32(packet),4))
             port.write(SYNC_WORD)
             # for packet in self.test_packets:
                 # port.write(packet)

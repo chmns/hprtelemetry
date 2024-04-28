@@ -10,8 +10,13 @@ from time import monotonic
 from collections import namedtuple
 from TelemetryDecoder import *
 import pathlib
+from zlib import crc32
 
 SYNC_WORD = bytes.fromhex("A5A5A5A5")
+SYNC_WORD_LENGTH = len(SYNC_WORD)
+CHECKSUM_LENGTH = 4
+FOOTER_LENGTH = CHECKSUM_LENGTH + SYNC_WORD_LENGTH
+
 MAX_PACKET_LENGTH = 74
 TLM_INTERVAL = 0.01
 SERIAL_READ_INTERVAL = 0.01
@@ -41,8 +46,11 @@ class TelemetryReader(object):
         self.thread = None
         self.name = name
         self.bytes_received = 0
+        self.bad_bytes_received = 0
         self.messages_decoded = 0
+        self.bad_packets_received = 0
         self.print_received = False
+        self.use_crc32 = False
 
     def start(self) -> None:
         self.running.set()
@@ -72,12 +80,15 @@ class TelemetrySerialReader(TelemetryReader):
                  baud_rate = DEFAULT_BAUD,
                  timeout = DEFAULT_TIMEOUT) -> None:
 
+        TelemetryReader.__init__(self, queue)
+
         self.serial_port = serial_port
         self.baud_rate = baud_rate
         self.timeout = timeout
         self.filename = os.path.join(pathlib.Path(__file__).parent.resolve(), BACKUP_NAME) # always save backup
         self.read = None
-        TelemetryReader.__init__(self, queue)
+        self.use_crc32 = True
+
 
     def __run__(self,
                 message_queue: queue.Queue,
@@ -113,20 +124,38 @@ class TelemetrySerialReader(TelemetryReader):
             telemetry_bytes = None
 
             try:
-                telemetry_bytes = self.read(port)
+                buffer = self.read(port)
 
             except Exception as error:
                 print(f"Error reading from port: {self.serial_port}, disconnecting\n{str(error)}")
                 break
 
-            if len(telemetry_bytes) == 0:
+            if len(buffer) == 0:
                 sleep(SERIAL_READ_INTERVAL)
                 continue
             else:
-                self.bytes_received += len(telemetry_bytes) # keep track of total amount of data we got since start
+                buffer_length = len(buffer)
+                self.bytes_received += buffer_length # keep track of total amount of data we got since start
 
-                if self.print_received:
-                    print(f"{len(telemetry_bytes):>6} bytes: {telemetry_bytes.hex(' ')}  ({self.bytes_received} bytes total)") # for debug
+                # if self.print_received:
+                print(f"{len(buffer):>6} bytes: {buffer.hex(' ')}  ({self.bytes_received} bytes total)") # for debug
+
+            if self.use_crc32:
+                received_crc32 = buffer[-FOOTER_LENGTH:-SYNC_WORD_LENGTH]
+                telemetry_bytes = buffer[:-FOOTER_LENGTH]
+                calculated_crc32 = int.to_bytes(crc32(telemetry_bytes), CHECKSUM_LENGTH)
+
+                if received_crc32 != calculated_crc32:
+                    self.bad_packets_received += 1
+                    self.bad_bytes_received += buffer_length
+                    print(f"CRC32 error: calculated checksum {calculated_crc32.hex()} but expected {received_crc32.hex()}") # for debug
+                    print(f"{buffer_length:>6} bytes: {buffer.hex(' ')}  ({self.bad_bytes_received} bad bytes so far)") # for debug
+                    continue
+
+            else:
+                print("not using CRC32")
+                telemetry_bytes = buffer[:-SYNC_WORD_LENGTH]
+                print(f"{len(telemetry_bytes):>6} bytes: {telemetry_bytes.hex(' ')}  ({self.bytes_received} bytes total)") # for debug
 
 
             # Open binary file for direct data backup
@@ -162,7 +191,7 @@ class TelemetrySerialReader(TelemetryReader):
             received_telemetry_messages = []
 
             try:
-                received_telemetry_messages = self.decoder.decode(telemetry_bytes[:-len(SYNC_WORD)])
+                received_telemetry_messages = self.decoder.decode(telemetry_bytes)
             except Exception as error:
                 print(f"Error decoding data from: {self.serial_port}\n{str(error)}")
                 continue
