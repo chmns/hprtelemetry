@@ -11,11 +11,11 @@ from collections import namedtuple
 from TelemetryDecoder import *
 import pathlib
 from zlib import crc32
+from cobs import cobsr
 
-SYNC_WORD = bytes.fromhex("A5A5A5A5")
+SYNC_WORD = bytes.fromhex("00")
 SYNC_WORD_LENGTH = len(SYNC_WORD)
 CHECKSUM_LENGTH = 4
-FOOTER_LENGTH = CHECKSUM_LENGTH + SYNC_WORD_LENGTH
 
 MAX_PACKET_LENGTH = 74
 TLM_INTERVAL = 0.01
@@ -27,6 +27,7 @@ TXT_EXTENSION = ".txt"
 BACKUP_NAME = "backup.tlm"
 END_LINE = "\n"
 TIME_FORMAT = "%H:%M:%S"
+
 
 Message = namedtuple("message", ["telemetry", "decoder_state", "local_time", "total_message_size"])
 
@@ -180,8 +181,18 @@ class TelemetrySerialReader(TelemetryReader):
                 buffer_length = len(buffer)
                 self.bytes_received += buffer_length # keep track of total amount of data we got since start
 
-                if self.print_received:
-                   print(f"{len(buffer):>6} bytes: {buffer.hex(' ')}  ({self.bytes_received} bytes total)") # for debug
+            try:
+                print(buffer.hex(' '))
+                buffer = cobsr.decode(buffer[:-SYNC_WORD_LENGTH])
+                print(buffer.hex(' '))
+                print("----")
+            except cobsr.DecodeError as error: # technically should never happen...
+                self.bad_bytes_received += buffer_length
+                print(f"COBS error: 0x00 found in data stream") # for debug
+                print(f"{buffer_length:>6} bytes: {buffer.hex(' ')}  ({self.bad_bytes_received} bad bytes so far)") # for debug
+
+            if self.print_received:
+                print(f"{len(buffer):>6} bytes: {buffer.hex(' ')}  ({self.bytes_received} bytes total)") # for debug
 
             # if we have an open TLM file then write the raw data into it
             # (we always write TLM data even if it is bad - for future debug)
@@ -191,8 +202,8 @@ class TelemetrySerialReader(TelemetryReader):
             # CRC32 check
             # -----------
             if self.use_crc32:
-                received_crc32 = buffer[-FOOTER_LENGTH:-SYNC_WORD_LENGTH]
-                telemetry_bytes = buffer[:-FOOTER_LENGTH]
+                received_crc32 = buffer[-CHECKSUM_LENGTH:]
+                telemetry_bytes = buffer[:-CHECKSUM_LENGTH]
                 calculated_crc32 = int.to_bytes(crc32(telemetry_bytes), CHECKSUM_LENGTH)
 
                 if received_crc32 != calculated_crc32:
@@ -208,7 +219,7 @@ class TelemetrySerialReader(TelemetryReader):
                     txt_file.write(f"({time.strftime(TIME_FORMAT)}) {self.bad_bytes_received:>6}F {self.bytes_received:>6}P  {buffer_length:>3} PASS: {buffer.hex(' ')}{END_LINE}")
 
             else:
-                telemetry_bytes = buffer[:-SYNC_WORD_LENGTH]
+                telemetry_bytes = buffer
 
 
             # Packet decoding

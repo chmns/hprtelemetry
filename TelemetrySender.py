@@ -4,10 +4,11 @@ import struct
 from time import sleep
 import serial
 from zlib import crc32
+from cobs import cobsr
 
 CALLSIGN = "QQ0523".encode("ascii")
 NAME = "Test Flight Rocket 1".encode("ascii")
-SYNC_WORD = bytes.fromhex("A5A5A5A5")
+SYNC_WORD = bytes.fromhex("00")
 
 class TelemetryTestSender(TelemetryReader):
 
@@ -50,15 +51,12 @@ class TelemetryTestSender(TelemetryReader):
 
         try:
             # print(f"Sending packet {packet} out of port: {self.serial_port}")
-            packet = self.test_packets[packet_number]
             # port.write(bytes.fromhex("00 00 00 48 61 77 6b 20 73 68 6f 63 6b 00 00 00 00 00 00 00 00 00 00 dd 01 00 00 00 00 00 00 00 00 00 00 00 00 4b 4b 34 45 4c 46 ec 94 b3 dd a5 a5 a5 a5"))
 
-            port.write(packet)
-            port.write(int.to_bytes(crc32(packet),4))
+            packet = bytearray(self.test_packets[packet_number])
+            packet += int.to_bytes(crc32(packet),4)
+            port.write(cobsr.encode(packet))
             port.write(SYNC_WORD)
-            # for packet in self.test_packets:
-                # port.write(packet)
-                # port.write(SYNC_WORD)
 
         except IOError as e:
             print(e)
