@@ -182,10 +182,7 @@ class TelemetrySerialReader(TelemetryReader):
                 self.bytes_received += buffer_length # keep track of total amount of data we got since start
 
             try:
-                print(buffer.hex(' '))
                 buffer = cobsr.decode(buffer[:-SYNC_WORD_LENGTH])
-                print(buffer.hex(' '))
-                print("----")
             except cobsr.DecodeError as error: # technically should never happen...
                 self.bad_bytes_received += buffer_length
                 print(f"COBS error: 0x00 found in data stream") # for debug
