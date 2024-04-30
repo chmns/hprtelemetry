@@ -171,8 +171,7 @@ cython_debug/
 /test_data
 
 # Backup files:
-backup.csv
-backup.tlm
+backup.*
 
 # VS Code settings:
 /.vscode

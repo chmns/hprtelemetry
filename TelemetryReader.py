@@ -23,8 +23,9 @@ SERIAL_READ_INTERVAL = 0.01
 
 TLM_EXTENSION = ".tlm"
 CSV_EXTENSION = ".csv"
+TXT_EXTENSION = ".txt"
 BACKUP_NAME = "backup.tlm"
-
+END_LINE = "\n"
 TIME_FORMAT = "%H:%M:%S"
 
 Message = namedtuple("message", ["telemetry", "decoder_state", "local_time", "total_message_size"])
@@ -99,6 +100,8 @@ class TelemetrySerialReader(TelemetryReader):
 
         port = None
         tlm_file = None
+        txt_file = None
+        txt_filename = None
         csv_file = None
         csv_filename = None
         csv_saving_state = DecoderState.OFFLINE
@@ -141,9 +144,22 @@ class TelemetrySerialReader(TelemetryReader):
 
             except Exception as error:
                 print(f"Couldn't open file {csv_filename}")
-                tlm_file = None
+                csv_file = None
             else:
                 print(f"Open CSV file for writing backup to: {csv_filename}")
+
+
+        if txt_file is None and self.filename is not None: # csv file isn't open but user has added backup file during running
+            try:
+                txt_filename = os.path.splitext(self.filename)[0] + TXT_EXTENSION
+                txt_file = open(txt_filename, 'wt')
+
+            except Exception as error:
+                print(f"Couldn't open file {txt_filename}")
+                txt_file = None
+            else:
+                txt_file.write(f"Opened file {txt_filename} for raw data logging on {datetime.date.today().isoformat()} at {time.strftime(TIME_FORMAT)}{END_LINE}")
+                print(f"Open TXT file for writing raw data to: {txt_filename}")
 
 
         while self.running.is_set():
@@ -182,9 +198,14 @@ class TelemetrySerialReader(TelemetryReader):
                 if received_crc32 != calculated_crc32:
                     self.bad_packets_received += 1
                     self.bad_bytes_received += buffer_length
+
+                    txt_file.write(f"({time.strftime(TIME_FORMAT)}) {self.bad_bytes_received:>6}F {self.bytes_received:>6}P  {buffer_length:>3} FAIL: {buffer.hex(' ')}{END_LINE}")
+
                     print(f"CRC32 error: calculated checksum {calculated_crc32.hex()} but expected {received_crc32.hex()}") # for debug
                     print(f"{buffer_length:>6} bytes: {buffer.hex(' ')}  ({self.bad_bytes_received} bad bytes so far)") # for debug
                     continue
+                else:
+                    txt_file.write(f"({time.strftime(TIME_FORMAT)}) {self.bad_bytes_received:>6}F {self.bytes_received:>6}P  {buffer_length:>3} PASS: {buffer.hex(' ')}{END_LINE}")
 
             else:
                 telemetry_bytes = buffer[:-SYNC_WORD_LENGTH]
@@ -346,6 +367,9 @@ class TelemetrySerialReader(TelemetryReader):
 
         if csv_file is not None:
             csv_file.close()
+
+        if txt_file is not None:
+            txt_file.close()
 
         if port is not None:
             port.close()
