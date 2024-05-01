@@ -169,24 +169,25 @@ class TelemetrySerialReader(TelemetryReader):
             buffer_length = 0
 
             try:
-                buffer = self.read(port)
+                raw_buffer = self.read(port)
             except Exception as error:
                 print(f"Error reading from port: {self.serial_port}, disconnecting\n{str(error)}")
                 break
 
-            if len(buffer) == 0:
+            buffer_length = len(raw_buffer)
+
+            if buffer_length == 0:
                 sleep(SERIAL_READ_INTERVAL)
                 continue
             else:
-                buffer_length = len(buffer)
                 self.bytes_received += buffer_length # keep track of total amount of data we got since start
 
             try:
-                buffer = cobsr.decode(buffer[:-SYNC_WORD_LENGTH])
+                buffer = cobsr.decode(raw_buffer[:-SYNC_WORD_LENGTH])
             except cobsr.DecodeError as error: # technically should never happen...
                 self.bad_bytes_received += buffer_length
                 print(f"COBS error: 0x00 found in data stream") # for debug
-                print(f"{buffer_length:>6} bytes: {buffer.hex(' ')}  ({self.bad_bytes_received} bad bytes so far)") # for debug
+                print(f"{buffer_length:>6} raw bytes: {raw_buffer.hex(' ')}  ({self.bad_bytes_received} bad bytes so far)") # for debug
 
             if self.print_received:
                 print(f"{len(buffer):>6} bytes: {buffer.hex(' ')}  ({self.bytes_received} bytes total)") # for debug
@@ -207,13 +208,14 @@ class TelemetrySerialReader(TelemetryReader):
                     self.bad_packets_received += 1
                     self.bad_bytes_received += buffer_length
 
-                    txt_file.write(f"({time.strftime(TIME_FORMAT)}) {self.bad_bytes_received:>6}F {self.bytes_received:>6}P  {buffer_length:>3} FAIL: {buffer.hex(' ')}{END_LINE}")
+                    txt_file.write(f"({time.strftime(TIME_FORMAT)}) {self.bad_bytes_received:>6}F {self.bytes_received:>6}T  {buffer_length:>3} FAIL: {buffer.hex(' ')}{END_LINE}")
+                    txt_file.write(f"({time.strftime(TIME_FORMAT)}) {self.bad_bytes_received:>6}F {self.bytes_received:>6}T  {buffer_length:>3}  RAW: {raw_buffer.hex(' ')}{END_LINE}")
 
                     print(f"CRC32 error: calculated checksum {calculated_crc32.hex()} but expected {received_crc32.hex()}") # for debug
                     print(f"{buffer_length:>6} bytes: {buffer.hex(' ')}  ({self.bad_bytes_received} bad bytes so far)") # for debug
                     continue
                 else:
-                    txt_file.write(f"({time.strftime(TIME_FORMAT)}) {self.bad_bytes_received:>6}F {self.bytes_received:>6}P  {buffer_length:>3} PASS: {buffer.hex(' ')}{END_LINE}")
+                    txt_file.write(f"({time.strftime(TIME_FORMAT)}) {self.bad_bytes_received:>6}F {self.bytes_received:>6}T {buffer_length:>3} PASS: {buffer.hex(' ')}{END_LINE}")
 
             else:
                 telemetry_bytes = buffer
