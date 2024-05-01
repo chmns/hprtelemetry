@@ -103,6 +103,7 @@ class TelemetryApp(Tk):
 
         self.last_packet_local_timestamp = 0.0
 
+        self.enable_graph = BooleanVar(self, True, name="enable_graph")
         self.offline_maps_only = BooleanVar(self, True, "offline_maps_only")
         self.telemetry_state = DecoderState.OFFLINE
         self.telemetry_state_name = StringVar(self, str(self.telemetry_state), "telemetryStateName")
@@ -236,6 +237,9 @@ class TelemetryApp(Tk):
         self.acceleration_graph.grid(row=2, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
         self.graphs.columnconfigure(0, weight=1)
 
+        self.enable_graph_checkbox = Checkbutton(self.graphs, variable=self.enable_graph, text="Enable Graphs", font=Fonts.MEDIUM_FONT, bg=Colors.GRAY, fg=Colors.LIGHT_GRAY, anchor=W, padx=PADX, pady=PADY)
+        self.enable_graph_checkbox.place(relx=0, rely=1, x=20, y=-20, anchor=SW)
+
         for i in range (NUM_ROWS):
             self.graphs.rowconfigure(i, weight=1)
 
@@ -304,9 +308,10 @@ class TelemetryApp(Tk):
 
 
     def update_graph(self):
-        self.altitude_graph.render()
-        self.acceleration_graph.render()
-        self.velocity_graph.render()
+        if self.enable_graph.get():
+            self.altitude_graph.render()
+            self.acceleration_graph.render()
+            self.velocity_graph.render()
 
         self.slow_update_timer = self.after(GRAPH_UPDATE_INTERVAL, self.update_graph)
 
