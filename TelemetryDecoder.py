@@ -13,7 +13,7 @@ TelemetryDecoder:
   - RadioTelemetryDecoder
 """
 ENDIANNESS = "<"
-FLOATS_FORMAT = "{:.6f}"
+GNSS_FLOATS_FORMAT = "{:.6f}"
 STRING_DECODING_ERRORS = "ignore"
 
 class DecodingError(Exception):
@@ -111,7 +111,7 @@ class TelemetryDecoder(object):
         return telemetry_dict
 
     def floats_modifier(self, coord: float) -> str:
-        return FLOATS_FORMAT.format(coord)
+        return GNSS_FLOATS_FORMAT.format(coord)
 
 
 class RadioTelemetryDecoder(TelemetryDecoder):
@@ -176,8 +176,8 @@ class RadioTelemetryDecoder(TelemetryDecoder):
     def accel_modifier(self, accel: float) -> float:
         return accel * self.ACCEL_MULTIPLIER
 
-    def offvert_and_spin_modifier(self, offvert: float) -> float:
-        return offvert * self.OFFVERT_MULTIPLIER
+    def offvert_and_spin_modifier(self, offvert: float) -> int:
+        return round(offvert * self.OFFVERT_MULTIPLIER)
 
     def generate_float_strings(self, telemetry: dict):
         """

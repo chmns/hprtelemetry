@@ -54,8 +54,8 @@ class MapColumn(PanedWindow):
 
         self.total_bytes_read = StringVar(master, name="total_bytes_read")
         self.last_packet_num = IntVar(master, name="radioPacketNum")
-        self.tilt = DoubleVar(master, 0.0, "offVert")
-        self.spin = DoubleVar(master, 0.0, "spin")
+        self.tilt = StringVar(master, "0", "offVert")
+        self.spin = StringVar(master, "0", "spin")
         self.event_name = StringVar(master, "", "eventName")
         self.name = StringVar(master, "", "name")
         self.callsign = StringVar(master, "", "callsign")
