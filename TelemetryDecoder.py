@@ -48,7 +48,7 @@ class PreFlightPacket(RadioPacket): # 43 bytes (51)
 
 class InFlightData(RadioPacket): # 13 bytes (total 37)
     keys = ["event",     # uint8_t  event
-            "time",      # uint16_t fltTime
+            "fltTime",   # uint16_t fltTime
             "fusionVel", # int16_t  vel
             "fusionAlt", # int16_t  alt
             "spin",      # int16_t  roll

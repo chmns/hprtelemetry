@@ -23,10 +23,10 @@ SERIAL_READ_INTERVAL = 0.01
 
 TLM_EXTENSION = ".tlm"
 CSV_EXTENSION = ".csv"
-TXT_EXTENSION = ".txt"
 BACKUP_NAME = "backup.tlm"
 END_LINE = "\n"
 TIME_FORMAT = "%H:%M:%S"
+ELAPSED_FORMAT = "{:.3f}"
 
 
 Message = namedtuple("message", ["telemetry", "decoder_state", "local_time", "total_message_size"])
@@ -74,7 +74,7 @@ class TelemetrySerialReader(TelemetryReader):
     """
     BAUD_RATES = [1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600, 115200]
     DEFAULT_BAUD = 57600
-    DEFAULT_TIMEOUT = 1 # seconds
+    DEFAULT_TIMEOUT = 2 # seconds
 
     def __init__(self,
                  queue: queue.Queue = None,
@@ -101,19 +101,18 @@ class TelemetrySerialReader(TelemetryReader):
 
         port = None
         tlm_file = None
-        txt_file = None
-        txt_filename = None
         csv_file = None
         csv_filename = None
         csv_saving_state = DecoderState.OFFLINE
         previous_decoder_state = DecoderState.OFFLINE
+        preflight_timestamp = 0.0 # monotonic() timestamp of last preflight message received
 
         # CSV backup file headers (only used if saving to CSV file)
         # we get them ready before running so they can be used quickly later
-        inflight_header = self.csv_format(InFlightData.keys + InFlightMetaData.keys)
+        inflight_header = self.csv_format(InFlightData.keys + InFlightMetaData.keys + ["elapsed"])
         postflight_header = self.csv_format(PostFlightPacket.keys)
-        preflight_start_position = 0
-        postflight_start_position = 0
+        preflight_start_position = 0 # position in CSV file of preflight message, so we can overwrite it
+        postflight_start_position = 0 # same for postflight
 
         try:
             port = serial.Serial(port=self.serial_port,
@@ -149,24 +148,13 @@ class TelemetrySerialReader(TelemetryReader):
             else:
                 print(f"Open CSV file for writing backup to: {csv_filename}")
 
-
-        if txt_file is None and self.filename is not None: # csv file isn't open but user has added backup file during running
-            try:
-                txt_filename = os.path.splitext(self.filename)[0] + TXT_EXTENSION
-                txt_file = open(txt_filename, 'wt')
-
-            except Exception as error:
-                print(f"Couldn't open file {txt_filename}")
-                txt_file = None
-            else:
-                txt_file.write(f"Opened file {txt_filename} for raw data logging on {datetime.date.today().isoformat()} at {time.strftime(TIME_FORMAT)}{END_LINE}")
-                print(f"Open TXT file for writing raw data to: {txt_filename}")
-
-
         while self.running.is_set():
             telemetry_bytes = None
             buffer = None
             buffer_length = 0
+
+            # Read from serial port
+            # ---------------------
 
             try:
                 raw_buffer = self.read(port)
@@ -182,6 +170,9 @@ class TelemetrySerialReader(TelemetryReader):
             else:
                 self.bytes_received += buffer_length # keep track of total amount of data we got since start
 
+
+            # Decode COBS/R (Consistent-Overhead Byte-Stuffing/Reduced [Packet synchronization])
+            # -------------
             try:
                 buffer = cobsr.decode(raw_buffer[:-SYNC_WORD_LENGTH])
             except cobsr.DecodeError as error: # technically should never happen...
@@ -195,7 +186,8 @@ class TelemetrySerialReader(TelemetryReader):
             # if we have an open TLM file then write the raw data into it
             # (we always write TLM data even if it is bad - for future debug)
             if tlm_file is not None:
-                self.safe_write(tlm_file, self.filename, buffer)
+                self.safe_write(tlm_file, self.filename, raw_buffer)
+
 
             # CRC32 check
             # -----------
@@ -208,14 +200,9 @@ class TelemetrySerialReader(TelemetryReader):
                     self.bad_packets_received += 1
                     self.bad_bytes_received += buffer_length
 
-                    txt_file.write(f"({time.strftime(TIME_FORMAT)}) {self.bad_bytes_received:>6}F {self.bytes_received:>6}T  {buffer_length:>3} FAIL: {buffer.hex(' ')}{END_LINE}")
-                    txt_file.write(f"({time.strftime(TIME_FORMAT)}) {self.bad_bytes_received:>6}F {self.bytes_received:>6}T  {buffer_length:>3}  RAW: {raw_buffer.hex(' ')}{END_LINE}")
-
                     print(f"CRC32 error: calculated checksum {calculated_crc32.hex()} but expected {received_crc32.hex()}") # for debug
                     print(f"{buffer_length:>6} bytes: {buffer.hex(' ')}  ({self.bad_bytes_received} bad bytes so far)") # for debug
                     continue
-                else:
-                    txt_file.write(f"({time.strftime(TIME_FORMAT)}) {self.bad_bytes_received:>6}F {self.bytes_received:>6}T {buffer_length:>3} PASS: {buffer.hex(' ')}{END_LINE}")
 
             else:
                 telemetry_bytes = buffer
@@ -237,7 +224,7 @@ class TelemetrySerialReader(TelemetryReader):
 
             # Packet merging
             # --------------
-            # INFLIGHT packets can have 4 telemetry payloads + metadata. for now we just merge them to one
+            # INFLIGHT packets can have multiple payloads (4 telemetry payloads + metadata) for now we just merge them to one
             if received_telemetry_messages:
                 for message in received_telemetry_messages:
                     self.messages_decoded += 1
@@ -277,6 +264,11 @@ class TelemetrySerialReader(TelemetryReader):
                 if self.decoder.state == DecoderState.PREFLIGHT:
                     csv_telemetry["date"] = datetime.date.today().isoformat()
                     csv_telemetry["time"] = time.strftime(TIME_FORMAT)
+                    preflight_timestamp = monotonic()
+
+                # Add elapsed timer to inflight packets (for debug and playback)
+                if self.decoder.state == DecoderState.INFLIGHT:
+                    csv_telemetry["elapsed"] = ELAPSED_FORMAT.format(monotonic() - preflight_timestamp)
 
                 # State transitions
                 # -----------------
@@ -349,26 +341,33 @@ class TelemetrySerialReader(TelemetryReader):
                 # Finely store old state
                 previous_decoder_state = self.decoder.state
 
-            # add additional string-representations of floats for UI
-            # (should be done in UI really, but tkinter cannot apply format to variables easily
+
+            # Add float strings
+            # -----------------
+            # should be done in UI really, but tkinter cannot apply format to variables easily
             # (this operator: |= merges 2 dicts and saves in left-side)
             try:
                 received_telemetry |= self.decoder.generate_float_strings(received_telemetry)
             except Exception as error:
                 print(f"Error generating float strings for telemetry data received from: {self.serial_port}\n{str(error)}")
 
-            # add additional string names for UI representation:
+
+            # Add name strings
+            # ----------------
+            # add additional string names for UI representation (e.g. event number -> event name)
             try:
                 received_telemetry |= self.decoder.generate_name_strings(received_telemetry)
             except Exception as error:
                 print(f"Error generating name strings for telemetry data received from: {self.serial_port}\n{str(error)}")
 
+
+            # Send to UI
+            # ----------
             # add merged dict to queue for UI:
             message_queue.put(Message(received_telemetry, # the telemetry dictionarie modify for UI display
                                       self.decoder.state, # current decoder state (PRE/INFLIGHT/POST)
                                       monotonic(),
                                       buffer_length)) # current time in float seconds. monotonic() is not affected by time/date/zone changes
-
 
 
         # after ending serial port reading we must clean up:
@@ -377,9 +376,6 @@ class TelemetrySerialReader(TelemetryReader):
 
         if csv_file is not None:
             csv_file.close()
-
-        if txt_file is not None:
-            txt_file.close()
 
         if port is not None:
             port.close()
@@ -393,6 +389,7 @@ class TelemetrySerialReader(TelemetryReader):
             file.flush()
         except Exception as error:
             print(f"Error writing to file {filename}:\n{error}")
+
 
     def csv_format(self, values: list):
         return ",".join(map(str,values)) + "\n"
