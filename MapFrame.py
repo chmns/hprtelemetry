@@ -54,8 +54,6 @@ class MapColumn(PanedWindow):
 
         self.total_bytes_read = StringVar(master, name="total_bytes_read")
         self.last_packet_num = IntVar(master, name="radioPacketNum")
-        self.tilt = StringVar(master, "0", "offVert")
-        self.roll = StringVar(master, "0", "roll")
         self.event_name = StringVar(master, "", "eventName")
         self.name = StringVar(master, "", "name")
         self.callsign = StringVar(master, "", "callsign")
@@ -130,11 +128,14 @@ class MapColumn(PanedWindow):
 
         self.tilt_roll_frame = Frame(self, bg=Colors.BG_COLOR)
 
-        self.tilt = NumberLabel(self.tilt_roll_frame, name="Tilt:", textvariable=self.tilt, units="°")
+        self.tilt = NumberLabel(self.tilt_roll_frame, name="Tilt:", textvariable=StringVar(master, "0", "offVert"), units="°")
         self.tilt.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
-        self.roll = NumberLabel(self.tilt_roll_frame, name="Roll:", textvariable=self.roll, units="°")
+        self.roll = NumberLabel(self.tilt_roll_frame, name="Turns:", textvariable=StringVar(master, "0", "turns"), units="")
         self.roll.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+
+        self.turns = NumberLabel(self.tilt_roll_frame, name="Roll:", textvariable=StringVar(master, "0", "boundRoll"), units="°")
+        self.turns.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
 
         # Statistics bar

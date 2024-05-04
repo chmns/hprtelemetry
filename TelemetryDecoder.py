@@ -178,6 +178,27 @@ class RadioTelemetryDecoder(TelemetryDecoder):
     def offvert_modifier(self, offvert: float) -> int:
         return round(offvert * self.OFFVERT_MULTIPLIER)
 
+    def generate_roll_turns(self, telemetry: dict):
+        """
+        decomposes roll into number of turns, and roll remained bound to 0..360
+        uses sign to show other direction turn
+        """
+        roll_dict = {}
+
+        roll = int(telemetry["roll"])
+        sign = 1
+
+        if roll < 0:
+            roll *= -1
+            sign = -1
+
+        turns, bound_roll = divmod(roll, 360)
+
+        roll_dict["turns"] = turns * sign
+        roll_dict["boundRoll"] = bound_roll * sign
+
+        return roll_dict
+
     def generate_float_strings(self, telemetry: dict):
         """
         Adds an additional pre-formtted float (as str type) to
@@ -192,7 +213,10 @@ class RadioTelemetryDecoder(TelemetryDecoder):
         return float_strings
 
     def generate_name_strings(self, telemetry: dict) -> dict:
-
+        """
+        for some things like event and pyro status we just get number
+        this adds text description for them
+        """
         name_strings = {}
 
         # add separate event name value:

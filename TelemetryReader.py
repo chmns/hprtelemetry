@@ -352,6 +352,15 @@ class TelemetrySerialReader(TelemetryReader):
                 print(f"Error generating float strings for telemetry data received from: {self.serial_port}\n{str(error)}")
 
 
+            # Add turns and bound roll
+            # ------------------------
+            if self.decoder.state == DecoderState.INFLIGHT:
+                try:
+                    received_telemetry |= self.decoder.generate_roll_turns(received_telemetry)
+                except Exception as error:
+                    print(f"Error generating roll turns for telemetry data received from: {self.serial_port}\n{str(error)}")
+
+
             # Add name strings
             # ----------------
             # add additional string names for UI representation (e.g. event number -> event name)

@@ -20,8 +20,11 @@ class TelemetryTestSender(TelemetryReader):
         self.serial_port = "COM3"
         TelemetryReader.__init__(self, None)
 
-        flight_packet = bytearray(struct.pack(InFlightData.format, 1, 500, 200, 300, 1200, 2200, 505))
+        flight_packet = bytearray(struct.pack(InFlightData.format, 1, 500, 200, 300, 1100, 2200, 505))
         flight_packet += struct.pack(InFlightMetaData.format, 10, 220, 45.79160, 0.59950, CALLSIGN)
+
+        flight_packet_2 = bytearray(struct.pack(InFlightData.format, 1, 600, 300, 400, -400, 110, 205))
+        flight_packet_2 += struct.pack(InFlightMetaData.format, 12, 230, 45.79165, 0.59955, CALLSIGN)
 
         self.test_packets = [
             #                                   Event   Fix    Cont  Name   Baro    gAlt    gLat        gLon        sats    call
@@ -30,6 +33,7 @@ class TelemetryTestSender(TelemetryReader):
             struct.pack(PreFlightPacket.format, 0,      True,  2,    NAME,  120,    220,    45.79166,   0.59956,    3,      CALLSIGN),
 
             flight_packet,
+            flight_packet_2,
             #                                    Event  mAlt,   mVel,   mG, mGAlt,
             struct.pack(PostFlightPacket.format, 26, 100,  200, 3, 1000, True, 1001, 45.79166, 0.59956, CALLSIGN),
         ]
