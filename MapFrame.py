@@ -55,7 +55,7 @@ class MapColumn(PanedWindow):
         self.total_bytes_read = StringVar(master, name="total_bytes_read")
         self.last_packet_num = IntVar(master, name="radioPacketNum")
         self.tilt = StringVar(master, "0", "offVert")
-        self.spin = StringVar(master, "0", "spin")
+        self.roll = StringVar(master, "0", "roll")
         self.event_name = StringVar(master, "", "eventName")
         self.name = StringVar(master, "", "name")
         self.callsign = StringVar(master, "", "callsign")
@@ -128,13 +128,13 @@ class MapColumn(PanedWindow):
         self.status_label = Label(self.status_bar, font=Fonts.MEDIUM_FONT, text="Disconnected", bg=Colors.BG_COLOR, fg=Colors.LIGHT_GRAY, anchor=E, justify="left")
         self.status_label.pack(side=RIGHT, fill=Y, padx=PADX, pady=PADY)
 
-        self.tilt_spin_frame = Frame(self, bg=Colors.BG_COLOR)
+        self.tilt_roll_frame = Frame(self, bg=Colors.BG_COLOR)
 
-        self.tilt = NumberLabel(self.tilt_spin_frame, name="Tilt:", textvariable=self.tilt, units="°")
+        self.tilt = NumberLabel(self.tilt_roll_frame, name="Tilt:", textvariable=self.tilt, units="°")
         self.tilt.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
-        self.spin = NumberLabel(self.tilt_spin_frame, name="Roll:", textvariable=self.spin, units="°")
-        self.spin.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+        self.roll = NumberLabel(self.tilt_roll_frame, name="Roll:", textvariable=self.roll, units="°")
+        self.roll.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
 
         # Statistics bar
@@ -203,7 +203,7 @@ class MapColumn(PanedWindow):
             self.cont_label.pack(before=self.event_name_label, side=LEFT, expand=True, fill=X, padx=PADX)
             self.cont_event_frame.pack(after=self.name_callsign_state_frame, side=TOP, expand=False, fill=X, padx=PADX)
             self.preflight_location.pack(after=self.map_frame, side=TOP, expand=False, fill=X, padx=PADX)
-            self.tilt_spin_frame.pack(side=BOTTOM, after=self.data_stats_frame, expand=False, fill=X, padx=PADX, pady=PADY)
+            self.tilt_roll_frame.pack(side=BOTTOM, after=self.data_stats_frame, expand=False, fill=X, padx=PADX, pady=PADY)
 
         if state == DecoderState.INFLIGHT:
             self.current_location.pack(after=self.preflight_location, side=TOP, expand=False, fill=X, padx=PADX)
@@ -255,7 +255,7 @@ class MapColumn(PanedWindow):
         self.postflight_location.pack_forget()
         self.launch_location.pack_forget()
         self.landing_location.pack_forget()
-        self.tilt_spin_frame.pack_forget()
+        self.tilt_roll_frame.pack_forget()
 
 
     def reset(self):

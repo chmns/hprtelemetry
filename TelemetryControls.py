@@ -88,25 +88,6 @@ class ReadOut(Frame):
         self.final = Label(self, text="", fg=self.color, bg=BG_COLOR, font=("Arial Bold", SMALL_FONT_SIZE))
         self.final.grid(column = 0, row = 6, sticky=(N,S))
 
-class TiltAndSpin(Frame):
-    def update_value(self, tilt: float, spin: float) -> None:
-        self.tilt.config(text=f'{tilt:.0f}°')
-        self.spin.config(text=f'{spin:.0f}°/sec')
-
-    def __init__(self, master, tilt_var: str, spin_var: str):
-        Frame.__init__(self, master, background=BG_COLOR)
-
-        self.tilt = Label(self, textvariable=DoubleVar(master, 0.0, tilt_var), fg=FG_COLOR, bg=BG_COLOR, font=Fonts.MEDIUM_FONT_BOLD)
-        self.tilt.pack(anchor=CENTER)
-
-        self.tilt_label = Label(self, text="Tilt", fg=FG_COLOR, bg=BG_COLOR, font=Fonts.MEDIUM_FONT_BOLD)
-        self.tilt_label.pack(anchor=CENTER)
-
-        self.spin = Label(self, textvariable=DoubleVar(master, 0.0, spin_var), fg=FG_COLOR, bg=BG_COLOR, font=Fonts.MEDIUM_FONT_BOLD)
-        self.spin.pack(anchor=CENTER)
-
-        self.spin_label = Label(self, text="Spin", fg=FG_COLOR, bg=BG_COLOR, font=Fonts.MEDIUM_FONT_BOLD)
-        self.spin_label.pack(anchor=CENTER)
 
 class TelemetryStatus(Frame):
     def __init__(self,

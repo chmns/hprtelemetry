@@ -51,7 +51,7 @@ class InFlightData(RadioPacket): # 13 bytes (total 37)
             "fltTime",   # uint16_t fltTime
             "fusionVel", # int16_t  vel
             "fusionAlt", # int16_t  alt
-            "spin",      # int16_t  roll
+            "roll",      # int16_t  roll
             "offVert",   # int16_t  offVert
             "accelZ"]    # int16_t  accel
 
@@ -151,8 +151,7 @@ class RadioTelemetryDecoder(TelemetryDecoder):
         self.modifiers = { "name" : self.name_modifier,
                            "callsign" : self.callsign_modifier,
                            "accelZ" : self.accel_modifier,
-                           "offVert" : self.offvert_and_spin_modifier,
-                           "spin" : self.offvert_and_spin_modifier}
+                           "offVert" : self.offvert_modifier}
 
         self.floats = ["preGnssLat",  "preGnssLon",
                        "gnssLat",     "gnssLon",
@@ -176,7 +175,7 @@ class RadioTelemetryDecoder(TelemetryDecoder):
     def accel_modifier(self, accel: float) -> float:
         return accel * self.ACCEL_MULTIPLIER
 
-    def offvert_and_spin_modifier(self, offvert: float) -> int:
+    def offvert_modifier(self, offvert: float) -> int:
         return round(offvert * self.OFFVERT_MULTIPLIER)
 
     def generate_float_strings(self, telemetry: dict):
