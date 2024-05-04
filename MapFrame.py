@@ -141,7 +141,7 @@ class MapColumn(PanedWindow):
         # Statistics bar
         # ==============
         # Data:
-        self.stats_frame = Frame(self, bg=Colors.DARK_BLUE)
+        self.stats_frame = Frame(self, bg=Colors.BG_COLOR)
         self.stats_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX)
 
         self.total_bytes_read_label = NumberLabel(self.stats_frame, name="Data:", textvariable=StringVar(master, name="total_bytes_read"), units="")
