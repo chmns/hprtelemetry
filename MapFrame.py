@@ -141,39 +141,37 @@ class MapColumn(PanedWindow):
         # Statistics bar
         # ==============
         # Data:
-        self.data_stats_frame = Frame(self, bg=Colors.BG_COLOR)
-        self.data_stats_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX)
+        self.stats_frame = Frame(self, bg=Colors.DARK_BLUE)
+        self.stats_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX)
 
-        self.total_bytes_read_label = NumberLabel(self.data_stats_frame, name="Data:", textvariable=StringVar(master, name="total_bytes_read"), units="")
-        self.total_bytes_read_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+        self.total_bytes_read_label = NumberLabel(self.stats_frame, name="Data:", textvariable=StringVar(master, name="total_bytes_read"), units="")
+        self.total_bytes_read_label.grid(column = 0, row = 0, sticky=(N,W,E,S))
 
-        self.bytes_per_second_label = NumberLabel(self.data_stats_frame, name="", textvariable=StringVar(master, name="bytes_per_sec"), units="/s")
-        self.bytes_per_second_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+        self.bytes_per_second_label = NumberLabel(self.stats_frame, name="", textvariable=StringVar(master, name="bytes_per_sec"), units="/s")
+        self.bytes_per_second_label.grid(column = 2, row = 0, sticky=(N,W,E,S))
 
-        self.data_spacer = Frame(self.data_stats_frame, bg=Colors.BG_COLOR)
-        self.data_spacer.pack(side=LEFT, expand=True, fill=X, padx=PADX)
-
-        self.total_bad_bytes_label = NumberLabel(self.data_stats_frame, name="Error:", textvariable=StringVar(master, name="total_bad_bytes_read"), units="")
-        self.total_bad_bytes_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+        self.total_bad_bytes_label = NumberLabel(self.stats_frame, name="Error:", textvariable=StringVar(master, name="total_bad_bytes_read"), units="")
+        self.total_bad_bytes_label.grid(column = 3, row = 0, sticky=(N,W,E,S))
 
         # Messages:
-        self.messages_stats_frame = Frame(self, bg=Colors.BG_COLOR)
-        self.messages_stats_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX)
+        self.total_messages_read_label = NumberLabel(self.stats_frame, name="Packets:", textvariable=StringVar(master, name="total_messages_decoded"), units="")
+        self.total_messages_read_label.grid(column = 0, row = 1, sticky=(N,W,E,S))
 
-        self.total_messages_read_label = NumberLabel(self.messages_stats_frame, name="Packets:", textvariable=StringVar(master, name="total_messages_decoded"), units="")
-        self.total_messages_read_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+        self.packet_num_label = NumberLabel(self.stats_frame, name="Last:", textvariable=self.last_packet_num, units="")
+        self.packet_num_label.grid(column = 1, row = 1, sticky=(N,W,E,S))
 
-        self.packet_num_label = NumberLabel(self.messages_stats_frame, name="Last Packet #:", textvariable=self.last_packet_num, units="")
-        self.packet_num_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+        self.messages_per_second_label = NumberLabel(self.stats_frame, name="", textvariable=StringVar(master, name="messages_per_sec"), units="/s")
+        self.messages_per_second_label.grid(column = 2, row = 1, sticky=(N,W,E,S))
 
-        self.messages_per_second_label = NumberLabel(self.messages_stats_frame, name="", textvariable=StringVar(master, name="messages_per_sec"), units="/s")
-        self.messages_per_second_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+        self.total_bad_messages_label = NumberLabel(self.stats_frame, name="Bad pkt:", textvariable=StringVar(master, name="total_bad_messages"), units="")
+        self.total_bad_messages_label.grid(column = 3, row = 1, sticky=(N,W,E,S))
 
-        self.messages_spacer = Frame(self.messages_stats_frame, bg=Colors.BG_COLOR)
-        self.messages_spacer.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+        for r in range(2):
+            self.stats_frame.rowconfigure(r, weight=1)
 
-        self.total_bad_messages_label = NumberLabel(self.messages_stats_frame, name="Bad pkt:", textvariable=StringVar(master, name="total_bad_messages"), units="")
-        self.total_bad_messages_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
+        for c in range(4):
+            self.stats_frame.columnconfigure(c, weight=1, uniform="1")
+
 
     def load_offline_database(self, database_path):
         self.map_frame.load_offline_database(database_path)
@@ -204,7 +202,7 @@ class MapColumn(PanedWindow):
             self.cont_label.pack(before=self.event_name_label, side=LEFT, expand=True, fill=X, padx=PADX)
             self.cont_event_frame.pack(after=self.name_callsign_state_frame, side=TOP, expand=False, fill=X, padx=PADX)
             self.preflight_location.pack(after=self.map_frame, side=TOP, expand=False, fill=X, padx=PADX)
-            self.tilt_roll_frame.pack(side=BOTTOM, after=self.data_stats_frame, expand=False, fill=X, padx=PADX, pady=PADY)
+            self.tilt_roll_frame.pack(side=BOTTOM, after=self.stats_frame, expand=False, fill=X, padx=PADX, pady=PADY)
 
         if state == DecoderState.INFLIGHT:
             self.current_location.pack(after=self.preflight_location, side=TOP, expand=False, fill=X, padx=PADX)
@@ -523,7 +521,7 @@ class LocationRow(Frame):
         Frame.__init__(self, master, bg=bg)
 
         self.name = Label(self, text=name, width=8, bg=bg, fg=fg, font=Fonts.MONO_FONT, justify="right")
-        self.name.grid(row=0, column=0, sticky=(N,S), padx=PADX, pady=PADY)
+        self.name.grid(row=0, column=0, sticky=(N,W,E,S), padx=PADX, pady=PADY)
 
         self.lat = Label(self, textvariable=lat_var, bg=bg, fg=fg, font=Fonts.MONO_FONT, justify="center")
         self.lat.grid(row=0, column=1, sticky=(N,E,W,S), padx=PADX, pady=PADY)
@@ -532,7 +530,7 @@ class LocationRow(Frame):
         self.lon.grid(row=0, column=2, sticky=(N,E,W,S), padx=PADX, pady=PADY)
 
         self.alt = Label(self, width=5, textvariable=alt_var, bg=bg, fg=fg, font=Fonts.MONO_FONT, justify="center")
-        self.alt.grid(row=0, column=3, sticky=(N,S), padx=PADX, pady=PADY)
+        self.alt.grid(row=0, column=3, sticky=(N,W,E,S), padx=PADX, pady=PADY)
 
         self.columnconfigure((0,3), weight=0)
         self.columnconfigure((1,2), weight=1)
