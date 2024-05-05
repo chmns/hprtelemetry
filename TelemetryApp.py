@@ -169,7 +169,7 @@ class TelemetryApp(Tk):
         self.window = PanedWindow(orient="horizontal", background="#aaaaaa")
         self.window.configure(sashwidth=SASH_WIDTH)
         self.readouts = Frame(self.window, width=CELL_WIDTH*2, background=Colors.BG_COLOR)
-        self.graphs = Frame(self.window, width=400, background="black")
+        self.graphs = GraphFrame(self.window, width=400, background="black")
         self.map_column = MapColumn(self.window)
 
         self.window.add(self.readouts)
@@ -209,36 +209,12 @@ class TelemetryApp(Tk):
         -------------
         Centre
         """
-        self.altitude_graph = GraphFrame(self.graphs,
-                                         "m",
-                                         DoubleVar(self, 0.0, "time"),
-                                         DoubleVar(self, 0.0, "fusionAlt"),
-                                         None,
-                                         Colors.ALTITUDE_COLOR)
-        self.altitude_graph.grid(row=0, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-
-        self.velocity_graph = GraphFrame(self.graphs,
-                                         "m/s",
-                                         DoubleVar(self, 0.0, "time"),
-                                         DoubleVar(self, 0.0, "fusionVel"),
-                                         None,
-                                         Colors.VELOCITY_COLOR)
-        self.velocity_graph.grid(row=1, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-
-        self.acceleration_graph = GraphFrame(self.graphs,
-                                             "m/s/s",
-                                             DoubleVar(self, 0.0, "time"),
-                                             DoubleVar(self, 0.0, "accelZ"),
-                                             (-20.0, 80.0),
-                                             Colors.ACCELERATION_COLOR)
-        self.acceleration_graph.grid(row=2, column=0, columnspan=3, padx=PADX, pady=PADY, sticky=(N,E,S,W))
-        self.graphs.columnconfigure(0, weight=1)
+        # self.graphs = GraphFrame(self.graphs)
+        # self.graphs.pack(fill=BOTH, expand=True)
 
         self.enable_graph_checkbox = Checkbutton(self.graphs, variable=self.enable_graph, text="Enable Graphs", font=Fonts.MEDIUM_FONT, bg=Colors.GRAY, fg=Colors.LIGHT_GRAY, anchor=W, padx=PADX, pady=PADY)
         self.enable_graph_checkbox.place(relx=0, rely=1, x=20, y=-20, anchor=SW)
 
-        for i in range (NUM_ROWS):
-            self.graphs.rowconfigure(i, weight=1)
 
         # Must be after setup because it affects the grid
         self.set_telemetry_state(DecoderState.OFFLINE)
@@ -308,11 +284,10 @@ class TelemetryApp(Tk):
 
     def update_graph(self):
         if self.enable_graph.get():
-            self.altitude_graph.render()
-            self.acceleration_graph.render()
-            self.velocity_graph.render()
+            self.graphs.draw()
 
         self.slow_update_timer = self.after(GRAPH_UPDATE_INTERVAL, self.update_graph)
+
 
     def update_stats(self):
         interval = STATS_INTERVAL / 1000
@@ -344,10 +319,7 @@ class TelemetryApp(Tk):
             self.setvar(key, value)
 
         self.map_column.update_data()
-        self.altitude_graph.update_data()
-        self.acceleration_graph.update_data()
-        self.velocity_graph.update_data()
-
+        self.graphs.update_data()
 
     def confirm_stop(self) -> bool:
         """
@@ -431,9 +403,7 @@ class TelemetryApp(Tk):
         # clear app variables and graphs:
         self.setvar("name", "")
         self.map_column.reset()
-        self.altitude_graph.reset()
-        self.velocity_graph.reset()
-        self.acceleration_graph.reset()
+        self.graphs.reset()
 
     def update_serial_menu(self) -> None:
         """

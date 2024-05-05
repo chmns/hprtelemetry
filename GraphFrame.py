@@ -6,6 +6,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 import matplotlib.animation as animation
 from collections import deque
+from Styles import Colors
 
 NUM_POINTS = 1000
 LINEWIDTH = 1
@@ -39,72 +40,117 @@ class GraphFrame(Frame):
         pass
 
     def update_data(self):
-        new_y = self.y_var.get()
-        new_x = self.x_var.get()
+        new_y = self.yvars[0].get()
 
-        if new_y > self.max:
-            self.max = new_y
+        # if new_y > self.max:
+        #     self.max = new_y
 
-        if new_y < self.min:
-            self.min = new_y
+        # if new_y < self.min:
+        #     self.min = new_y
 
         self.ys.append(new_y)
 
+    def __init__(self, master, **kwargs):
+        Frame.__init__(self, master, **kwargs)
 
-    def render(self):
-        self.draw()
+        self.yvars = [DoubleVar(master, 0.0, "fusionAlt"),
+                      DoubleVar(master, 0.0, "velocity"),
+                      DoubleVar(master, 0.0, "acceleration")]
 
-    def __init__(self,
-                 master,
-                 units: str,
-                 x_var: DoubleVar,
-                 y_var: DoubleVar,
-                 y_range: tuple = None,
-                 color: str = "black"):
-
-        Frame.__init__(self, master, bg=BG_COLOR)
-
-        self.master = master
-        self.units = units
-        self.color = color
-        self.max = 0
-        self.min = 0
-        self.appended = 0
-        self.y_range = y_range
-        self.x_var = x_var
-        self.y_var = y_var
-
-        plt.tight_layout()
-        self.relief = RAISED
-        self.borderwidth = 2
-
-        self.figure = Figure(figsize=(4,4), dpi=150, constrained_layout=True)
-        self.subplot = self.figure.add_subplot()
-        self.subplot.set_autoscaley_on(True)
+        self.ranges = [(-10,+1000), # Alt
+                       (-20,+20),   # Vel
+                       (-30,+30)]   # Acc
 
         self.__zero_data__()
 
-        self.subplot.set_ylabel(units)
-        self.subplot.grid("True")
+        # plt.tight_layout()
+        self.figure, self.ax = plt.subplots() #(3, sharex=True)
+        (self.line,) = self.ax.plot(self.xs, self.ys, animated=True)
 
-        self.line, = self.subplot.plot(self.xs, self.ys, self.color, linewidth=LINEWIDTH)
+        # self.acc, = self.acc_ax.plot(self.xs, self.ys, Colors.ACCELERATION_COLOR, linewidth=LINEWIDTH)
+        # self.vel, = self.vel_ax.plot(self.xs, self.ys, Colors.VELOCITY_COLOR, linewidth=LINEWIDTH)
+        # self.alt, = self.alt_ax.plot(self.xs, self.ys, Colors.ALTITUDE_COLOR, linewidth=LINEWIDTH)
 
-        if self.y_range is not None:
-            self.subplot.set_ylim(*self.y_range)
 
         self.canvas = FigureCanvasTkAgg(self.figure, self)
         self.canvas.get_tk_widget().pack(side=BOTTOM, fill=BOTH, expand=True)
+
         self.canvas.draw()
+        self.blit_manager = BlitManager(self.canvas, [self.line])
 
     def draw(self):
-        self.line.set_xdata(self.xs)
-        # self.subplot.set_xlim(self.xs[0],
-        #                       self.xs[len(self.xs)-1])
-
         self.line.set_ydata(self.ys)
+        self.blit_manager.update()
 
-        self.subplot.set_ylim(self.min, self.max)
 
-        self.canvas.draw()
-        self.canvas.flush_events()
+class BlitManager:
+    def __init__(self, canvas, animated_artists=()):
+        """
+        Parameters
+        ----------
+        canvas : FigureCanvasAgg
+            The canvas to work with, this only works for subclasses of the Agg
+            canvas which have the `~FigureCanvasAgg.copy_from_bbox` and
+            `~FigureCanvasAgg.restore_region` methods.
 
+        animated_artists : Iterable[Artist]
+            List of the artists to manage
+        """
+        self.canvas = canvas
+        self._bg = None
+        self._artists = []
+
+        for a in animated_artists:
+            self.add_artist(a)
+        # grab the background on every draw
+        self.cid = canvas.mpl_connect("draw_event", self.on_draw)
+
+    def on_draw(self, event):
+        """Callback to register with 'draw_event'."""
+        cv = self.canvas
+        if event is not None:
+            if event.canvas != cv:
+                raise RuntimeError
+        self._bg = cv.copy_from_bbox(cv.figure.bbox)
+        self._draw_animated()
+
+    def add_artist(self, art):
+        """
+        Add an artist to be managed.
+
+        Parameters
+        ----------
+        art : Artist
+
+            The artist to be added.  Will be set to 'animated' (just
+            to be safe).  *art* must be in the figure associated with
+            the canvas this class is managing.
+
+        """
+        if art.figure != self.canvas.figure:
+            raise RuntimeError
+        art.set_animated(True)
+        self._artists.append(art)
+
+    def _draw_animated(self):
+        """Draw all of the animated artists."""
+        fig = self.canvas.figure
+        for a in self._artists:
+            fig.draw_artist(a)
+
+    def update(self):
+        """Update the screen with animated artists."""
+        cv = self.canvas
+        fig = cv.figure
+        # paranoia in case we missed the draw event,
+        if self._bg is None:
+            self.on_draw(None)
+        else:
+            # restore the background
+            cv.restore_region(self._bg)
+            # draw all of the animated artists
+            self._draw_animated()
+            # update the GUI state
+            cv.blit(fig.bbox)
+        # let the GUI event loop process anything it has to do
+        cv.flush_events()
