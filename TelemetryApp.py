@@ -26,10 +26,11 @@ style.use('dark_background')
 
 FAST_UPDATE_INTERVAL = 10
 GRAPH_UPDATE_INTERVAL = 100 # time between updating graphs
-RECENT_PACKET_TIMEOUT = 1000 # ms after receiving last message that we show red marker to user
 STATS_INTERVAL = 500 # ms between calculating the bytes/second value
 TIME_SINCE_FORMAT = "{:.2f}"
 MESSAGE_PER_SEC_FORMAT = "{:.1f}"
+
+RECENT_PACKET_TIMEOUT = 1 # seconds after receiving last message that we show red marker to user
 
 PROFILING = False # set to True and press 's' key during app running to see memory use
 
@@ -67,10 +68,6 @@ class TelemetryApp(Tk):
                  use: str | None = None) -> None:
 
         super().__init__(screenName, baseName, className, useTk, sync, use)
-
-        self.tracker = None
-        if PROFILING:
-            self.tracker = SummaryTracker()
 
         self.state = AppState.IDLE
 
@@ -286,15 +283,17 @@ class TelemetryApp(Tk):
             self.destroy()
             self.quit()
 
-    def update(self):
-        self.time_since_last_packet.set(TIME_SINCE_FORMAT.format((monotonic() - self.last_packet_local_timestamp)))
+    def check_queue(self):
+        time_since_last_packet = (monotonic() - self.last_packet_local_timestamp)
+
+        # Set red/green indicator in status bar depending on when last packet came in:
+        self.currently_receiving.set(time_since_last_packet < RECENT_PACKET_TIMEOUT)
+        self.time_since_last_packet.set(TIME_SINCE_FORMAT.format(time_since_last_packet))
 
         try:
             while True:
                 message = self.message_queue.get(block=False)
-                self.reset_packet_timer()
                 self.message_callback(message)
-
 
         except queue.Empty:
             pass
@@ -302,7 +301,7 @@ class TelemetryApp(Tk):
         finally:
 
             if self.current_reader.running.is_set():
-                self.fast_update_timer = self.after(FAST_UPDATE_INTERVAL, self.update)
+                self.fast_update_timer = self.after(FAST_UPDATE_INTERVAL, self.check_queue)
             else:
                 self.stop()
 
@@ -344,19 +343,10 @@ class TelemetryApp(Tk):
         for (key, value) in message.telemetry.items():
             self.setvar(key, value)
 
-        self.map_column.update()
-        self.altitude_graph.update()
-        self.acceleration_graph.update()
-        self.velocity_graph.update()
-
-
-    def reset_packet_timer(self):
-        self.currently_receiving.set(True)
-
-        if self.currently_receiving_timer is not None:
-            self.after_cancel(self.currently_receiving_timer)
-
-        self.currently_receiving_timer = self.after(RECENT_PACKET_TIMEOUT, lambda: self.currently_receiving.set(False))
+        self.map_column.update_data()
+        self.altitude_graph.update_data()
+        self.acceleration_graph.update_data()
+        self.velocity_graph.update_data()
 
 
     def confirm_stop(self) -> bool:
@@ -391,7 +381,7 @@ class TelemetryApp(Tk):
 
     def start(self):
         self.last_packet_local_timestamp = monotonic()
-        self.update()
+        self.check_queue()
         self.update_graph()
         self.update_stats()
 
@@ -574,9 +564,6 @@ class TelemetryApp(Tk):
             print(f"Attempting to load map file: {filename}")
             self.map_column.load_offline_database(filename)
 
-    # def delete_map(self):
-        # self.map_column.delete_map()
-
     @staticmethod
     def format_bytes(size):
         power = 10**3
@@ -593,10 +580,8 @@ class TelemetryApp(Tk):
 
         return "{:.3f}".format(size)[:5] + power_labels[n] + "B"
 
-from pympler.tracker import SummaryTracker
 
 if __name__ == "__main__":
     telemetry = TelemetryApp()
     telemetry.mainloop()
     telemetry.quit()
-

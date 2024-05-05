@@ -160,10 +160,10 @@ class MapColumn(PanedWindow):
         self.packet_num_label = NumberLabel(self.stats_frame, name="Last:", textvariable=self.last_packet_num, units="")
         self.packet_num_label.grid(column = 1, row = 1, sticky=(N,W,E,S))
 
-        self.messages_per_second_label = NumberLabel(self.stats_frame, name="", textvariable=StringVar(master, name="messages_per_sec"), units="/s")
+        self.messages_per_second_label = NumberLabel(self.stats_frame, name="", textvariable=StringVar(master, name="messages_per_sec"), units="Pkt/s")
         self.messages_per_second_label.grid(column = 2, row = 1, sticky=(N,W,E,S))
 
-        self.total_bad_messages_label = NumberLabel(self.stats_frame, name="Bad pkt:", textvariable=StringVar(master, name="total_bad_messages"), units="")
+        self.total_bad_messages_label = NumberLabel(self.stats_frame, name="Error:", textvariable=StringVar(master, name="total_bad_messages"), units="Pkt")
         self.total_bad_messages_label.grid(column = 3, row = 1, sticky=(N,W,E,S))
 
         for r in range(2):
@@ -234,16 +234,16 @@ class MapColumn(PanedWindow):
         self.map_frame.state = state
 
 
-
-
     def update_status_indicator(self, *_):
         if self.currently_receiving.get():
             self.last_packet_indicator.config(bg=Colors.BRIGHT_GREEN, fg=Colors.GRAY)
         else:
             self.last_packet_indicator.config(bg=Colors.BRIGHT_RED, fg=Colors.WHITE)
 
-    def update(self):
-        self.map_frame.update()
+
+
+    def update_data(self):
+        self.map_frame.update_data()
 
     def __reset__pack__(self):
         self.name_label.pack_forget()
@@ -384,7 +384,7 @@ class MapFrame(PanedWindow):
         else:
             self.online_label.config(text=f"Offline", fg=Colors.DARK_RED)
 
-    def update(self):
+    def update_data(self):
         changed = False
 
         new_lat = self.prevLat

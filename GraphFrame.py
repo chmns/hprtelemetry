@@ -38,7 +38,7 @@ class GraphFrame(Frame):
         """
         pass
 
-    def update(self):
+    def update_data(self):
         new_y = self.y_var.get()
         new_x = self.x_var.get()
 
