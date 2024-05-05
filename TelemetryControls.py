@@ -1,5 +1,5 @@
 from tkinter import *
-from Styles import Fonts
+from Styles import Fonts, Colors
 
 BG_COLOR = "#0f0f0f"
 FG_COLOR = "#eeeeee"
@@ -11,81 +11,65 @@ MEDIUM_FONT_SIZE = 24
 SMALL_FONT_SIZE = 14
 
 class ReadOut(Frame):
-    @staticmethod
-    def metresToFeet(metres):
-        return metres / 3.281
+    def __init__(self,
+                 master,
+                 name: str,
+                 variable: Variable,
+                 units: str,
+                 color: str = FG_COLOR):
 
-    @staticmethod
-    def mssToG(mss):
-        return mss/9.81
+        Frame.__init__(self, master, bg=BG_COLOR)
 
-    @staticmethod
-    def msToMph(ms):
-        return ms * 2.236936
+        self.variable = variable
 
-    @staticmethod
-    def msTofps(ms):
-        return ms * 3.28084
+        self.name = name
+        self.value = 0
+        self.min = IntVar(self, 0.0, "min")
+        self.max = IntVar(self, 0.0, "max")
+        self.units = units
+        self.color = color
 
-    @staticmethod
-    def default(arg):
-        return arg
+        self.variable.trace_add("write", self.update_value)
+
+        Frame(self, bg=BG_COLOR).pack(fill=BOTH, expand=True)
+
+        self.main = Label(self, textvariable=variable, fg=FG_COLOR, bg=BG_COLOR, font=("Arial", LARGE_FONT_SIZE))
+        self.main.pack(fill=X)
+
+        self.name = Label(self, text=f'{self.name}', fg=self.color, bg=BG_COLOR, font=("Arial", MEDIUM_FONT_SIZE))
+        self.name.pack(fill=X)
+
+        self.max_label = NumberLabel(self, textvariable=self.max, name="Max:", font=Fonts.SMALL_FONT, units=self.units)
+        self.max_label.pack()
+        self.min_label = NumberLabel(self, textvariable=self.min, name="Min:", font=Fonts.SMALL_FONT, units=self.units)
+        self.min_label.pack()
+
+        Frame(self, bg=BG_COLOR).pack(fill=BOTH, expand=True)
 
     def update_value(self, *_):
         new_value = self.variable.get()
 
-        if new_value >= self.max_value:
-            self.max_value = new_value
+        if new_value >= self.min.get():
+            self.min.set(new_value)
 
-        # self.value = new_value
-        self.main.config(text=f'{new_value:.{self.decimals}f}')
-        self.max.config(text=f'Max:\n{self.max_value:.{self.decimals}f}')
+        if new_value >= self.max.get():
+            self.max.set(new_value)
 
-    def set_final_value(self, final_value):
-        self.final.config(text=f"Final:{final_value}")
+    def reset(self):
+        self.min.set(0)
+        self.max.set(0)
 
-    def __init__(self,
-                 master,
-                 name: str,
-                 variable: str,
-                 units1: str,
-                 units2: str,
-                 multiplier: int = 1,
-                 conversion: callable = default,
-                 color: str = FG_COLOR,
-                 decimals: int = 1):
+class NumberLabel(Frame):
+    def __init__(self, master, name: str, textvariable: Variable, units: str,
+                 font: str = Fonts.MEDIUM_FONT_BOLD, fg: str = Colors.WHITE, bg: str = Colors.BLACK) -> None:
 
-        Frame.__init__(self, master, bg=BG_COLOR)
+        super().__init__(master, bg=bg)
 
-        self.variable = DoubleVar(master, name = variable)
+        self.name_label = Label(self, text=name, anchor=E, font=font, bg=Colors.BG_COLOR, fg=fg)
+        self.name_label.pack(side=LEFT, expand=True, fill=X)
 
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_rowconfigure(4, weight=1)
-        self.grid_rowconfigure(6, weight=1)
-        self.grid_columnconfigure(0, weight=1)
+        self.value_label = Label(self, textvariable=textvariable, font=font, bg=Colors.BG_COLOR, fg=fg)
+        self.value_label.pack(side=LEFT, expand=False, fill=None)
 
-        self.name = name
-        self.value = 0
-        self.max_value = 0
-        self.units1 = units1
-        self.units2 = units2
-        self.multiplier = multiplier
-        self.conversion = conversion
-        self.color = color
-        self.decimals = decimals
-
-        self.variable.trace_add("write", self.update_value)
-
-        self.main = Label(self, text="0", fg=FG_COLOR, bg=BG_COLOR, font=("Arial", LARGE_FONT_SIZE))
-        self.main.grid(column = 0, row = 1, sticky = (N,S))
-
-        self.name = Label(self, text=f'{self.name}', fg=self.color, bg=BG_COLOR, font=("Arial", MEDIUM_FONT_SIZE))
-        self.name.grid(column = 0, row = 2, sticky=(N,S))
-
-        self.max = Label(self, text=f'Max:\n{self.max_value}{units1}', fg=FG_COLOR, bg=BG_COLOR, font=("Arial", SMALL_FONT_SIZE))
-        self.max.grid(column = 0, row = 4, sticky=(N,S))
-
-        self.final = Label(self, text="", fg=self.color, bg=BG_COLOR, font=("Arial Bold", SMALL_FONT_SIZE))
-        self.final.grid(column = 0, row = 6, sticky=(N,S))
-
-
+        self.units_label = Label(self, text=units, anchor=W, font=font, bg=Colors.BG_COLOR, fg=fg)
+        self.units_label.pack(side=LEFT, expand=True, fill=X)

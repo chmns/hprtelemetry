@@ -16,6 +16,7 @@ INITIAL_INTERVAL = 1 # for filling empty space at start
 BG_COLOR = "#0f0f0f"
 FG_COLOR = "#eeeeee"
 AXIS_NAMES = ["Altitude (m)", "Velocity (m/s)", "Acceleration (m/s/s)"]
+LINE_COLORS = [Colors.ALTITUDE_COLOR, Colors.VELOCITY_COLOR, Colors.ACCELERATION_COLOR]
 
 class GraphFrame(Frame):
     def reset_data(self):
@@ -67,10 +68,6 @@ class GraphFrame(Frame):
                       DoubleVar(master, 0.0, "fusionVel"),
                       DoubleVar(master, 0.0, "accelZ")]
 
-        colors = [Colors.ACCELERATION_COLOR,
-                  Colors.VELOCITY_COLOR,
-                  Colors.ALTITUDE_COLOR]
-
         self.extend_size = [1000, # alt
                             100,   # vel
                             100]   # accelz
@@ -81,14 +78,14 @@ class GraphFrame(Frame):
 
         self.lines = []
 
-        plt.subplots_adjust(bottom=0.05, right=0.95, top=0.975, left=0.15, hspace=0.1)
+        plt.subplots_adjust(bottom=0.075, right=0.95, top=0.95, left=0.15, hspace=0.1)
         plt.xlabel("Packet history")
 
         for i in range(NUM_GRAPHS):
             self.ax[i].set_ylim(self.ranges[i])
             self.ax[i].grid(color=Colors.GRAY)
             self.ax[i].set_ylabel(AXIS_NAMES[i])
-            (line,) = self.ax[i].plot(self.xs, self.ys[i], colors[i], animated=True, linewidth=LINEWIDTH)
+            (line,) = self.ax[i].plot(self.xs, self.ys[i], LINE_COLORS[i], animated=True, linewidth=LINEWIDTH)
             self.lines.append(line)
 
         self.canvas = FigureCanvasTkAgg(self.figure, self)

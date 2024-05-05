@@ -3,8 +3,8 @@ from tkintermapview import TkinterMapView, OfflineLoader
 from tkintermapview.utility_functions import osm_to_decimal
 from Styles import Fonts, Colors
 from TelemetryDecoder import DecoderState
+from TelemetryControls import NumberLabel
 import os # for maps db
-from enum import StrEnum
 
 DEFAULT_LAT = 44.7916443
 DEFAULT_LON = -0.5995578
@@ -31,21 +31,6 @@ PADY = 4
 
 DEFAULT_DATABASE_NAME = "offline_tiles.db"
 TILE_SERVER_URL = "http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}&s=Ga"
-
-class NumberLabel(Frame):
-    def __init__(self, master, name: str, textvariable: Variable, units: str,
-                 font: str = Fonts.MEDIUM_FONT_BOLD, fg: str = Colors.WHITE, bg: str = Colors.BLACK) -> None:
-
-        super().__init__(master, bg=bg)
-
-        self.name_label = Label(self, text=name, anchor=E, font=font, bg=Colors.BG_COLOR, fg=fg)
-        self.name_label.pack(side=LEFT, expand=True, fill=X)
-
-        self.value_label = Label(self, textvariable=textvariable, font=font, bg=Colors.BG_COLOR, fg=fg)
-        self.value_label.pack(side=LEFT, expand=False, fill=None)
-
-        self.units_label = Label(self, text=units, anchor=W, font=font, bg=Colors.BG_COLOR, fg=fg)
-        self.units_label.pack(side=LEFT, expand=True, fill=X)
 
 
 class MapColumn(PanedWindow):
@@ -141,7 +126,7 @@ class MapColumn(PanedWindow):
         # ==============
         # Data:
         self.stats_frame = Frame(self, bg=Colors.BG_COLOR)
-        self.stats_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX)
+        self.stats_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X)
 
         self.total_bytes_read_label = NumberLabel(self.stats_frame, name="Data:", textvariable=StringVar(master, name="total_bytes_read"), units="")
         self.total_bytes_read_label.grid(column = 1, row = 0, sticky=(N,W,E,S))

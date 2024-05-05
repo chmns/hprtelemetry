@@ -156,10 +156,10 @@ class TelemetryApp(Tk):
 
         # Window panes
         # ------------
-        self.window = PanedWindow(orient="horizontal", background="#aaaaaa")
+        self.window = PanedWindow(orient="horizontal", background=Colors.GRAY)
         self.window.configure(sashwidth=SASH_WIDTH)
-        self.readouts = Frame(self.window, width=CELL_WIDTH*2, background=Colors.BG_COLOR)
-        self.graphs = GraphFrame(self.window, width=400, background="black")
+        self.readouts = Frame(self.window, width=CELL_WIDTH*2, background=Colors.GRAY)
+        self.graphs = GraphFrame(self.window, width=400, background=Colors.BLACK)
         self.map_column = MapColumn(self.window)
 
         self.window.add(self.readouts)
@@ -175,21 +175,16 @@ class TelemetryApp(Tk):
         # Readouts Column
         # ---------------
         # Left side
-        self.altitude = ReadOut(self.readouts, "Altitude", "fusionAlt", "m", "ft", ReadOut.metresToFeet, color=Colors.ALTITUDE_COLOR)
-        self.altitude.grid(row=0, column=0, padx=PADX, pady=PADY, sticky=(N,E,W,S))
-        self.altitude.config(width = CELL_WIDTH)
+        self.altitude = ReadOut(self.readouts, "Altitude", IntVar(self, 0, "fusionAlt"), "m", color=Colors.ALTITUDE_COLOR)
+        self.altitude.pack(fill=BOTH, expand=True)
+        self.baro_alt = NumberLabel(self.altitude, textvariable=IntVar(self, 0, "baroAlt"), name="Baro:", units="m")
+        self.baro_alt.pack(after=self.altitude.name)
 
-        self.velocity = ReadOut(self.readouts, "Velocity", "fusionVel", "m/s", "mi/h", ReadOut.msToMph, color=Colors.VELOCITY_COLOR)
-        self.velocity.grid(row=1, column=0, padx=PADX, pady=PADY, sticky=(N,S))
-        self.velocity.config(width = CELL_WIDTH)
+        self.velocity = ReadOut(self.readouts, "Velocity", IntVar(self, 0, "fusionVel"), "m/s", color=Colors.VELOCITY_COLOR)
+        self.velocity.pack(fill=BOTH, expand=True, pady=PADY*2)
 
-        self.acceleration = ReadOut(self.readouts, "Accel", "accelZ", "m/s/s", "G", ReadOut.mssToG, color=Colors.ACCELERATION_COLOR)
-        self.acceleration.grid(row=2, column=0, padx=PADX, pady=PADY, sticky=(N,S))
-        self.acceleration.config(width = CELL_WIDTH)
-
-        self.readouts.columnconfigure(0, weight=1)
-        for i in range (NUM_ROWS):
-            self.readouts.rowconfigure(i, weight=1)
+        self.acceleration = ReadOut(self.readouts, "Accel", IntVar(self, 0, "accelZ"), "m/s/s", color=Colors.ACCELERATION_COLOR)
+        self.acceleration.pack(fill=BOTH, expand=True)
 
 
         # Graphs Column
@@ -404,6 +399,9 @@ class TelemetryApp(Tk):
         self.setvar("name", "")
         self.map_column.reset()
         self.graphs.reset()
+        self.altitude.reset()
+        self.velocity.reset()
+        self.acceleration.reset()
 
     def update_serial_menu(self) -> None:
         """
