@@ -9,7 +9,7 @@ from collections import deque
 from Styles import Colors
 
 NUM_GRAPHS = 3
-NUM_POINTS = 400
+NUM_POINTS = 500
 LINEWIDTH = 1
 FPS = 20 # update rate of graph
 INITIAL_INTERVAL = 1 # for filling empty space at start
@@ -76,9 +76,12 @@ class GraphFrame(Frame):
 
         self.lines = []
 
+        plt.subplots_adjust(bottom=0.05, right=0.95, top=0.975, left=0.1, hspace=0.1)
+
         for i in range(NUM_GRAPHS):
             self.ax[i].set_ylim(self.ranges[i])
-            (line,) = self.ax[i].plot(self.xs, self.ys[i], colors[i], animated=True)
+            self.ax[i].grid(color=Colors.GRAY)
+            (line,) = self.ax[i].plot(self.xs, self.ys[i], colors[i], animated=True, linewidth=LINEWIDTH)
             self.lines.append(line)
 
         self.canvas = FigureCanvasTkAgg(self.figure, self)

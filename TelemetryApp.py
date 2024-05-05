@@ -282,11 +282,11 @@ class TelemetryApp(Tk):
                 self.stop()
 
 
-    def update_graph(self):
+    def draw_graph(self):
         if self.enable_graph.get():
             self.graphs.draw()
 
-        self.slow_update_timer = self.after(GRAPH_UPDATE_INTERVAL, self.update_graph)
+        self.slow_update_timer = self.after(GRAPH_UPDATE_INTERVAL, self.draw_graph)
 
 
     def update_stats(self):
@@ -354,7 +354,7 @@ class TelemetryApp(Tk):
     def start(self):
         self.last_packet_local_timestamp = monotonic()
         self.check_queue()
-        self.update_graph()
+        self.draw_graph()
         self.update_stats()
 
     def stop(self):
