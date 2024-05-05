@@ -46,10 +46,8 @@ CELL_WIDTH = 220
 Work list
 ---------
 1. Show baro alt in UI
-2. Show fltTime in UI
-3. Add minimim to accel / alt / velocity indicator
-4. Event colors: 18 to 21,26,28 red color. Range 8-5 green.
-5. Reduce CPU %
+2. Add minimim to accel / alt / velocity indicator
+3. Event colors: 18 to 21,26,28 red color. Range 8-5 green.
 """
 
 class AppState(Enum):

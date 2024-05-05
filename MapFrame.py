@@ -53,7 +53,6 @@ class MapColumn(PanedWindow):
         PanedWindow.__init__(self, orient="vertical", background=Colors.BLACK)
 
         self.total_bytes_read = StringVar(master, name="total_bytes_read")
-        self.last_packet_num = IntVar(master, name="radioPacketNum")
         self.event_name = StringVar(master, "", "eventName")
         self.name = StringVar(master, "", "name")
         self.callsign = StringVar(master, "", "callsign")
@@ -145,7 +144,7 @@ class MapColumn(PanedWindow):
         self.stats_frame.pack(side=BOTTOM, after=self.status_bar, expand=False, fill=X, padx=PADX)
 
         self.total_bytes_read_label = NumberLabel(self.stats_frame, name="Data:", textvariable=StringVar(master, name="total_bytes_read"), units="")
-        self.total_bytes_read_label.grid(column = 0, row = 0, sticky=(N,W,E,S))
+        self.total_bytes_read_label.grid(column = 1, row = 0, sticky=(N,W,E,S))
 
         self.bytes_per_second_label = NumberLabel(self.stats_frame, name="", textvariable=StringVar(master, name="bytes_per_sec"), units="/s")
         self.bytes_per_second_label.grid(column = 2, row = 0, sticky=(N,W,E,S))
@@ -154,11 +153,11 @@ class MapColumn(PanedWindow):
         self.total_bad_bytes_label.grid(column = 3, row = 0, sticky=(N,W,E,S))
 
         # Messages:
-        self.total_messages_read_label = NumberLabel(self.stats_frame, name="Packets:", textvariable=StringVar(master, name="total_messages_decoded"), units="")
-        self.total_messages_read_label.grid(column = 0, row = 1, sticky=(N,W,E,S))
+        self.flt_time_label = NumberLabel(self.stats_frame, name="FltTime:", textvariable=StringVar(master, name="fltTime"), units="")
+        self.flt_time_label.grid(column = 0, row = 1, sticky=(N,W,E,S))
 
-        self.packet_num_label = NumberLabel(self.stats_frame, name="Last:", textvariable=self.last_packet_num, units="")
-        self.packet_num_label.grid(column = 1, row = 1, sticky=(N,W,E,S))
+        self.total_messages_read_label = NumberLabel(self.stats_frame, name="Packets:", textvariable=StringVar(master, name="total_messages_decoded"), units="Pkt")
+        self.total_messages_read_label.grid(column = 1, row = 1, sticky=(N,W,E,S))
 
         self.messages_per_second_label = NumberLabel(self.stats_frame, name="", textvariable=StringVar(master, name="messages_per_sec"), units="Pkt/s")
         self.messages_per_second_label.grid(column = 2, row = 1, sticky=(N,W,E,S))
