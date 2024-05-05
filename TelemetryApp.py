@@ -111,20 +111,18 @@ class TelemetryApp(Tk):
         self.bytes_per_sec = StringVar(self, "0B", "bytes_per_sec")
         self.messages_per_sec = StringVar(self, "0P", "messages_per_sec")
 
-        # for test
-        self.print_to_console = BooleanVar(self, False, "print_to_console")
-        self.print_to_console.trace_add("write", self.update_print_to_console)
-
-        self.test_serial_sender = TelemetryTestSender() # for test data only
-
         self.bytes_counter = 0
         self.messages_counter = 0
 
+        # Testing and debug
+        # -----------------
+        self.print_to_console = BooleanVar(self, False, "print_to_console")
+        self.print_to_console.trace_add("write", self.update_print_to_console)
+        self.test_serial_sender = TelemetryTestSender() # for test data only
 
-        """
-        Window properties
-        -----------------
-        """
+
+        # Window properties
+        # -----------------
         self.title("HPR Telemetry Viewer")
         self.config(background=Colors.BG_COLOR)
 
@@ -132,10 +130,8 @@ class TelemetryApp(Tk):
         self.geometry("%dx%d+0+0" % (w, h))
 
 
-        """
-        Menu Bar
-        --------
-        """
+        # Menu Bar
+        # --------
         self.menubar = Menu(self)
         self.config(menu=self.menubar)
 
@@ -147,7 +143,6 @@ class TelemetryApp(Tk):
         self.map_menu = Menu(self.menubar)
         self.map_menu.add_command(label="Download current map", command=self.download_current_map)
         self.map_menu.add_command(label="Set offline map path", command=self.set_offline_path)
-        # self.map_menu.add_command(label="Delete map", command=self.delete_map)
 
         self.map_menu.add_checkbutton(label="Only use offline maps",
                                       variable=self.offline_maps_only)
@@ -160,10 +155,8 @@ class TelemetryApp(Tk):
         self.update_serial_menu()
 
 
-        """
-        Window panes
-        ------------
-        """
+        # Window panes
+        # ------------
         self.window = PanedWindow(orient="horizontal", background="#aaaaaa")
         self.window.configure(sashwidth=SASH_WIDTH)
         self.readouts = Frame(self.window, width=CELL_WIDTH*2, background=Colors.BG_COLOR)
@@ -180,11 +173,9 @@ class TelemetryApp(Tk):
         self.window.sash_place(1, CELL_WIDTH, 0)
 
 
-        """
-        Readouts Column
-        ---------------
-        Left side
-        """
+        # Readouts Column
+        # ---------------
+        # Left side
         self.altitude = ReadOut(self.readouts, "Altitude", "fusionAlt", "m", "ft", ReadOut.metresToFeet, color=Colors.ALTITUDE_COLOR)
         self.altitude.grid(row=0, column=0, padx=PADX, pady=PADY, sticky=(N,E,W,S))
         self.altitude.config(width = CELL_WIDTH)
@@ -202,26 +193,23 @@ class TelemetryApp(Tk):
             self.readouts.rowconfigure(i, weight=1)
 
 
-        """
-        Graphs Column
-        -------------
-        Centre
-        """
-        # self.graphs = GraphFrame(self.graphs)
-        # self.graphs.pack(fill=BOTH, expand=True)
+        # Graphs Column
+        # -------------
+        # Centre
 
+        # [Graph frame is created under 'Window Panes']
         self.enable_graph_checkbox = Checkbutton(self.graphs, variable=self.enable_graph, text="Enable Graphs", font=Fonts.MEDIUM_FONT, bg=Colors.GRAY, fg=Colors.LIGHT_GRAY, anchor=W, padx=PADX, pady=PADY)
         self.enable_graph_checkbox.place(relx=0, rely=1, x=20, y=-20, anchor=SW)
 
 
+        # Final init
+        # ----------
         # Must be after setup because it affects the grid
         self.set_telemetry_state(DecoderState.OFFLINE)
 
 
-        """
-        Keyboard shortcuts
-        ------------------
-        """
+        # Keyboard shortcuts
+        # ------------------
         # Bind keys 1-9 to test packet sending
         for i in range(9):
             self.bind(str(i+1), self.num_key_pressed)
@@ -236,12 +224,15 @@ class TelemetryApp(Tk):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.reset()
 
+
     def update_print_to_console(self, *_):
         self.serial_reader.print_received = self.print_to_console.get()
+
 
     def num_key_pressed(self, event):
         if self.serial_reader.running.is_set():
             self.test_serial_sender.send_single_packet(int(event.char)-1)
+
 
     def set_telemetry_state(self, state: DecoderState) -> None:
         if state != self.telemetry_state:
@@ -258,6 +249,10 @@ class TelemetryApp(Tk):
             self.quit()
 
     def check_queue(self):
+        """
+        Check the message queue regularly to see if new messages came.
+        If they came then process then.
+        """
         time_since_last_packet = (monotonic() - self.last_packet_local_timestamp)
 
         # Set red/green indicator in status bar depending on when last packet came in:
@@ -267,7 +262,7 @@ class TelemetryApp(Tk):
         try:
             while True:
                 message = self.message_queue.get(block=False)
-                self.message_callback(message)
+                self.process_message(message)
 
         except queue.Empty:
             pass
@@ -281,6 +276,11 @@ class TelemetryApp(Tk):
 
 
     def draw_graph(self):
+        """
+        Triggers matplotlib to blit received data to screen
+        Data is updated even if it is not draw. So when we are not updating here we
+        do not lose any graph data.
+        """
         if self.enable_graph.get():
             self.graphs.draw()
 
@@ -288,6 +288,9 @@ class TelemetryApp(Tk):
 
 
     def update_stats(self):
+        """
+        Called regularly to update data received and packets decoded statistics
+        """
         interval = STATS_INTERVAL / 1000
         self.bytes_per_sec.set(f"{self.format_bytes(self.bytes_counter / interval)}")
         self.bytes_counter = 0
@@ -300,7 +303,7 @@ class TelemetryApp(Tk):
 
         self.stats_timer = self.after(STATS_INTERVAL, self.update_stats)
 
-    def message_callback(self, message):
+    def process_message(self, message):
         """
         decodes FC-style message into app variables and triggers graphs + map to update
         """

@@ -25,9 +25,9 @@ class GraphFrame(Frame):
 
         self.xs = [x * INITIAL_INTERVAL for x in (range(0-NUM_POINTS,0))]
 
-        self.ranges = [(-1,+1), # Alt
-                       (-1,+1),   # Vel
-                       (-1,+1)]   # Acc
+        self.ranges = [(-100,+1000), # Alt
+                       (-10,+100), # Vel
+                       (-10,+10)] # Acc
 
     def reset(self):
         self.reset_data()
@@ -41,11 +41,11 @@ class GraphFrame(Frame):
             new_y = self.yvars[i].get()
 
             (min, max) = self.ranges[i]
-            if new_y > max:
-                max += 10
+            if new_y >= max:
+                max += self.extend_size[i]
                 changed = True
-            elif new_y < min:
-                min -= 10
+            elif new_y <= min:
+                min -= self.extend_size[i]
                 changed = True
 
             if changed:
@@ -69,6 +69,10 @@ class GraphFrame(Frame):
         colors = [Colors.ACCELERATION_COLOR,
                   Colors.VELOCITY_COLOR,
                   Colors.ALTITUDE_COLOR]
+
+        self.extend_size = [1000, # alt
+                            100,   # vel
+                            100]   # accelz
 
         self.reset_data()
 

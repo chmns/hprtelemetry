@@ -89,29 +89,3 @@ class ReadOut(Frame):
         self.final.grid(column = 0, row = 6, sticky=(N,S))
 
 
-class TelemetryStatus(Frame):
-    def __init__(self,
-                 master,
-                 packet_num_var_name: str,
-                 time_var_name: str,
-                 num_sats_var_name: str):
-
-        Frame.__init__(self, master, background=BG_COLOR)
-
-        self.last_packet = Label(self, textvariable=IntVar(master, 0, packet_num_var_name), fg=FG_COLOR, bg=BG_COLOR, font=Fonts.MEDIUM_FONT)
-        self.last_packet.pack()
-
-        self.last_packet_label = Label(self, text="Last Packet #", fg=FG_COLOR, bg=BG_COLOR, font=Fonts.MEDIUM_FONT)
-        self.last_packet_label.pack()
-
-        self.last_timestamp = Label(self, textvariable=IntVar(master, 0, time_var_name), fg=FG_COLOR, bg=BG_COLOR, font="Courier 18 bold")
-        self.last_timestamp.pack()
-
-        self.last_timestamp_label = Label(self, text="Last Timestamp", fg=FG_COLOR, bg=BG_COLOR, font="Arial 14 bold")
-        self.last_timestamp_label.pack()
-
-        self.num_sats = Label(self, textvariable=IntVar(master, 0, num_sats_var_name), fg=FG_COLOR, bg=BG_COLOR, font="Arial 18")
-        self.num_sats.pack()
-
-        self.num_sats_label = Label(self, text="# satellites", fg=FG_COLOR, bg=BG_COLOR, font="Arial 14 bold")
-        self.num_sats_label.pack()

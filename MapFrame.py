@@ -175,8 +175,6 @@ class MapColumn(PanedWindow):
     def load_offline_database(self, database_path):
         self.map_frame.load_offline_database(database_path)
 
-    # def delete_map(self):
-        # self.map_frame.delete_map()
 
     def set_status_text(self, text,
                         color:str = None,
@@ -504,8 +502,6 @@ class MapFrame(PanedWindow):
         self.autofollow_checkbox.lift()
         self.reset()
 
-    # def delete_map(self):
-        # del self.map_view
 
 class LocationRow(Frame):
     def __init__(self,
