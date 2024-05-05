@@ -8,7 +8,8 @@ import matplotlib.animation as animation
 from collections import deque
 from Styles import Colors
 
-NUM_POINTS = 1000
+NUM_GRAPHS = 3
+NUM_POINTS = 400
 LINEWIDTH = 1
 FPS = 20 # update rate of graph
 INITIAL_INTERVAL = 1 # for filling empty space at start
@@ -16,70 +17,80 @@ BG_COLOR = "#0f0f0f"
 FG_COLOR = "#eeeeee"
 
 class GraphFrame(Frame):
+    def reset_data(self):
+        self.ys = []
 
-    def __zero_data__(self):
-        self.ys = deque(NUM_POINTS*[0], NUM_POINTS)
+        for _ in range(NUM_GRAPHS):
+            self.ys.append(deque(NUM_POINTS*[0], NUM_POINTS))
+
         self.xs = [x * INITIAL_INTERVAL for x in (range(0-NUM_POINTS,0))]
 
+        self.ranges = [(-1,+1), # Alt
+                       (-1,+1),   # Vel
+                       (-1,+1)]   # Acc
+
     def reset(self):
-        self.__zero_data__()
+        self.reset_data()
         self.canvas.draw()
 
-    def start(self):
-        """
-        called to start the animated re-drawing of graph
-        when telemetry data begins to arrive
-        """
-        pass
-
-    def stop(self):
-        """
-        called at the end of a sequence of messages to end
-        graph animation
-        """
-        pass
 
     def update_data(self):
-        new_y = self.yvars[0].get()
+        changed = False
 
-        # if new_y > self.max:
-        #     self.max = new_y
+        for i in range(3):
+            new_y = self.yvars[i].get()
 
-        # if new_y < self.min:
-        #     self.min = new_y
+            (min, max) = self.ranges[i]
+            if new_y > max:
+                max += 10
+                changed = True
+            elif new_y < min:
+                min -= 10
+                changed = True
 
-        self.ys.append(new_y)
+            if changed:
+                self.ranges[i] = (min,max)
+                self.ax[i].set_ylim(self.ranges[i])
+
+            self.ys[i].append(new_y)
+
+        if changed:
+            # do complete redraw for axes
+            self.canvas.draw()
+
 
     def __init__(self, master, **kwargs):
         Frame.__init__(self, master, **kwargs)
 
         self.yvars = [DoubleVar(master, 0.0, "fusionAlt"),
-                      DoubleVar(master, 0.0, "velocity"),
-                      DoubleVar(master, 0.0, "acceleration")]
+                      DoubleVar(master, 0.0, "fusionVel"),
+                      DoubleVar(master, 0.0, "accelZ")]
 
-        self.ranges = [(-10,+1000), # Alt
-                       (-20,+20),   # Vel
-                       (-30,+30)]   # Acc
+        colors = [Colors.ACCELERATION_COLOR,
+                  Colors.VELOCITY_COLOR,
+                  Colors.ALTITUDE_COLOR]
 
-        self.__zero_data__()
+        self.reset_data()
 
-        # plt.tight_layout()
-        self.figure, self.ax = plt.subplots() #(3, sharex=True)
-        (self.line,) = self.ax.plot(self.xs, self.ys, animated=True)
+        self.figure, self.ax = plt.subplots(3, sharex=True)
 
-        # self.acc, = self.acc_ax.plot(self.xs, self.ys, Colors.ACCELERATION_COLOR, linewidth=LINEWIDTH)
-        # self.vel, = self.vel_ax.plot(self.xs, self.ys, Colors.VELOCITY_COLOR, linewidth=LINEWIDTH)
-        # self.alt, = self.alt_ax.plot(self.xs, self.ys, Colors.ALTITUDE_COLOR, linewidth=LINEWIDTH)
+        self.lines = []
 
+        for i in range(NUM_GRAPHS):
+            self.ax[i].set_ylim(self.ranges[i])
+            (line,) = self.ax[i].plot(self.xs, self.ys[i], colors[i], animated=True)
+            self.lines.append(line)
 
         self.canvas = FigureCanvasTkAgg(self.figure, self)
         self.canvas.get_tk_widget().pack(side=BOTTOM, fill=BOTH, expand=True)
 
         self.canvas.draw()
-        self.blit_manager = BlitManager(self.canvas, [self.line])
+        self.blit_manager = BlitManager(self.canvas, self.lines)
 
     def draw(self):
-        self.line.set_ydata(self.ys)
+        for i in range(NUM_GRAPHS):
+            self.lines[i].set_ydata(self.ys[i])
+
         self.blit_manager.update()
 
 
