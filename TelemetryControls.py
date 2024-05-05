@@ -32,7 +32,7 @@ class ReadOut(Frame):
         return arg
 
     def update_value(self, *_):
-        new_value = self.variable.get() # * self.multiplier
+        new_value = self.variable.get()
 
         if new_value >= self.max_value:
             self.max_value = new_value

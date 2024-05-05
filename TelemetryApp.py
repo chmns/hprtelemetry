@@ -28,7 +28,6 @@ FAST_UPDATE_INTERVAL = 10
 GRAPH_UPDATE_INTERVAL = 100 # time between updating graphs
 STATS_INTERVAL = 500 # ms between calculating the bytes/second value
 TIME_SINCE_FORMAT = "{:.2f}"
-MESSAGE_PER_SEC_FORMAT = "{:.1f}"
 
 RECENT_PACKET_TIMEOUT = 1 # seconds after receiving last message that we show red marker to user
 
@@ -295,7 +294,7 @@ class TelemetryApp(Tk):
         self.bytes_per_sec.set(f"{self.format_bytes(self.bytes_counter / interval)}")
         self.bytes_counter = 0
 
-        self.messages_per_sec.set(MESSAGE_PER_SEC_FORMAT.format(self.messages_counter / interval))
+        self.messages_per_sec.set(round(self.messages_counter / interval))
         self.messages_counter = 0
 
         self.total_bad_bytes_read.set(self.format_bytes(self.current_reader.bad_bytes_received))
