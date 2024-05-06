@@ -44,9 +44,7 @@ CELL_WIDTH = 220
 """
 Work list
 ---------
-1. Show baro alt in UI
-2. Add minimim to accel / alt / velocity indicator
-3. Event colors: 18 to 21,26,28 red color. Range 8-5 green.
+1. Event colors: 18 to 21,26,28 red color. Range 8-5 green.
 """
 
 class AppState(Enum):
@@ -175,15 +173,15 @@ class TelemetryApp(Tk):
         # Readouts Column
         # ---------------
         # Left side
-        self.altitude = ReadOut(self.readouts, "Altitude", IntVar(self, 0, "fusionAlt"), "m", color=Colors.ALTITUDE_COLOR)
+        self.altitude = ReadOut(self.readouts, "Altitude", DoubleVar(self, 0, "fusionAlt"), "m", Colors.ALTITUDE_COLOR, "{:.1f}")
         self.altitude.pack(fill=BOTH, expand=True)
-        self.baro_alt = NumberLabel(self.altitude, textvariable=IntVar(self, 0, "baroAlt"), name="Baro:", units="m")
-        self.baro_alt.pack(after=self.altitude.name)
+        self.baro_alt = NumberLabel(self.altitude, textvariable=DoubleVar(self, 0, "baroAlt"), name="Baro:", units="m")
+        self.baro_alt.pack(after=self.altitude.name_label)
 
-        self.velocity = ReadOut(self.readouts, "Velocity", IntVar(self, 0, "fusionVel"), "m/s", color=Colors.VELOCITY_COLOR)
+        self.velocity = ReadOut(self.readouts, "Velocity", DoubleVar(self, 0, "fusionVel"), "m/s", Colors.VELOCITY_COLOR, "{:.1f}")
         self.velocity.pack(fill=BOTH, expand=True, pady=PADY*2)
 
-        self.acceleration = ReadOut(self.readouts, "Accel", IntVar(self, 0, "accelZ"), "m/s/s", color=Colors.ACCELERATION_COLOR)
+        self.acceleration = ReadOut(self.readouts, "Accel", DoubleVar(self, 0, "accelZ"), "m/s/s", Colors.ACCELERATION_COLOR, "{:.2f}")
         self.acceleration.pack(fill=BOTH, expand=True)
 
 
@@ -301,6 +299,7 @@ class TelemetryApp(Tk):
         """
         decodes FC-style message into app variables and triggers graphs + map to update
         """
+
         self.set_telemetry_state(message.decoder_state)
         self.last_packet_local_timestamp = message.local_time
 

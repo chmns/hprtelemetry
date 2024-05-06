@@ -1,10 +1,7 @@
 from tkinter import *
 from Styles import Fonts, Colors
 
-BG_COLOR = "#0f0f0f"
-FG_COLOR = "#eeeeee"
-
-NAME_TEXT_WRAPLENGTH = 160
+DEFAULT_FORMAT = "{:.2f}"
 
 LARGE_FONT_SIZE = 40
 MEDIUM_FONT_SIZE = 24
@@ -14,50 +11,59 @@ class ReadOut(Frame):
     def __init__(self,
                  master,
                  name: str,
-                 variable: Variable,
-                 units: str,
-                 color: str = FG_COLOR):
+                 variable: DoubleVar,
+                 units: str = "",
+                 color: str = Colors.FG_COLOR,
+                 format: str = DEFAULT_FORMAT,):
 
-        Frame.__init__(self, master, bg=BG_COLOR)
+        Frame.__init__(self, master, bg=Colors.BG_COLOR)
 
         self.variable = variable
 
         self.name = name
-        self.value = 0
-        self.min = IntVar(self, 0.0, "min")
-        self.max = IntVar(self, 0.0, "max")
+        self.min_var = StringVar(self, "0.0")
+        self.min = 0.0
+        self.max_var = StringVar(self,"0.0")
+        self.max = 0.0
+        self.value = StringVar(self, "0.0")
         self.units = units
+        self.format = format
         self.color = color
 
         self.variable.trace_add("write", self.update_value)
 
-        Frame(self, bg=BG_COLOR).pack(fill=BOTH, expand=True)
+        Frame(self, bg=Colors.BG_COLOR).pack(fill=BOTH, expand=True)
 
-        self.main = Label(self, textvariable=variable, fg=FG_COLOR, bg=BG_COLOR, font=("Arial", LARGE_FONT_SIZE))
-        self.main.pack(fill=X)
+        self.main_label = Label(self, textvariable=self.value, fg=Colors.FG_COLOR, bg=Colors.BG_COLOR, font=("Arial", LARGE_FONT_SIZE))
+        self.main_label.pack(fill=X)
 
-        self.name = Label(self, text=f'{self.name}', fg=self.color, bg=BG_COLOR, font=("Arial", MEDIUM_FONT_SIZE))
-        self.name.pack(fill=X)
+        self.name_label = Label(self, text=self.name, fg=self.color, bg=Colors.BG_COLOR, font=("Arial", MEDIUM_FONT_SIZE))
+        self.name_label.pack(fill=X)
 
-        self.max_label = NumberLabel(self, textvariable=self.max, name="Max:", font=Fonts.SMALL_FONT, units=self.units)
+        self.max_label = NumberLabel(self, textvariable=self.max_var, name="Max:", font=Fonts.SMALL_FONT, units=self.units)
         self.max_label.pack()
-        self.min_label = NumberLabel(self, textvariable=self.min, name="Min:", font=Fonts.SMALL_FONT, units=self.units)
+        self.min_label = NumberLabel(self, textvariable=self.min_var, name="Min:", font=Fonts.SMALL_FONT, units=self.units)
         self.min_label.pack()
 
-        Frame(self, bg=BG_COLOR).pack(fill=BOTH, expand=True)
+        Frame(self, bg=Colors.BG_COLOR).pack(fill=BOTH, expand=True)
 
     def update_value(self, *_):
         new_value = self.variable.get()
+        new_value_string = self.format.format(new_value)
 
-        if new_value >= self.min.get():
-            self.min.set(new_value)
+        if new_value < self.min:
+            self.min_var.set(new_value_string)
 
-        if new_value >= self.max.get():
-            self.max.set(new_value)
+        if new_value > self.max:
+            self.max_var.set(new_value_string)
+
+        self.value.set(new_value_string)
 
     def reset(self):
-        self.min.set(0)
-        self.max.set(0)
+        self.min_var.set(self.format.format(0))
+        self.min = 0.0
+        self.max_var.set(self.format.format(0))
+        self.max = 0.0
 
 class NumberLabel(Frame):
     def __init__(self, master, name: str, textvariable: Variable, units: str,
