@@ -30,6 +30,7 @@ class GraphFrame(Frame):
     def reset(self):
         self.reset_data()
         self.canvas.draw()
+        self.draw()
 
 
     def update_data(self):
