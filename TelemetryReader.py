@@ -506,6 +506,8 @@ class SDCardFileReader(TelemetryReader):
 class BinaryFileReader(TelemetryReader):
     """
     Class for reading TLM file backup data
+    ---
+    Todo: a lot of this is copy/paste from serial reader above and should be merged
     """
     def __init__(self, queue: queue.Queue = None) -> None:
 
@@ -575,17 +577,63 @@ class BinaryFileReader(TelemetryReader):
                             self.messages_decoded += 1
                             # when in flight we just send last of 4 packets to UI to save time updating:
                             received_telemetry |= message # merge telemetry dicts together
-
                         self.messages_decoded += 1
-                        message_queue.put(Message(received_telemetry,
-                                                  self.decoder.state,
-                                                  monotonic(),
-                                                  packet_length))
+
+                    else:
+                        continue
+
+
+                    # Apply modifiers
+                    # ---------------
+                    # (like accel * ACCEL_MULTIPLIER)
+                    try:
+                        received_telemetry = self.decoder.apply_modifiers(received_telemetry)
+                    except Exception as error:
+                        print(f"Error applying modifers to telemetry data received from: {self.serial_port}\n{str(error)}")
+
+
+                    # Add float strings
+                    # -----------------
+                    # should be done in UI really, but tkinter cannot apply format to variables easily
+                    # (this operator: |= merges 2 dicts and saves in left-side)
+                    try:
+                        received_telemetry |= self.decoder.generate_float_strings(received_telemetry)
+                    except Exception as error:
+                        print(f"Error generating float strings for telemetry data received from: {self.serial_port}\n{str(error)}")
+
+
+                    # Add turns and bound roll
+                    # ------------------------
+                    if self.decoder.state == DecoderState.INFLIGHT:
+                        try:
+                            received_telemetry |= self.decoder.generate_roll_turns(received_telemetry)
+                        except Exception as error:
+                            print(f"Error generating roll turns for telemetry data received from: {self.serial_port}\n{str(error)}")
+
+
+                    # Add name strings
+                    # ----------------
+                    # add additional string names for UI representation (e.g. event number -> event name)
+                    try:
+                        received_telemetry |= self.decoder.generate_name_strings(received_telemetry)
+                    except Exception as error:
+                        print(f"Error generating name strings for telemetry data received from: {self.serial_port}\n{str(error)}")
+
+
+                    message_queue.put(Message(received_telemetry,
+                                                self.decoder.state,
+                                                monotonic(),
+                                                packet_length))
+
+
+                    # Delay to emulate packet time
+                    # ----------------------------
 
                     match(self.decoder.state):
                         case DecoderState.PREFLIGHT:
                             sleep(SHORT_INTERVAL)
                         case DecoderState.INFLIGHT:
+                            print(received_telemetry)
                             sleep(TLM_INTERVAL)
                         case DecoderState.POSTFLIGHT:
                             sleep(SHORT_INTERVAL)
