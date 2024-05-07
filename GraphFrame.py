@@ -3,8 +3,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.figure import Figure
-import matplotlib.animation as animation
 from collections import deque
 from Styles import Colors
 

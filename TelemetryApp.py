@@ -190,8 +190,8 @@ class TelemetryApp(Tk):
         # Centre
 
         # [Graph frame is created under 'Window Panes']
-        self.enable_graph_checkbox = Checkbutton(self.graphs, variable=self.enable_graph, text="Enable Graphs", font=Fonts.MEDIUM_FONT, bg=Colors.GRAY, fg=Colors.LIGHT_GRAY, anchor=W, padx=PADX, pady=PADY)
-        self.enable_graph_checkbox.place(relx=0, rely=1, x=20, y=-20, anchor=SW)
+        # self.enable_graph_checkbox = Checkbutton(self.graphs, variable=self.enable_graph, text="Enable Graphs", font=Fonts.MEDIUM_FONT, bg=Colors.GRAY, fg=Colors.LIGHT_GRAY, anchor=W, padx=PADX, pady=PADY)
+        # self.enable_graph_checkbox.place(relx=0, rely=1, x=20, y=-20, anchor=SW)
 
 
         # Final init

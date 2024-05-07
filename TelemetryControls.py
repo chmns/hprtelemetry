@@ -53,9 +53,11 @@ class ReadOut(Frame):
 
         if new_value < self.min:
             self.min_var.set(new_value_string)
+            self.min = new_value
 
         if new_value > self.max:
             self.max_var.set(new_value_string)
+            self.max = new_value
 
         self.value.set(new_value_string)
 

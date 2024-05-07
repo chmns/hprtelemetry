@@ -19,6 +19,7 @@ CHECKSUM_LENGTH = 4
 
 MAX_PACKET_LENGTH = 255
 TLM_INTERVAL = 0.05
+SHORT_INTERVAL = 0.01
 SERIAL_READ_INTERVAL = 0.01
 
 TLM_EXTENSION = ".tlm"
@@ -569,7 +570,6 @@ class BinaryFileReader(TelemetryReader):
                         print(buffer)
                         break
 
-
                     if received_telemetry_messages:
                         for message in received_telemetry_messages:
                             self.messages_decoded += 1
@@ -582,7 +582,13 @@ class BinaryFileReader(TelemetryReader):
                                                   monotonic(),
                                                   packet_length))
 
-                    sleep(TLM_INTERVAL)
+                    match(self.decoder.state):
+                        case DecoderState.PREFLIGHT:
+                            sleep(SHORT_INTERVAL)
+                        case DecoderState.INFLIGHT:
+                            sleep(TLM_INTERVAL)
+                        case DecoderState.POSTFLIGHT:
+                            sleep(SHORT_INTERVAL)
 
         except IOError:
             print(f"Cannot read file: {self.filename}")
