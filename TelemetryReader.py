@@ -628,12 +628,10 @@ class BinaryFileReader(TelemetryReader):
 
                     # Delay to emulate packet time
                     # ----------------------------
-
                     match(self.decoder.state):
                         case DecoderState.PREFLIGHT:
                             sleep(SHORT_INTERVAL)
                         case DecoderState.INFLIGHT:
-                            print(received_telemetry)
                             sleep(TLM_INTERVAL)
                         case DecoderState.POSTFLIGHT:
                             sleep(SHORT_INTERVAL)
