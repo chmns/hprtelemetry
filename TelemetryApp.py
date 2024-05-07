@@ -365,9 +365,11 @@ class TelemetryApp(Tk):
             self.stats_timer = None
 
         # stop file decoder if it's running
-        self.csv_file_reader.stop()
-        # stop serial decoder if it's running
-        self.serial_reader.stop()
+        if self.current_reader is not None:
+            self.current_reader.stop()
+            self.current_reader = None
+
+        self.state = AppState.IDLE
         # update status display to show we are now disconnected
         self.map_column.set_status_text("Disconnected", Colors.LIGHT_GRAY)
 
@@ -425,6 +427,8 @@ class TelemetryApp(Tk):
     def listen_to_port(self, port):
         if self.confirm_stop():
             self.reset() # if user has decided to cancel current operation then we should also reset
+        else:
+            return
 
         if port in self.serial_reader.available_ports():
             yesnocancel = messagebox.askyesnocancel(f"Listen on serial port {port}",
@@ -456,27 +460,27 @@ class TelemetryApp(Tk):
     def open_telemetry_file(self):
         if self.confirm_stop():
             self.reset() # if user has decided to cancel current operation then we should also reset
+        else:
+            return
 
         filename = askopenfilename(filetypes =[('Telemetry Binary Files', '*.tlm'),
                                                ('Telemetry Text Files', '*.csv')])
 
+        self.state = AppState.READING_FILE
+        self.map_column.set_status_text(f"Playing: {filename.split('/')[-1]}", Colors.WHITE, Colors.DARK_GREEN)
+
         if filename.endswith(".tlm"):
-            self.reset()
-            self.tlm_file_reader.filename = filename
-            self.state = AppState.READING_FILE
-            self.map_column.set_status_text(f"Playing: {filename.split('/')[-1]}", Colors.WHITE, Colors.DARK_GREEN)
             self.current_reader = self.tlm_file_reader
+            self.tlm_file_reader.filename = filename
             self.tlm_file_reader.start()
-            self.start()
 
         if filename.endswith(".csv"):
-            self.reset()
-            self.csv_file_reader.filename = filename
-            self.state = AppState.READING_FILE
-            self.map_column.set_status_text(f"Playing: {filename.split('/')[-1]}", Colors.WHITE, Colors.DARK_GREEN)
             self.current_reader = self.csv_file_reader
+            self.csv_file_reader.filename = filename
             self.csv_file_reader.start()
-            self.start()
+
+        self.start()
+
 
     def open_telemetry_test_file(self):
         filename = askopenfilename(filetypes =[('Telemetry Text Files', '*.csv'), ('Other Telemetry Files', '*.*')])

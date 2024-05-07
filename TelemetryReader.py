@@ -18,7 +18,7 @@ SYNC_WORD_LENGTH = len(SYNC_WORD)
 CHECKSUM_LENGTH = 4
 
 MAX_PACKET_LENGTH = 255
-TLM_INTERVAL = 0.01
+TLM_INTERVAL = 0.05
 SERIAL_READ_INTERVAL = 0.01
 
 TLM_EXTENSION = ".tlm"
@@ -511,6 +511,7 @@ class BinaryFileReader(TelemetryReader):
         TelemetryReader.__init__(self, queue)
         self.filename = None
         self.decoder = RadioTelemetryDecoder()
+        self.use_crc32 = True
 
     def __run__(self, message_queue, running) -> None:
 
@@ -524,28 +525,62 @@ class BinaryFileReader(TelemetryReader):
             with open(self.filename, 'rb') as file:
                 raw_data = file.read()
 
-                if not running.is_set():
-                        return
-
                 packets = raw_data.split(SYNC_WORD)
 
                 for packet in packets:
                     if not running.is_set():
-                        return
+                        break
+
+                    packet_length = len(packet)
+                    self.bytes_received += packet_length # keep track of total amount of data we got since start
+
+                    # Decode COBS/R (Consistent-Overhead Byte-Stuffing/Reduced [Packet synchronization])
+                    # -------------
+                    try:
+                        buffer = cobsr.decode(packet)
+                    except cobsr.DecodeError as error: # technically should never happen...
+                        self.bad_bytes_received += packet_length
+                        print(f"COBS error: 0x00 found in data stream") # for debug
+                        print(f"{packet_length:>6} raw bytes: {packet.hex(' ')}  ({self.bad_bytes_received} bad bytes so far)") # for debug
+
+                    # CRC32 check
+                    # -----------
+                    if self.use_crc32:
+                        received_crc32 = buffer[-CHECKSUM_LENGTH:]
+                        telemetry_bytes = buffer[:-CHECKSUM_LENGTH]
+                        calculated_crc32 = int.to_bytes(crc32(telemetry_bytes), CHECKSUM_LENGTH)
+
+                        if received_crc32 != calculated_crc32:
+                            self.bad_packets_received += 1
+                            self.bad_bytes_received += packet_length
+
+                            print(f"CRC32 error: calculated checksum {calculated_crc32.hex()} but expected {received_crc32.hex()}") # for debug
+                            print(f"{packet_length:>6} bytes: {buffer.hex(' ')}  ({self.bad_bytes_received} bad bytes so far)") # for debug
+                            continue
+
+
+                    received_telemetry_messages = []
+                    received_telemetry = {}
 
                     try:
-                        self.bytes_received += len(packet) # keep track of total amount of data we got since start
-                        decoded_messages = self.decoder.decode(packet)
+                        received_telemetry_messages = self.decoder.decode(telemetry_bytes)
                     except Exception as error:
                         print(f"Error decoding data\n{str(error)}")
+                        print(buffer)
+                        break
 
-                    if decoded_messages:
-                        for message in decoded_messages:
+
+                    if received_telemetry_messages:
+                        for message in received_telemetry_messages:
                             self.messages_decoded += 1
-                            message_queue.put(Message(message,
-                                              self.decoder.state,
-                                              monotonic(),
-                                              len(packet)))
+                            # when in flight we just send last of 4 packets to UI to save time updating:
+                            received_telemetry |= message # merge telemetry dicts together
+
+                        self.messages_decoded += 1
+                        message_queue.put(Message(received_telemetry,
+                                                  self.decoder.state,
+                                                  monotonic(),
+                                                  packet_length))
 
                     sleep(TLM_INTERVAL)
 
