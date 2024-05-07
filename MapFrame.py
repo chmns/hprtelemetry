@@ -29,6 +29,9 @@ ZERO_ALT = "0"
 PADX = 4
 PADY = 4
 
+GREEN_EVENT_NUMS = [5,6,7,8]
+RED_EVENT_NUMS = [18,19,20,21,26,28]
+
 DEFAULT_DATABASE_NAME = "offline_tiles.db"
 TILE_SERVER_URL = "http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}&s=Ga"
 
@@ -37,7 +40,12 @@ class MapColumn(PanedWindow):
     def __init__(self, master):
         PanedWindow.__init__(self, orient="vertical", background=Colors.BLACK)
 
+        # Variables
+        # ---------
         self.total_bytes_read = StringVar(master, name="total_bytes_read")
+        self.prev_event = 0
+        self.event = IntVar(master, 0, "event")
+        self.event.trace_add('write', self.update_event_color)
         self.event_name = StringVar(master, "", "eventName")
         self.name = StringVar(master, "", "name")
         self.callsign = StringVar(master, "", "callsign")
@@ -47,6 +55,9 @@ class MapColumn(PanedWindow):
         self.currently_receiving.trace_add("write", self.update_status_indicator)
         self.time_since_last_packet = DoubleVar(master, name="time_since_last_packet")
 
+
+        # Top row of map column
+        # ---------------------
         self.name_callsign_state_frame = Frame(self, bg=Colors.BG_COLOR)
         self.name_callsign_state_frame.pack(side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
 
@@ -59,6 +70,8 @@ class MapColumn(PanedWindow):
         self.callsign_label = Label(self.name_callsign_state_frame, textvariable=self.callsign, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=Colors.WHITE)
 
 
+        # Second row
+        # ----------
         self.cont_event_frame = Frame(self, bg=Colors.BG_COLOR)
         self.cont_event_frame.pack(side=TOP, expand=False, fill=X, padx=PADX, pady=PADY)
 
@@ -67,12 +80,22 @@ class MapColumn(PanedWindow):
         self.event_name_label = Label(self.cont_event_frame, textvariable=self.event_name, font=Fonts.MEDIUM_FONT_BOLD, bg=Colors.BG_COLOR, fg=Colors.WHITE)
         self.event_name_label.pack(side=LEFT, expand=True, fill=X, padx=PADX)
 
+
+        # Map itself
+        # ----------
+
+        self.map_frame = MapFrame(self, master)
+        self.map_frame.pack(side=TOP, expand=True, fill=BOTH)
+
+
+        # Location rows (PRE, INFLIGHT, POST, [LAUNCH, LAND])
+        # -------------
+
         self.preflight_location = LocationRow(self,
                                               PRELIGHT_TEXT,
                                               StringVar(master, ZERO_LAT, "preGnssLatString"),
                                               StringVar(master, ZERO_LON, "preGnssLonString"),
                                               StringVar(master, ZERO_ALT, "preGnssAltString"))
-        # self.preflight_location.on_click = lam
 
         self.current_location = LocationRow(self,
                                             CURRENT_TEXT,
@@ -98,8 +121,6 @@ class MapColumn(PanedWindow):
                                             StringVar(master, ZERO_LON, "landing_longitude"),
                                             StringVar(master, ZERO_ALT, "landing_time"))
 
-        self.map_frame = MapFrame(self, master)
-        self.map_frame.pack(side=TOP, expand=True, fill=BOTH)
 
         self.status_bar = Frame(self, bg=Colors.BG_COLOR)
         self.status_bar.pack(side=BOTTOM, expand=False, fill=X)
@@ -176,6 +197,21 @@ class MapColumn(PanedWindow):
         self.status_label.config(bg=bg)
         self.status_bar.config(bg=bg)
 
+    def update_event_color(self, *_):
+        new_event_num = self.event.get()
+        if new_event_num == self.prev_event:
+            return
+
+        self.prev_event = new_event_num
+
+        if new_event_num in GREEN_EVENT_NUMS:
+            self.event_name_label.config(fg=Colors.BRIGHT_GREEN)
+        elif new_event_num in RED_EVENT_NUMS:
+            self.event_name_label.config(fg=Colors.BRIGHT_RED)
+        else:
+            self.event_name_label.config(fg=Colors.WHITE)
+
+
     def set_state(self, state: DecoderState):
 
         if self.map_frame.state == DecoderState.OFFLINE and state != DecoderState.OFFLINE:
@@ -215,14 +251,11 @@ class MapColumn(PanedWindow):
 
         self.map_frame.state = state
 
-
     def update_status_indicator(self, *_):
         if self.currently_receiving.get():
             self.last_packet_indicator.config(bg=Colors.BRIGHT_GREEN, fg=Colors.GRAY)
         else:
             self.last_packet_indicator.config(bg=Colors.BRIGHT_RED, fg=Colors.WHITE)
-
-
 
     def update_data(self):
         self.map_frame.update_data()

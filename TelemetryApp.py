@@ -41,12 +41,6 @@ PADY = 4
 SASH_WIDTH = 10
 CELL_WIDTH = 220
 
-"""
-Work list
----------
-1. Event colors: 18 to 21,26,28 red color. Range 8-5 green.
-"""
-
 class AppState(Enum):
     IDLE = 0
     READING_FILE = 1
