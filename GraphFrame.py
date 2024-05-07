@@ -8,15 +8,13 @@ import matplotlib.animation as animation
 from collections import deque
 from Styles import Colors
 
-NUM_GRAPHS = 3
 NUM_POINTS = 800
 LINEWIDTH = 1
-FPS = 20 # update rate of graph
-INITIAL_INTERVAL = 0.05 # for filling empty space at start
-BG_COLOR = "#0f0f0f"
-FG_COLOR = "#eeeeee"
+INITIAL_INTERVAL = 0.05 # for calculating X-axis
 AXIS_NAMES = ["Altitude (m)", "Velocity (m/s)", "Acceleration (m/s/s)"]
 LINE_COLORS = [Colors.ALTITUDE_COLOR, Colors.VELOCITY_COLOR, Colors.ACCELERATION_COLOR]
+
+NUM_GRAPHS = 3 #  max = 3
 
 class GraphFrame(Frame):
     def reset_data(self):
