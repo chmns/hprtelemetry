@@ -9,10 +9,10 @@ from collections import deque
 from Styles import Colors
 
 NUM_GRAPHS = 3
-NUM_POINTS = 1000
+NUM_POINTS = 800
 LINEWIDTH = 1
 FPS = 20 # update rate of graph
-INITIAL_INTERVAL = 1 # for filling empty space at start
+INITIAL_INTERVAL = 0.05 # for filling empty space at start
 BG_COLOR = "#0f0f0f"
 FG_COLOR = "#eeeeee"
 AXIS_NAMES = ["Altitude (m)", "Velocity (m/s)", "Acceleration (m/s/s)"]
@@ -79,7 +79,7 @@ class GraphFrame(Frame):
         self.lines = []
 
         plt.subplots_adjust(bottom=0.075, right=0.95, top=0.95, left=0.15, hspace=0.1)
-        plt.xlabel("Packet history")
+        plt.xlabel("Seconds")
 
         for i in range(NUM_GRAPHS):
             self.ax[i].set_ylim(self.ranges[i])
